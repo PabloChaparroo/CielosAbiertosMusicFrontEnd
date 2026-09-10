@@ -1,0 +1,196 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { CalendarDays, Flame, Heart, Play, Sparkles, TrendingUp } from "lucide-react";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { Cover, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
+import { useApp } from "@/hooks/useApp";
+import { roleLabels } from "@/hooks/useApp";
+
+export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Cielos Abiertos — Plataforma del equipo de adoración" },
+      {
+        name: "description",
+        content:
+          "Letras, acordes con transposición, setlists, equipo y estadísticas para el ministerio de alabanza.",
+      },
+      { property: "og:title", content: "Cielos Abiertos — Plataforma del equipo de adoración" },
+      {
+        property: "og:description",
+        content: "Todo el repertorio del ministerio de música en un solo lugar.",
+      },
+    ],
+  }),
+  component: Home,
+});
+
+function Home() {
+  const { currentUser, songs, setlists, favorites, play } = useApp();
+
+  const sortedLists = [...setlists].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+  );
+  const upcoming =
+    sortedLists.find((s) => new Date(s.date).getTime() >= Date.now() - 86400000) ??
+    sortedLists[sortedLists.length - 1]!;
+  const month = "2026-09";
+  const top = [...songs]
+    .sort((a, b) => (b.playsByMonth[month] ?? 0) - (a.playsByMonth[month] ?? 0))
+    .slice(0, 8);
+  const latest = [...songs].slice(0, 5);
+  const songOfMonth = top[0]!;
+  const favSongs = songs.filter((s) => favorites.includes(s.id));
+
+  return (
+    <AppLayout title="Inicio" subtitle={`Bienvenido/a de nuevo, ${currentUser.name.split(" ")[0]}`} bleed>
+      <section className="relative overflow-hidden">
+        <div className="gradient-sky absolute inset-0" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+        <div className="relative px-4 py-16 sm:px-8 sm:py-24">
+          <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/40 px-3 py-1 text-xs text-foreground/90 backdrop-blur">
+            <Sparkles className="h-3.5 w-3.5 text-primary" /> {roleLabels[currentUser.role]}
+          </p>
+          <h2 className="font-display text-5xl leading-[0.95] font-bold sm:text-7xl">
+            Cielos
+            <br />
+            <span className="text-gradient-gold">Abiertos</span>
+          </h2>
+          <p className="mt-4 max-w-md text-base text-foreground/80 sm:text-lg">
+            Adorando en espíritu y en verdad. Todo el repertorio del ministerio, listo para el
+            próximo servicio.
+          </p>
+          <div className="mt-7 flex flex-wrap gap-3">
+            <Link
+              to="/acordes"
+              className="rounded-full gradient-gold px-6 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
+            >
+              Ir a Acordes
+            </Link>
+            <Link
+              to="/setlists"
+              className="rounded-full border border-border bg-background/50 px-6 py-3 text-sm font-semibold backdrop-blur transition-colors hover:bg-secondary"
+            >
+              Ver setlists
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <div className="space-y-10 px-4 py-8 sm:px-8">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Link
+            to="/setlists"
+            className="surface-card group p-5 hover:-translate-y-1 hover:border-primary/40"
+          >
+            <CalendarDays className="mb-3 h-5 w-5 text-primary" />
+            <p className="text-xs tracking-widest text-muted-foreground uppercase">Próximo setlist</p>
+            <p className="mt-1 font-display text-lg font-semibold">{upcoming.title}</p>
+            <p className="text-sm text-muted-foreground">
+              {new Date(upcoming.date).toLocaleDateString("es-AR", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+              })}{" "}
+              · {upcoming.items.length} canciones
+            </p>
+          </Link>
+
+          <div className="surface-card p-5">
+            <Flame className="mb-3 h-5 w-5 text-primary" />
+            <p className="text-xs tracking-widest text-muted-foreground uppercase">Canción del mes</p>
+            <div className="mt-2 flex items-center gap-3">
+              <Cover song={songOfMonth} size="sm" />
+              <div className="min-w-0">
+                <p className="truncate font-semibold">{songOfMonth.title}</p>
+                <p className="truncate text-sm text-muted-foreground">{songOfMonth.artist}</p>
+              </div>
+            </div>
+          </div>
+
+          <Link to="/escuchar" className="surface-card p-5 hover:-translate-y-1 hover:border-primary/40">
+            <TrendingUp className="mb-3 h-5 w-5 text-primary" />
+            <p className="text-xs tracking-widest text-muted-foreground uppercase">Últimas subidas</p>
+            <p className="mt-1 font-display text-3xl font-semibold">{latest.length}</p>
+            <p className="truncate text-sm text-muted-foreground">
+              {latest.map((s) => s.title).join(" · ")}
+            </p>
+          </Link>
+
+          <Link to="/favoritos" className="surface-card p-5 hover:-translate-y-1 hover:border-primary/40">
+            <Heart className="mb-3 h-5 w-5 text-primary" />
+            <p className="text-xs tracking-widest text-muted-foreground uppercase">Tus favoritos</p>
+            <p className="mt-1 font-display text-3xl font-semibold">{favSongs.length}</p>
+            <p className="truncate text-sm text-muted-foreground">
+              {favSongs.length ? favSongs.map((s) => s.title).join(" · ") : "Todavía sin favoritos"}
+            </p>
+          </Link>
+        </section>
+
+        <section>
+          <div className="mb-4 flex items-end justify-between">
+            <h3 className="font-display text-2xl font-semibold">Más tocadas este mes</h3>
+            <Link to="/estadisticas" className="text-sm text-primary hover:underline">
+              Ver estadísticas
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+            {top.map((song) => (
+              <div
+                key={song.id}
+                className="surface-card group relative p-4 hover:-translate-y-1 hover:border-primary/40"
+              >
+                <div
+                  className="mb-3 aspect-square w-full rounded-xl"
+                  style={{ backgroundImage: song.cover }}
+                />
+                <p className="truncate font-semibold">{song.title}</p>
+                <p className="truncate text-sm text-muted-foreground">{song.artist}</p>
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    {formatDuration(song.duration)} · {song.key}
+                  </span>
+                  <FavButton songId={song.id} />
+                </div>
+                <button
+                  onClick={() => play(song)}
+                  aria-label={`Reproducir ${song.title}`}
+                  className="absolute top-[46%] right-6 flex h-11 w-11 translate-y-2 items-center justify-center rounded-full gradient-gold text-primary-foreground opacity-0 shadow-lg transition-all group-hover:translate-y-0 group-hover:opacity-100"
+                >
+                  <Play className="ml-0.5 h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section>
+          <h3 className="mb-4 font-display text-2xl font-semibold">Últimas canciones subidas</h3>
+          <div className="surface-card divide-y divide-border/60">
+            {latest.map((song) => (
+              <div key={song.id} className="flex items-center gap-4 p-3 transition-colors hover:bg-elevated/60">
+                <Cover song={song} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{song.title}</p>
+                  <p className="truncate text-sm text-muted-foreground">{song.artist}</p>
+                </div>
+                <div className="hidden gap-1.5 sm:flex">
+                  {song.tags.map((t) => (
+                    <TagChip key={t} tag={t} />
+                  ))}
+                </div>
+                <FavButton songId={song.id} />
+                <button
+                  onClick={() => play(song)}
+                  aria-label={`Reproducir ${song.title}`}
+                  className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
+                >
+                  <Play className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </AppLayout>
+  );
+}

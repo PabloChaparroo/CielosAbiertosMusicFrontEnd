@@ -74,9 +74,7 @@ export interface ChordPair {
   text: string;
 }
 export type ParsedLine =
-  | { kind: "section"; label: string }
-  | { kind: "blank" }
-  | { kind: "line"; pairs: ChordPair[] };
+  { kind: "section"; label: string } | { kind: "blank" } | { kind: "line"; pairs: ChordPair[] };
 
 export function parseChordPro(body: string, semitones: number, targetKey: string): ParsedLine[] {
   return body.split("\n").map((raw) => {

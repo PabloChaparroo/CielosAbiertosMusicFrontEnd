@@ -136,7 +136,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toggle: () => setIsPlaying((p) => !p),
       audioRef,
     }),
-    [users, currentUser, currentUserId, songs, setlists, annotationList, favorites, can, current, isPlaying],
+    [
+      users,
+      currentUser,
+      currentUserId,
+      songs,
+      setlists,
+      annotationList,
+      favorites,
+      can,
+      current,
+      isPlaying,
+    ],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

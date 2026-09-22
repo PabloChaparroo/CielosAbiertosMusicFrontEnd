@@ -42,7 +42,10 @@ export function MiniPlayer() {
         <FavButton songId={current.id} />
 
         <div className="hidden flex-1 items-center gap-3 sm:flex">
-          <button className="rounded-full p-2 text-muted-foreground hover:text-foreground" aria-label="Anterior">
+          <button
+            className="rounded-full p-2 text-muted-foreground hover:text-foreground"
+            aria-label="Anterior"
+          >
             <SkipBack className="h-4 w-4" />
           </button>
           <button
@@ -52,7 +55,10 @@ export function MiniPlayer() {
           >
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="ml-0.5 h-4 w-4" />}
           </button>
-          <button className="rounded-full p-2 text-muted-foreground hover:text-foreground" aria-label="Siguiente">
+          <button
+            className="rounded-full p-2 text-muted-foreground hover:text-foreground"
+            aria-label="Siguiente"
+          >
             <SkipForward className="h-4 w-4" />
           </button>
           <span className="w-10 text-right text-[11px] text-muted-foreground">

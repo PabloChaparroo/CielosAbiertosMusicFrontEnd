@@ -48,9 +48,7 @@ export function AppLayout({
         </header>
 
         <div
-          className={
-            (bleed ? "" : "px-4 py-6 sm:px-8 sm:py-8 ") + (current ? "pb-32" : "pb-16")
-          }
+          className={(bleed ? "" : "px-4 py-6 sm:px-8 sm:py-8 ") + (current ? "pb-32" : "pb-16")}
         >
           {children}
         </div>

@@ -79,7 +79,9 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                       )}
                     >
                       <item.icon
-                        className={cn("h-[18px] w-[18px] transition-transform group-hover:scale-110")}
+                        className={cn(
+                          "h-[18px] w-[18px] transition-transform group-hover:scale-110",
+                        )}
                       />
                       {item.label}
                     </Link>

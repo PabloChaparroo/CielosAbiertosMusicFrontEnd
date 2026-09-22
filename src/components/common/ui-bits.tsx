@@ -1,4 +1,4 @@
-import { Heart, Lock } from "lucide-react";
+import { Heart } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useApp } from "@/hooks/useApp";
@@ -99,14 +99,6 @@ export function EmptyState({
       <p className="mt-1 max-w-sm text-sm text-muted-foreground">{description}</p>
       {action ? <div className="mt-5">{action}</div> : null}
     </div>
-  );
-}
-
-export function LockedHint({ children }: { children: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-      <Lock className="h-3 w-3" /> {children}
-    </span>
   );
 }
 

@@ -10,7 +10,8 @@ export interface Song {
   duration: number; // seconds
   tags: Tag[];
   cover: string; // css gradient
-  audioUrl: string;
+  /** Key del objeto en S3/MinIO, no una URL reproducible — hay que resolverla con StorageClient.getDownloadUrl() antes de reproducir. null si la canción no tiene audio cargado. */
+  audioKey: string | null;
   /** ChordPro-style body: chords inside [] before the syllable */
   chordpro: string;
   lyricsImage?: string;

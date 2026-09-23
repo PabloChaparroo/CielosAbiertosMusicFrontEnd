@@ -24,7 +24,8 @@ interface RawSong {
   chordpro: string;
   lyricsImageKey: string | null;
   tags: RawTag[];
-  playStats: RawPlayStat[];
+  /** Ausente en la respuesta de POST /canciones (bug de backend, ver mapSong). Presente en GET. */
+  playStats?: RawPlayStat[];
   fechaHoraAlta: string;
 }
 
@@ -44,17 +45,22 @@ export interface CreateSongInput {
   cover: string;
   chordpro: string;
   tags: string[];
+  audioKey?: string;
 }
+
+export type UpdateSongInput = Partial<CreateSongInput>;
 
 /**
  * Normaliza el shape real del backend al `Song` que ya consume toda la UI
  * (Escuchar, Letras, Acordes, Favoritos, Estadísticas, MiniPlayer, Setlists)
  * — así ninguna de esas pantallas necesitó tocarse para pasar de mock a real.
  *
- * `audioUrl` queda "" cuando `audioKey` es null (el caso de las 21 canciones
- * reales hoy): no existe todavía un endpoint que resuelva audioKey → URL
- * reproducible (StorageService.getDownloadUrl está escrito pero no expuesto
- * por ningún controller). Ver gap documentado en docs/estado-actual.md.
+ * `raw.playStats` se trata como opcional a propósito: la respuesta real de
+ * `POST /canciones` (alta) no incluye esa relación (solo `GET /canciones`
+ * la carga) — es un bug del backend de Canciones descubierto en el ticket
+ * de audio real, documentado en el changelog y no arreglado ahí porque
+ * Canciones estaba fuera de alcance en ese ticket; acá alcanza con no
+ * asumir que siempre viene.
  */
 function mapSong(raw: RawSong): Song {
   return {
@@ -66,11 +72,11 @@ function mapSong(raw: RawSong): Song {
     duration: raw.duration,
     tags: raw.tags.map((t) => t.valor) as Tag[],
     cover: raw.cover,
-    audioUrl: raw.audioKey ?? "",
+    audioKey: raw.audioKey,
     chordpro: raw.chordpro,
     ...(raw.lyricsImageKey ? { lyricsImage: raw.lyricsImageKey } : {}),
     addedAt: raw.fechaHoraAlta,
-    playsByMonth: Object.fromEntries(raw.playStats.map((p) => [p.month, p.plays])),
+    playsByMonth: Object.fromEntries((raw.playStats ?? []).map((p) => [p.month, p.plays])),
   };
 }
 
@@ -84,5 +90,10 @@ export const SongsService = {
   async createSong(dto: CreateSongInput): Promise<Song> {
     const created = await apiRequest<RawSong>("/canciones", { method: "POST", body: dto });
     return mapSong(created);
+  },
+
+  async updateSong(id: string, dto: UpdateSongInput): Promise<Song> {
+    const updated = await apiRequest<RawSong>(`/canciones/${id}`, { method: "PATCH", body: dto });
+    return mapSong(updated);
   },
 };

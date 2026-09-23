@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
-import { Music4, Play, Plus, Search } from "lucide-react";
+import { Music4, Pencil, Play, Plus, Search } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, EmptyState, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
-import type { Tag } from "@/types";
+import type { Song, Tag } from "@/types";
 import { UploadModal } from "../components/UploadModal";
 
 const ALL_TAGS: Tag[] = [
@@ -18,10 +18,11 @@ const ALL_TAGS: Tag[] = [
 ];
 
 export function EscucharPage() {
-  const { songs, play, current, can, addSong } = useApp();
+  const { songs, play, current, can, addSong, updateSong } = useApp();
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState<Tag | null>(null);
   const [modal, setModal] = useState(false);
+  const [editing, setEditing] = useState<Song | null>(null);
 
   const filtered = useMemo(
     () =>
@@ -126,6 +127,15 @@ export function EscucharPage() {
                 <span className="hidden w-12 text-right text-sm text-muted-foreground md:inline">
                   {formatDuration(song.duration)}
                 </span>
+                {can("editSongs") ? (
+                  <button
+                    onClick={() => setEditing(song)}
+                    aria-label={`Editar ${song.title}`}
+                    className="rounded-full p-2 text-muted-foreground hover:text-primary"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                ) : null}
                 <button
                   onClick={() => play(song)}
                   aria-label={`Reproducir ${song.title}`}
@@ -140,6 +150,9 @@ export function EscucharPage() {
       )}
 
       {modal ? <UploadModal onClose={() => setModal(false)} onSave={addSong} /> : null}
+      {editing ? (
+        <UploadModal song={editing} onClose={() => setEditing(null)} onSave={updateSong} />
+      ) : null}
     </AppLayout>
   );
 }

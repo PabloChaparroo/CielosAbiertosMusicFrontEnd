@@ -27,6 +27,7 @@ interface AppState {
   songs: Song[];
   songsLoadState: LoadState;
   addSong: (song: Song) => void;
+  updateSong: (song: Song) => void;
   setlists: Setlist[];
   setlistsLoadState: LoadState;
   addSetlist: (s: Setlist) => void;
@@ -153,6 +154,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       songs,
       songsLoadState,
       addSong: (song) => setSongs((prev) => [song, ...prev]),
+      updateSong: (song) => setSongs((prev) => prev.map((s) => (s.id === song.id ? song : s))),
       setlists,
       setlistsLoadState,
       addSetlist: (s) => setSetlists((prev) => [s, ...prev]),

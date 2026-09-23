@@ -2,21 +2,44 @@ import { useEffect, useRef, useState } from "react";
 import { Pause, Play, SkipBack, SkipForward, Volume2 } from "lucide-react";
 import { useApp } from "@/hooks/useApp";
 import { Cover, FavButton, formatDuration } from "@/components/common/ui-bits";
+import { StorageClient } from "@/lib/storage-client";
 
 export function MiniPlayer() {
   const { current, isPlaying, toggle, audioRef } = useApp();
   const [progress, setProgress] = useState(0);
   const [volume, setVolume] = useState(0.8);
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const localRef = useRef<HTMLAudioElement | null>(null);
+
+  // `audioKey` es una key de S3/MinIO, no una URL reproducible — hay que
+  // resolver una URL firmada de descarga cada vez que cambia la canción
+  // actual. No se precachea al listar canciones (las URLs firmadas expiran
+  // en 1h, y listar 21 canciones no debería disparar 21 pedidos que capaz
+  // nunca se usan).
+  useEffect(() => {
+    setResolvedUrl(null);
+    if (!current?.audioKey) return;
+    let cancelled = false;
+    StorageClient.getDownloadUrl(current.audioKey)
+      .then((res) => {
+        if (!cancelled) setResolvedUrl(res.url);
+      })
+      .catch(() => {
+        /* sin audio reproducible para esta canción; el <audio> sin src ya tolera esto */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [current?.id, current?.audioKey]);
 
   useEffect(() => {
     const el = localRef.current;
     if (!el) return;
     audioRef.current = el;
     el.volume = volume;
-    if (isPlaying) void el.play().catch(() => undefined);
+    if (isPlaying && resolvedUrl) void el.play().catch(() => undefined);
     else el.pause();
-  }, [isPlaying, current, volume, audioRef]);
+  }, [isPlaying, current, volume, audioRef, resolvedUrl]);
 
   if (!current) return null;
 
@@ -27,7 +50,7 @@ export function MiniPlayer() {
     <div className="fixed right-0 bottom-0 left-0 z-40 border-t border-border bg-card/95 backdrop-blur-xl lg:left-[272px]">
       <audio
         ref={localRef}
-        src={current.audioUrl}
+        src={resolvedUrl ?? undefined}
         onTimeUpdate={(e) => {
           const el = e.currentTarget;
           if (el.duration) setProgress((el.currentTime / el.duration) * 100);

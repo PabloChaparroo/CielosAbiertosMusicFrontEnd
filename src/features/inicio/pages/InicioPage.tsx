@@ -1,11 +1,25 @@
 import { Link } from "@tanstack/react-router";
 import { CalendarDays, Flame, Heart, Play, Sparkles, TrendingUp } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Cover, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
+import { Cover, FavButton, formatDuration, Skeletons, TagChip } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 
 export function InicioPage() {
-  const { currentUser, songs, setlists, favorites, play } = useApp();
+  const { currentUser, songs, songsLoadState, setlists, favorites, play } = useApp();
+
+  // Las canciones ahora se cargan del backend real (antes el mock siempre
+  // tenía datos sincrónicamente); mientras se resuelve el fetch, `songs` está
+  // vacío y varias métricas de esta página (canción del mes, últimas subidas)
+  // asumen al menos un elemento. `setlists` (mock) recién se completa con el
+  // alias de IDs una vez que songs/users ya cargaron, así que hay una
+  // ventana extra en la que sigue vacío aunque songsLoadState ya diga "ready".
+  if (songsLoadState !== "ready" || setlists.length === 0) {
+    return (
+      <AppLayout title="Inicio" subtitle={`Bienvenido/a de nuevo, ${currentUser.name.split(" ")[0]}`}>
+        <Skeletons rows={5} />
+      </AppLayout>
+    );
+  }
 
   const sortedLists = [...setlists].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { FileDown, Maximize2, Minus, Plus, Search, X } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { FavButton } from "@/components/common/ui-bits";
+import { FavButton, Skeletons } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import { chordsOnly, KEYS, parseChordPro, transposeKey } from "@/lib/chords";
 import { exportChordsPdf } from "@/lib/pdf";
@@ -9,18 +9,25 @@ import { Annotations } from "../components/Annotations";
 import { ChordSheet } from "../components/ChordSheet";
 
 export function AcordesPage() {
-  const { songs } = useApp();
-  const [songId, setSongId] = useState(songs[0]!.id);
+  const { songs, songsLoadState } = useApp();
+  const [songId, setSongId] = useState<string | null>(null);
   const [semitones, setSemitones] = useState(0);
   const [fontSize, setFontSize] = useState(17);
   const [mode, setMode] = useState<"both" | "chords">("both");
   const [query, setQuery] = useState("");
   const [live, setLive] = useState(false);
 
-  const song = songs.find((s) => s.id === songId) ?? songs[0]!;
-  const targetKey = transposeKey(song.key, semitones);
+  // Las canciones ahora se cargan del backend real; mientras se resuelve el
+  // fetch, `songs` está vacío (antes el mock siempre tenía datos ya listos).
+  // Los hooks de acá abajo se llaman siempre (regla de hooks), con
+  // fallbacks seguros para ese instante — el guard de "todavía no hay
+  // canciones" se aplica recién en el return, después de todos los hooks.
+  const ready = songsLoadState === "ready" && songs.length > 0;
+  const song = songs.find((s) => s.id === songId) ?? songs[0];
+  const targetKey = song ? transposeKey(song.key, semitones) : "C";
 
   const lines = useMemo(() => {
+    if (!song) return [];
     const parsed = parseChordPro(song.chordpro, semitones, targetKey);
     return mode === "chords" ? chordsOnly(parsed) : parsed;
   }, [song, semitones, targetKey, mode]);
@@ -28,6 +35,14 @@ export function AcordesPage() {
   const filtered = songs.filter((s) =>
     (s.title + s.artist).toLowerCase().includes(query.toLowerCase()),
   );
+
+  if (!ready || !song) {
+    return (
+      <AppLayout title="Acordes" subtitle="Transposición, zoom y modo en vivo">
+        <Skeletons rows={4} />
+      </AppLayout>
+    );
+  }
 
   if (live) {
     return (

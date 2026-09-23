@@ -12,6 +12,7 @@ export function useAuth() {
     status: snapshot.status,
     user: snapshot.user,
     can: (action: AppAction) => authStore.can(action),
+    hasAnyPermission: (permissions: string[]) => authStore.hasAnyPermission(permissions),
     login: authStore.login,
     logout: authStore.logout,
   };

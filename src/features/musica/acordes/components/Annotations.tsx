@@ -1,22 +1,31 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Guitar, Lock, MessageSquarePlus, Pencil, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
+import { useAuth } from "@/core/auth/useAuth";
 
 export function Annotations({ songId }: { songId: string }) {
   const {
     annotations,
+    loadAnnotationsForSong,
     addAnnotation,
     updateAnnotation,
     removeAnnotation,
     canEditAnnotation,
     users,
   } = useApp();
+  const { hasAnyPermission } = useAuth();
   const [text, setText] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
 
+  useEffect(() => {
+    loadAnnotationsForSong(songId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [songId]);
+
   const list = annotations.filter((a) => a.songId === songId);
+  const canCreate = hasAnyPermission(["anotacion:write", "anotacion-propia:write"]);
 
   return (
     <section className="surface-card p-5">
@@ -100,24 +109,26 @@ export function Annotations({ songId }: { songId: string }) {
         </ul>
       )}
 
-      <div className="mt-4 flex gap-2">
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Escribí una indicación para el equipo…"
-          className="flex-1 rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none focus:border-primary/60"
-        />
-        <button
-          disabled={!text.trim()}
-          onClick={() => {
-            addAnnotation(songId, text.trim());
-            setText("");
-          }}
-          className="rounded-xl gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"
-        >
-          Publicar
-        </button>
-      </div>
+      {canCreate ? (
+        <div className="mt-4 flex gap-2">
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Escribí una indicación para el equipo…"
+            className="flex-1 rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none focus:border-primary/60"
+          />
+          <button
+            disabled={!text.trim()}
+            onClick={() => {
+              addAnnotation(songId, text.trim());
+              setText("");
+            }}
+            className="rounded-xl gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"
+          >
+            Publicar
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }

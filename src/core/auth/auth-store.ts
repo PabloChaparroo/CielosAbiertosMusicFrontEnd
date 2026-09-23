@@ -29,7 +29,9 @@ export type AppAction =
   | "viewStats"
   | "manageRoles"
   | "assignRole"
-  | "unassignRole";
+  | "unassignRole"
+  | "editOwnAnnotation"
+  | "editAnyAnnotation";
 
 const ACTION_TO_PERMISSION: Record<AppAction, string> = {
   manageTeam: "equipo:write",
@@ -41,6 +43,8 @@ const ACTION_TO_PERMISSION: Record<AppAction, string> = {
   manageRoles: "rol:write",
   assignRole: "rol:write",
   unassignRole: "rol:delete",
+  editOwnAnnotation: "anotacion-propia:update",
+  editAnyAnnotation: "anotacion:update",
 };
 
 export type AuthStatus = "loading" | "authenticated" | "anonymous";
@@ -140,6 +144,12 @@ export const authStore = {
   can(action: AppAction): boolean {
     if (snapshot.status !== "authenticated" || !snapshot.user) return false;
     return snapshot.user.permissions.includes(ACTION_TO_PERMISSION[action]);
+  },
+
+  /** Para gates que son un OR de dos permisos reales (ej. crear anotación: propia o de cualquiera), sin agregar una AppAction por cada combinación. */
+  hasAnyPermission(permissions: string[]): boolean {
+    if (snapshot.status !== "authenticated" || !snapshot.user) return false;
+    return permissions.some((p) => snapshot.user!.permissions.includes(p));
   },
 };
 

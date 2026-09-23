@@ -11,22 +11,25 @@ import {
 import { useAuth } from "@/core/auth/useAuth";
 import type { AppAction } from "@/core/auth/auth-store";
 import { EquipoService } from "@/features/equipo/services/equipo.service";
+import { AnnotationsService } from "@/features/canciones/services/annotations.service";
+import { FavoritesService } from "@/features/canciones/services/favorites.service";
+import { SongsService } from "@/features/canciones/services/songs.service";
 import {
-  annotations as mockAnnotations,
+  MOCK_SONG_ID_TO_TITLE,
   MOCK_USER_ID_TO_EMAIL,
   setlists as mockSetlists,
-  songs as mockSongs,
 } from "@/mocks/data";
 import type { Annotation, Setlist, Song, User } from "@/types";
 
-type UsersLoadState = "loading" | "ready" | "error";
+type LoadState = "loading" | "ready" | "error";
 
 interface AppState {
   users: User[];
-  usersLoadState: UsersLoadState;
+  usersLoadState: LoadState;
   reloadUsers: () => void;
   currentUser: User;
   songs: Song[];
+  songsLoadState: LoadState;
   addSong: (song: Song) => void;
   setlists: Setlist[];
   addSetlist: (s: Setlist) => void;
@@ -34,6 +37,8 @@ interface AppState {
   favorites: string[];
   toggleFavorite: (id: string) => void;
   annotations: Annotation[];
+  annotationsLoadState: LoadState;
+  loadAnnotationsForSong: (songId: string) => void;
   addAnnotation: (songId: string, text: string) => void;
   updateAnnotation: (id: string, text: string) => void;
   removeAnnotation: (id: string) => void;
@@ -49,34 +54,45 @@ interface AppState {
 
 const Ctx = createContext<AppState | null>(null);
 
-const FAV_KEY = "ca_favorites";
-
 /**
- * Traduce los IDs fijos "u1".."u8" que usan los mocks de Setlists/Anotaciones
- * a los IDs reales de backend, matcheando por email. Puente temporal: ver el
- * comentario de MOCK_USER_ID_TO_EMAIL en mocks/data.ts — se borra por
- * completo cuando Setlists/Anotaciones se conecten al backend real.
+ * Traduce los IDs fijos "u1".."u8" / "s1".."s20" que usa el mock de Setlists
+ * a los IDs reales de backend, matcheando por email (usuarios) o por título
+ * (canciones). Puente temporal: ver los comentarios de MOCK_USER_ID_TO_EMAIL
+ * y MOCK_SONG_ID_TO_TITLE en mocks/data.ts — se borra por completo cuando
+ * Setlists se conecte al backend real.
  */
-function buildMockIdAlias(users: User[]): Record<string, string> {
-  const idByEmail = new Map(users.map((u) => [u.email, u.id]));
-  const alias: Record<string, string> = {};
+function buildMockIdAlias(
+  users: User[],
+  songs: Song[],
+): { userAlias: Record<string, string>; songAlias: Record<string, string> } {
+  const userIdByEmail = new Map(users.map((u) => [u.email, u.id]));
+  const userAlias: Record<string, string> = {};
   for (const [mockId, email] of Object.entries(MOCK_USER_ID_TO_EMAIL)) {
-    const realId = idByEmail.get(email);
-    if (realId) alias[mockId] = realId;
+    const realId = userIdByEmail.get(email);
+    if (realId) userAlias[mockId] = realId;
   }
-  return alias;
+
+  const songIdByTitle = new Map(songs.map((s) => [s.title, s.id]));
+  const songAlias: Record<string, string> = {};
+  for (const [mockId, title] of Object.entries(MOCK_SONG_ID_TO_TITLE)) {
+    const realId = songIdByTitle.get(title);
+    if (realId) songAlias[mockId] = realId;
+  }
+
+  return { userAlias, songAlias };
 }
 
-function remapSetlists(setlists: Setlist[], alias: Record<string, string>): Setlist[] {
+function remapSetlists(
+  setlists: Setlist[],
+  userAlias: Record<string, string>,
+  songAlias: Record<string, string>,
+): Setlist[] {
   return setlists.map((s) => ({
     ...s,
-    leaderId: alias[s.leaderId] ?? s.leaderId,
-    teamIds: s.teamIds.map((id) => alias[id] ?? id),
+    leaderId: userAlias[s.leaderId] ?? s.leaderId,
+    teamIds: s.teamIds.map((id) => userAlias[id] ?? id),
+    items: s.items.map((item) => ({ ...item, songId: songAlias[item.songId] ?? item.songId })),
   }));
-}
-
-function remapAnnotations(annotations: Annotation[], alias: Record<string, string>): Annotation[] {
-  return annotations.map((a) => ({ ...a, authorId: alias[a.authorId] ?? a.authorId }));
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -84,11 +100,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { user: authUser, can: canReal } = useAuth();
 
   const [users, setUsers] = useState<User[]>([]);
-  const [usersLoadState, setUsersLoadState] = useState<UsersLoadState>("loading");
-  const [songs, setSongs] = useState<Song[]>(mockSongs);
+  const [usersLoadState, setUsersLoadState] = useState<LoadState>("loading");
+  const [songs, setSongs] = useState<Song[]>([]);
+  const [songsLoadState, setSongsLoadState] = useState<LoadState>("loading");
   const [setlists, setSetlists] = useState<Setlist[]>([]);
   const [annotationList, setAnnotationList] = useState<Annotation[]>([]);
-  const [favorites, setFavorites] = useState<string[]>(["s1", "s3", "s12", "s18"]);
+  const [annotationsLoadState, setAnnotationsLoadState] = useState<LoadState>("ready");
+  const [favorites, setFavorites] = useState<string[]>([]);
   const [current, setCurrent] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -96,13 +114,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const loadUsers = useCallback(() => {
     setUsersLoadState("loading");
     EquipoService.listMembers(true)
-      .then((fetched) => {
-        setUsers(fetched);
-        const alias = buildMockIdAlias(fetched);
-        setSetlists(remapSetlists(mockSetlists, alias));
-        setAnnotationList(remapAnnotations(mockAnnotations, alias));
-        setUsersLoadState("ready");
-      })
+      .then((fetched) => setUsers(fetched))
+      .then(() => setUsersLoadState("ready"))
       .catch(() => setUsersLoadState("error"));
   }, []);
 
@@ -111,21 +124,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [loadUsers]);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(FAV_KEY);
-      if (raw) setFavorites(JSON.parse(raw) as string[]);
-    } catch {
-      /* noop */
-    }
+    setSongsLoadState("loading");
+    SongsService.listAll()
+      .then((fetched) => {
+        setSongs(fetched);
+        setSongsLoadState("ready");
+      })
+      .catch(() => setSongsLoadState("error"));
   }, []);
 
+  // El alias mock→real necesita usuarios Y canciones reales para completarse
+  // (teamIds/leaderId contra usuarios, items[].songId contra canciones), así
+  // que se arma recién cuando ambos fetches terminaron.
   useEffect(() => {
-    try {
-      localStorage.setItem(FAV_KEY, JSON.stringify(favorites));
-    } catch {
-      /* noop */
-    }
-  }, [favorites]);
+    if (usersLoadState !== "ready" || songsLoadState !== "ready") return;
+    const { userAlias, songAlias } = buildMockIdAlias(users, songs);
+    setSetlists(remapSetlists(mockSetlists, userAlias, songAlias));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usersLoadState, songsLoadState]);
+
+  useEffect(() => {
+    FavoritesService.listMine()
+      .then(setFavorites)
+      .catch(() => setFavorites([]));
+  }, []);
+
+  const loadAnnotationsForSong = useCallback((songId: string) => {
+    setAnnotationsLoadState("loading");
+    AnnotationsService.listBySong(songId)
+      .then((fetched) => {
+        setAnnotationList((prev) => [...prev.filter((a) => a.songId !== songId), ...fetched]);
+        setAnnotationsLoadState("ready");
+      })
+      .catch(() => setAnnotationsLoadState("error"));
+  }, []);
 
   // authUser siempre debería existir acá (AppProvider solo se monta cuando
   // AuthGate ya confirmó sesión). Mientras "users" (GET /equipo) todavía está
@@ -156,37 +188,51 @@ export function AppProvider({ children }: { children: ReactNode }) {
       reloadUsers: loadUsers,
       currentUser,
       songs,
+      songsLoadState,
       addSong: (song) => setSongs((prev) => [song, ...prev]),
       setlists,
       addSetlist: (s) => setSetlists((prev) => [s, ...prev]),
       updateSetlist: (s) => setSetlists((prev) => prev.map((x) => (x.id === s.id ? s : x))),
       favorites,
-      toggleFavorite: (id) =>
-        setFavorites((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id])),
+      toggleFavorite: (id) => {
+        setFavorites((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]));
+        FavoritesService.toggle(id).catch(() => {
+          // revierte el optimista si el toggle real falló
+          setFavorites((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]));
+        });
+      },
       annotations: annotationList,
-      addAnnotation: (songId, text) =>
-        setAnnotationList((prev) => [
-          ...prev,
-          {
-            id: `a${Date.now()}`,
-            songId,
-            authorId: currentUser?.id ?? "",
-            text,
-            createdAt: new Date().toISOString(),
-          },
-        ]),
-      updateAnnotation: (id, text) =>
-        setAnnotationList((prev) => prev.map((a) => (a.id === id ? { ...a, text } : a))),
-      removeAnnotation: (id) => setAnnotationList((prev) => prev.filter((a) => a.id !== id)),
-      // Deuda conocida (ya documentada, no resuelta por este ticket): compara
-      // por nombre de rol en vez de por permiso real anotacion:update /
-      // anotacion:delete. Es frágil ante un rename de rol hecho desde Roles y
-      // Permisos (si alguien renombra "Admin" o "Líder", esta comparación deja
-      // de matchear y el chequeo falla silenciosamente). Las anotaciones
-      // siguen siendo un módulo mockeado y quedan fuera de alcance acá.
+      annotationsLoadState,
+      loadAnnotationsForSong,
+      addAnnotation: (songId, text) => {
+        AnnotationsService.create(songId, text)
+          .then(() => loadAnnotationsForSong(songId))
+          .catch(() => setAnnotationsLoadState("error"));
+      },
+      updateAnnotation: (id, text) => {
+        const songId = annotationList.find((a) => a.id === id)?.songId;
+        AnnotationsService.update(id, text)
+          .then(() => {
+            if (songId) loadAnnotationsForSong(songId);
+          })
+          .catch(() => setAnnotationsLoadState("error"));
+      },
+      removeAnnotation: (id) => {
+        const songId = annotationList.find((a) => a.id === id)?.songId;
+        AnnotationsService.remove(id)
+          .then(() => {
+            if (songId) loadAnnotationsForSong(songId);
+          })
+          .catch(() => setAnnotationsLoadState("error"));
+      },
+      // Resuelto de raíz (ya no compara por nombre de rol): la autoría manda
+      // sobre el permiso "propio" y, si no es el autor, se exige el permiso
+      // de moderación real — igual criterio que assertCanEdit() en el
+      // backend (AnnotationsService.assertCanEdit).
       canEditAnnotation: (a) =>
-        a.authorId === currentUser?.id ||
-        (currentUser?.roles.some((r) => r.name === "Admin" || r.name === "Líder") ?? false),
+        a.authorId === currentUser?.id
+          ? canReal("editOwnAnnotation")
+          : canReal("editAnyAnnotation"),
       can: canReal,
       current,
       isPlaying,
@@ -207,8 +253,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       loadUsers,
       currentUser,
       songs,
+      songsLoadState,
       setlists,
       annotationList,
+      annotationsLoadState,
+      loadAnnotationsForSong,
       favorites,
       canReal,
       current,

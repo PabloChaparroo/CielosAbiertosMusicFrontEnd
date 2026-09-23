@@ -4,6 +4,7 @@ import { TagChip } from "@/components/common/ui-bits";
 import { KEYS } from "@/lib/chords";
 import { StorageClient } from "@/lib/storage-client";
 import { SongsService } from "@/features/canciones/services/songs.service";
+import { validateAudioFile } from "@/features/canciones/lib/audio-validation";
 import type { Song, Tag } from "@/types";
 
 const ALL_TAGS: Tag[] = [
@@ -32,26 +33,6 @@ function coverFor(title: string): string {
   for (const char of title) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
   return COVER_PALETTE[hash % COVER_PALETTE.length]!;
 }
-
-// Espejo del whitelist real de StorageService.getUploadUrl — validar acá
-// también es solo para dar feedback inmediato sin red; el backend es quien
-// realmente lo hace cumplir.
-const ALLOWED_AUDIO_TYPES = [
-  "audio/mpeg",
-  "audio/mp3",
-  "audio/wav",
-  "audio/x-wav",
-  "audio/wave",
-  "audio/ogg",
-  "audio/mp4",
-  "audio/x-m4a",
-  "audio/aac",
-  "audio/webm",
-];
-// Límite puramente client-side: un PutObjectCommand firmado no lleva
-// restricción de tamaño, así que esto no es una barrera real de seguridad,
-// solo evita subidas larguísimas por error desde la UI.
-const MAX_AUDIO_BYTES = 20 * 1024 * 1024;
 
 const inputCls =
   "w-full rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary/60";
@@ -127,12 +108,9 @@ export function UploadModal({
       setAudioFile(null);
       return;
     }
-    if (!ALLOWED_AUDIO_TYPES.includes(file.type)) {
-      setFileError("Formato no soportado — subí un archivo de audio (mp3, wav, ogg, m4a, aac).");
-      return;
-    }
-    if (file.size > MAX_AUDIO_BYTES) {
-      setFileError("El archivo supera el límite de 20MB.");
+    const validationError = validateAudioFile(file);
+    if (validationError) {
+      setFileError(validationError);
       return;
     }
     setAudioFile(file);

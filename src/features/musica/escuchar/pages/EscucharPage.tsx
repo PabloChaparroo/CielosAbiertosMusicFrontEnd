@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { Music4, Pencil, Play, Plus, Search } from "lucide-react";
+import { Layers, Music4, Pencil, Play, Plus, Search } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, EmptyState, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import type { Song, Tag } from "@/types";
+import { AudioTracksModal } from "../components/AudioTracksModal";
 import { UploadModal } from "../components/UploadModal";
 
 const ALL_TAGS: Tag[] = [
@@ -23,6 +24,7 @@ export function EscucharPage() {
   const [tag, setTag] = useState<Tag | null>(null);
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<Song | null>(null);
+  const [managingTracks, setManagingTracks] = useState<Song | null>(null);
 
   const filtered = useMemo(
     () =>
@@ -127,6 +129,13 @@ export function EscucharPage() {
                 <span className="hidden w-12 text-right text-sm text-muted-foreground md:inline">
                   {formatDuration(song.duration)}
                 </span>
+                <button
+                  onClick={() => setManagingTracks(song)}
+                  aria-label={`Pistas adicionales de ${song.title}`}
+                  className="rounded-full p-2 text-muted-foreground hover:text-primary"
+                >
+                  <Layers className="h-3.5 w-3.5" />
+                </button>
                 {can("editSongs") ? (
                   <button
                     onClick={() => setEditing(song)}
@@ -152,6 +161,9 @@ export function EscucharPage() {
       {modal ? <UploadModal onClose={() => setModal(false)} onSave={addSong} /> : null}
       {editing ? (
         <UploadModal song={editing} onClose={() => setEditing(null)} onSave={updateSong} />
+      ) : null}
+      {managingTracks ? (
+        <AudioTracksModal song={managingTracks} onClose={() => setManagingTracks(null)} />
       ) : null}
     </AppLayout>
   );

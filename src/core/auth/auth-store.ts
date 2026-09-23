@@ -33,7 +33,8 @@ export type AppAction =
   | "editOwnAnnotation"
   | "editAnyAnnotation"
   | "editSetlist"
-  | "deleteSetlist";
+  | "deleteSetlist"
+  | "removeAudioTrack";
 
 const ACTION_TO_PERMISSION: Record<AppAction, string> = {
   manageTeam: "equipo:write",
@@ -49,6 +50,7 @@ const ACTION_TO_PERMISSION: Record<AppAction, string> = {
   editAnyAnnotation: "anotacion:update",
   editSetlist: "setlist:update",
   deleteSetlist: "setlist:delete",
+  removeAudioTrack: "cancion:delete",
 };
 
 export type AuthStatus = "loading" | "authenticated" | "anonymous";

@@ -15,6 +15,7 @@ import {
   YAxis,
 } from "recharts";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { Skeletons } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 
 const COLORS = [
@@ -62,7 +63,7 @@ const tooltipStyle = {
 };
 
 export function EstadisticasPage() {
-  const { songs } = useApp();
+  const { songs, songsLoadState } = useApp();
   const [range, setRange] = useState<"mes" | "anio">("mes");
   const [month, setMonth] = useState("2026-09");
 
@@ -118,6 +119,19 @@ export function EstadisticasPage() {
         .slice(0, 10),
     [songs],
   );
+
+  // Mismo patrón que Inicio/Acordes/Setlists: los hooks de arriba se llaman
+  // siempre (regla de hooks) sobre `songs` vacío mientras carga sin
+  // problema (no hay ningún songs[0]! acá), pero el guard recién se aplica
+  // en el return para no mostrar gráficos vacíos por un instante como si
+  // fueran datos reales.
+  if (songsLoadState !== "ready") {
+    return (
+      <AppLayout title="Estadísticas" subtitle="Qué está cantando la congregación">
+        <Skeletons rows={5} />
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout

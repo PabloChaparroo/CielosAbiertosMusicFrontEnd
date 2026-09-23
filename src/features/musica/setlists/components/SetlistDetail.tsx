@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, FileDown, GripVertical, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, FileDown, GripVertical, Trash2 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
@@ -16,18 +16,31 @@ export function SetlistDetail({
 }: {
   setlist: Setlist;
   onBack: () => void;
-  onChange: (s: Setlist) => void;
+  onChange: (s: Setlist) => Promise<void>;
   canEdit: boolean;
 }) {
   const { songs, users } = useApp();
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Cada cambio (mover, cambiar tonalidad, sacar una canción) persiste ya
+  // mismo contra el backend real. Si el guardado falla, useApp.updateSetlist
+  // revierte el estado global solo — acá solo hace falta avisar, porque el
+  // "setlist" que llega por props ya va a reflejar el revert en el próximo
+  // render.
+  const persist = (updated: Setlist) => {
+    setSaveError(null);
+    onChange(updated).catch(() => {
+      setSaveError("No se pudo guardar el cambio — se revirtió al último estado guardado.");
+    });
+  };
 
   const move = (from: number, to: number) => {
     const items = [...setlist.items];
     const [it] = items.splice(from, 1);
     if (!it) return;
     items.splice(to, 0, it);
-    onChange({ ...setlist, items });
+    persist({ ...setlist, items });
   };
 
   return (
@@ -52,6 +65,15 @@ export function SetlistDetail({
       >
         <ArrowLeft className="h-4 w-4" /> Volver a setlists
       </button>
+
+      {saveError ? (
+        <div
+          role="alert"
+          className="mb-4 flex items-center gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
+        >
+          <AlertTriangle className="h-4 w-4 shrink-0" /> {saveError}
+        </div>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
         <div className="surface-card divide-y divide-border/60">
@@ -92,7 +114,7 @@ export function SetlistDetail({
                     const items: SetlistItem[] = setlist.items.map((x, idx) =>
                       idx === i ? { ...x, key: e.target.value } : x,
                     );
-                    onChange({ ...setlist, items });
+                    persist({ ...setlist, items });
                   }}
                   className="rounded-lg border border-border bg-secondary px-2 py-1 text-xs disabled:opacity-60"
                 >
@@ -104,7 +126,7 @@ export function SetlistDetail({
                   <button
                     aria-label="Quitar canción"
                     onClick={() =>
-                      onChange({ ...setlist, items: setlist.items.filter((_, idx) => idx !== i) })
+                      persist({ ...setlist, items: setlist.items.filter((_, idx) => idx !== i) })
                     }
                     className="rounded-full p-2 text-muted-foreground hover:text-destructive"
                   >

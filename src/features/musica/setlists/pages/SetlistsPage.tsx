@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CalendarDays, Plus, Search } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { EmptyState } from "@/components/common/ui-bits";
+import { EmptyState, Skeletons } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import { LockedHint } from "../components/LockedHint";
 import { NewSetlistModal } from "../components/NewSetlistModal";
@@ -9,10 +9,30 @@ import { SetlistCard } from "../components/SetlistCard";
 import { SetlistDetail } from "../components/SetlistDetail";
 
 export function SetlistsPage() {
-  const { setlists, can, addSetlist, updateSetlist } = useApp();
+  const { setlists, setlistsLoadState, can, addSetlist, updateSetlist } = useApp();
   const [selected, setSelected] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [modal, setModal] = useState(false);
+
+  if (setlistsLoadState === "loading") {
+    return (
+      <AppLayout title="Setlists" subtitle="Servicios, ensayos y eventos especiales">
+        <Skeletons rows={4} />
+      </AppLayout>
+    );
+  }
+
+  if (setlistsLoadState === "error") {
+    return (
+      <AppLayout title="Setlists" subtitle="Servicios, ensayos y eventos especiales">
+        <EmptyState
+          icon={<CalendarDays className="h-6 w-6" />}
+          title="No se pudieron cargar los setlists"
+          description="Revisá tu conexión con el servidor e intentá de nuevo recargando la página."
+        />
+      </AppLayout>
+    );
+  }
 
   const now = Date.now();
   const sorted = [...setlists].sort(
@@ -32,7 +52,7 @@ export function SetlistsPage() {
         setlist={setlist}
         onBack={() => setSelected(null)}
         onChange={updateSetlist}
-        canEdit={can("createSetlist")}
+        canEdit={can("editSetlist")}
       />
     );
   }

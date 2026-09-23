@@ -14,11 +14,7 @@ import { EquipoService } from "@/features/equipo/services/equipo.service";
 import { AnnotationsService } from "@/features/canciones/services/annotations.service";
 import { FavoritesService } from "@/features/canciones/services/favorites.service";
 import { SongsService } from "@/features/canciones/services/songs.service";
-import {
-  MOCK_SONG_ID_TO_TITLE,
-  MOCK_USER_ID_TO_EMAIL,
-  setlists as mockSetlists,
-} from "@/mocks/data";
+import { SetlistsService } from "@/features/musica/setlists/services/setlists.service";
 import type { Annotation, Setlist, Song, User } from "@/types";
 
 type LoadState = "loading" | "ready" | "error";
@@ -32,8 +28,15 @@ interface AppState {
   songsLoadState: LoadState;
   addSong: (song: Song) => void;
   setlists: Setlist[];
+  setlistsLoadState: LoadState;
   addSetlist: (s: Setlist) => void;
-  updateSetlist: (s: Setlist) => void;
+  /**
+   * Persiste contra el backend real (no hay endpoint de "solo reordenar" ni
+   * de "un item a la vez": el PATCH manda siempre el array `items` completo
+   * en el nuevo orden). Optimista + revert-con-aviso si falla — nunca queda
+   * un cambio "solo local" sin intentar persistirse.
+   */
+  updateSetlist: (s: Setlist) => Promise<void>;
   favorites: string[];
   toggleFavorite: (id: string) => void;
   annotations: Annotation[];
@@ -54,47 +57,6 @@ interface AppState {
 
 const Ctx = createContext<AppState | null>(null);
 
-/**
- * Traduce los IDs fijos "u1".."u8" / "s1".."s20" que usa el mock de Setlists
- * a los IDs reales de backend, matcheando por email (usuarios) o por título
- * (canciones). Puente temporal: ver los comentarios de MOCK_USER_ID_TO_EMAIL
- * y MOCK_SONG_ID_TO_TITLE en mocks/data.ts — se borra por completo cuando
- * Setlists se conecte al backend real.
- */
-function buildMockIdAlias(
-  users: User[],
-  songs: Song[],
-): { userAlias: Record<string, string>; songAlias: Record<string, string> } {
-  const userIdByEmail = new Map(users.map((u) => [u.email, u.id]));
-  const userAlias: Record<string, string> = {};
-  for (const [mockId, email] of Object.entries(MOCK_USER_ID_TO_EMAIL)) {
-    const realId = userIdByEmail.get(email);
-    if (realId) userAlias[mockId] = realId;
-  }
-
-  const songIdByTitle = new Map(songs.map((s) => [s.title, s.id]));
-  const songAlias: Record<string, string> = {};
-  for (const [mockId, title] of Object.entries(MOCK_SONG_ID_TO_TITLE)) {
-    const realId = songIdByTitle.get(title);
-    if (realId) songAlias[mockId] = realId;
-  }
-
-  return { userAlias, songAlias };
-}
-
-function remapSetlists(
-  setlists: Setlist[],
-  userAlias: Record<string, string>,
-  songAlias: Record<string, string>,
-): Setlist[] {
-  return setlists.map((s) => ({
-    ...s,
-    leaderId: userAlias[s.leaderId] ?? s.leaderId,
-    teamIds: s.teamIds.map((id) => userAlias[id] ?? id),
-    items: s.items.map((item) => ({ ...item, songId: songAlias[item.songId] ?? item.songId })),
-  }));
-}
-
 export function AppProvider({ children }: { children: ReactNode }) {
   // Identidad real (login contra el backend) — ver core/auth/.
   const { user: authUser, can: canReal } = useAuth();
@@ -104,6 +66,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [songs, setSongs] = useState<Song[]>([]);
   const [songsLoadState, setSongsLoadState] = useState<LoadState>("loading");
   const [setlists, setSetlists] = useState<Setlist[]>([]);
+  const [setlistsLoadState, setSetlistsLoadState] = useState<LoadState>("loading");
   const [annotationList, setAnnotationList] = useState<Annotation[]>([]);
   const [annotationsLoadState, setAnnotationsLoadState] = useState<LoadState>("ready");
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -133,15 +96,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .catch(() => setSongsLoadState("error"));
   }, []);
 
-  // El alias mock→real necesita usuarios Y canciones reales para completarse
-  // (teamIds/leaderId contra usuarios, items[].songId contra canciones), así
-  // que se arma recién cuando ambos fetches terminaron.
   useEffect(() => {
-    if (usersLoadState !== "ready" || songsLoadState !== "ready") return;
-    const { userAlias, songAlias } = buildMockIdAlias(users, songs);
-    setSetlists(remapSetlists(mockSetlists, userAlias, songAlias));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [usersLoadState, songsLoadState]);
+    setSetlistsLoadState("loading");
+    SetlistsService.listAll()
+      .then((fetched) => {
+        setSetlists(fetched);
+        setSetlistsLoadState("ready");
+      })
+      .catch(() => setSetlistsLoadState("error"));
+  }, []);
 
   useEffect(() => {
     FavoritesService.listMine()
@@ -191,8 +154,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
       songsLoadState,
       addSong: (song) => setSongs((prev) => [song, ...prev]),
       setlists,
+      setlistsLoadState,
       addSetlist: (s) => setSetlists((prev) => [s, ...prev]),
-      updateSetlist: (s) => setSetlists((prev) => prev.map((x) => (x.id === s.id ? s : x))),
+      updateSetlist: (s) => {
+        const previous = setlists;
+        // Optimista: se ve el cambio de inmediato (drag & drop se siente
+        // instantáneo), pero se persiste ya mismo contra el backend real —
+        // nunca queda como "solo local" a la espera de un guardado futuro.
+        setSetlists((prev) => prev.map((x) => (x.id === s.id ? s : x)));
+        return SetlistsService.updateSetlist(s.id, {
+          title: s.title,
+          date: s.date,
+          type: s.type,
+          leaderId: s.leaderId,
+          teamIds: s.teamIds,
+          items: s.items.map((item) => ({
+            songId: item.songId,
+            key: item.key,
+            ...(item.note ? { note: item.note } : {}),
+          })),
+        })
+          .then((saved) => {
+            setSetlists((prev) => prev.map((x) => (x.id === s.id ? saved : x)));
+          })
+          .catch((err) => {
+            // Revert explícito: si el guardado real falla, no se deja el
+            // cambio "pegado" solo en el cliente — se vuelve al estado
+            // previo y el caller (SetlistDetail) avisa al usuario.
+            setSetlists(previous);
+            throw err;
+          });
+      },
       favorites,
       toggleFavorite: (id) => {
         setFavorites((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]));
@@ -255,6 +247,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       songs,
       songsLoadState,
       setlists,
+      setlistsLoadState,
       annotationList,
       annotationsLoadState,
       loadAnnotationsForSong,

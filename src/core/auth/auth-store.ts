@@ -31,7 +31,9 @@ export type AppAction =
   | "assignRole"
   | "unassignRole"
   | "editOwnAnnotation"
-  | "editAnyAnnotation";
+  | "editAnyAnnotation"
+  | "editSetlist"
+  | "deleteSetlist";
 
 const ACTION_TO_PERMISSION: Record<AppAction, string> = {
   manageTeam: "equipo:write",
@@ -45,6 +47,8 @@ const ACTION_TO_PERMISSION: Record<AppAction, string> = {
   unassignRole: "rol:delete",
   editOwnAnnotation: "anotacion-propia:update",
   editAnyAnnotation: "anotacion:update",
+  editSetlist: "setlist:update",
+  deleteSetlist: "setlist:delete",
 };
 
 export type AuthStatus = "loading" | "authenticated" | "anonymous";

@@ -1,22 +1,48 @@
 import { useState } from "react";
 import { X } from "lucide-react";
-import { roleLabels } from "@/hooks/useApp";
-import type { SystemRole, User } from "@/types";
+import { EquipoService } from "../services/equipo.service";
+import { avatarColorFor, generatePassword, initialsFor } from "../lib/generate-password";
+import type { User } from "@/types";
 
 const inputCls =
   "w-full rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary/60";
 
-export function MemberModal({
+export function AddMemberModal({
   onClose,
-  onSave,
+  onCreated,
 }: {
   onClose: () => void;
-  onSave: (u: User) => void;
+  onCreated: (user: User, password: string) => void;
 }) {
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [ministryRole, setMinistryRole] = useState("Vocalista");
   const [instrument, setInstrument] = useState("Voz");
-  const [role, setRole] = useState<SystemRole>("musico");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const canSave = name.trim() !== "" && email.trim() !== "" && !saving;
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    const password = generatePassword();
+    try {
+      const created = await EquipoService.createMember({
+        email: email.trim(),
+        password,
+        name: name.trim(),
+        ministryRole,
+        instruments: [instrument],
+        avatarColor: avatarColorFor(name.trim()),
+        initials: initialsFor(name.trim()),
+      });
+      onCreated(created, password);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo crear el integrante");
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-4">
@@ -40,6 +66,13 @@ export function MemberModal({
           />
           <input
             className={inputCls}
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <input
+            className={inputCls}
             placeholder="Rol en el ministerio"
             value={ministryRole}
             onChange={(e) => setMinistryRole(e.target.value)}
@@ -50,49 +83,30 @@ export function MemberModal({
             value={instrument}
             onChange={(e) => setInstrument(e.target.value)}
           />
-          <select
-            className={inputCls}
-            value={role}
-            onChange={(e) => setRole(e.target.value as SystemRole)}
-          >
-            {(Object.keys(roleLabels) as SystemRole[]).map((r) => (
-              <option key={r} value={r}>
-                {roleLabels[r]}
-              </option>
-            ))}
-          </select>
+          <p className="text-xs text-muted-foreground">
+            La contraseña inicial se genera automáticamente y se muestra una única vez al crear el
+            integrante. Los roles del sistema se asignan después, desde su perfil.
+          </p>
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
         </div>
         <div className="mt-6 flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="rounded-full px-4 py-2 text-sm text-muted-foreground hover:bg-secondary"
+            disabled={saving}
+            className="rounded-full px-4 py-2 text-sm text-muted-foreground hover:bg-secondary disabled:opacity-40"
           >
             Cancelar
           </button>
           <button
-            disabled={!name}
-            onClick={() => {
-              onSave({
-                id: `u${Date.now()}`,
-                name,
-                role,
-                ministryRole,
-                instruments: [instrument],
-                avatarColor: "linear-gradient(135deg,#f5c76a,#e08b3a)",
-                initials: name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .slice(0, 2)
-                  .join("")
-                  .toUpperCase(),
-                email: `${name.split(" ")[0]?.toLowerCase()}@cielosabiertos.org`,
-                joinedAt: new Date().toISOString().slice(0, 10),
-              });
-              onClose();
-            }}
+            disabled={!canSave}
+            onClick={() => void handleSave()}
             className="rounded-full gradient-gold px-5 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"
           >
-            Agregar
+            {saving ? "Creando…" : "Agregar"}
           </button>
         </div>
       </div>

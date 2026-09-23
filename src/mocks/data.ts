@@ -1,95 +1,25 @@
-import type { Annotation, Setlist, Song, User } from "@/types";
+import type { Annotation, Setlist, Song } from "@/types";
 
-export const members: User[] = [
-  {
-    id: "u1",
-    name: "Martín Álvarez",
-    role: "admin",
-    ministryRole: "Director de Ministerio",
-    instruments: ["Teclado", "Voz"],
-    avatarColor: "linear-gradient(135deg,#f5c76a,#e08b3a)",
-    initials: "MA",
-    email: "martin@cielosabiertos.org",
-    joinedAt: "2019-03-10",
-  },
-  {
-    id: "u2",
-    name: "Sofía Ledesma",
-    role: "lider",
-    ministryRole: "Líder de alabanza",
-    instruments: ["Voz", "Guitarra"],
-    avatarColor: "linear-gradient(135deg,#7aa2f7,#8b5cf6)",
-    initials: "SL",
-    email: "sofia@cielosabiertos.org",
-    joinedAt: "2020-07-22",
-  },
-  {
-    id: "u3",
-    name: "Joaquín Ruiz",
-    role: "musico",
-    ministryRole: "Guitarrista",
-    instruments: ["Guitarra eléctrica", "Guitarra acústica"],
-    avatarColor: "linear-gradient(135deg,#4ade80,#0ea5e9)",
-    initials: "JR",
-    email: "joaquin@cielosabiertos.org",
-    joinedAt: "2021-01-15",
-  },
-  {
-    id: "u4",
-    name: "Camila Ortiz",
-    role: "musico",
-    ministryRole: "Vocalista",
-    instruments: ["Voz"],
-    avatarColor: "linear-gradient(135deg,#f472b6,#f59e0b)",
-    initials: "CO",
-    email: "camila@cielosabiertos.org",
-    joinedAt: "2022-05-02",
-  },
-  {
-    id: "u5",
-    name: "Nicolás Pereyra",
-    role: "musico",
-    ministryRole: "Baterista",
-    instruments: ["Batería", "Cajón"],
-    avatarColor: "linear-gradient(135deg,#38bdf8,#6366f1)",
-    initials: "NP",
-    email: "nico@cielosabiertos.org",
-    joinedAt: "2020-11-30",
-  },
-  {
-    id: "u6",
-    name: "Lucía Fernández",
-    role: "lider",
-    ministryRole: "Líder de alabanza",
-    instruments: ["Voz", "Teclado"],
-    avatarColor: "linear-gradient(135deg,#c084fc,#f472b6)",
-    initials: "LF",
-    email: "lucia@cielosabiertos.org",
-    joinedAt: "2018-09-05",
-  },
-  {
-    id: "u7",
-    name: "Diego Sosa",
-    role: "musico",
-    ministryRole: "Bajista",
-    instruments: ["Bajo"],
-    avatarColor: "linear-gradient(135deg,#34d399,#22d3ee)",
-    initials: "DS",
-    email: "diego@cielosabiertos.org",
-    joinedAt: "2023-02-18",
-  },
-  {
-    id: "u8",
-    name: "Ana Ferrari",
-    role: "musico",
-    ministryRole: "Sonido",
-    instruments: ["Consola", "Sonido"],
-    avatarColor: "linear-gradient(135deg,#fbbf24,#fb7185)",
-    initials: "AF",
-    email: "ana@cielosabiertos.org",
-    joinedAt: "2021-08-11",
-  },
-];
+/**
+ * Setlists y anotaciones siguen mockeados y usan estos IDs fijos "u1".."u8"
+ * heredados de cuando Equipo también era mock. Ya no hay un array `members`
+ * acá — los usuarios reales vienen del backend con UUIDs — así que
+ * `useApp.tsx` traduce estos IDs a los IDs reales por email al cargar,
+ * usando este mapa como fuente de verdad de "qué email tenía cada uX".
+ * Puente temporal: se elimina por completo el día que Setlists/Anotaciones
+ * se conecten al backend real (ahí estos módulos también dejan de tener
+ * IDs propios y usan los IDs reales directamente).
+ */
+export const MOCK_USER_ID_TO_EMAIL: Record<string, string> = {
+  u1: "martin@cielosabiertos.org",
+  u2: "sofia@cielosabiertos.org",
+  u3: "joaquin@cielosabiertos.org",
+  u4: "camila@cielosabiertos.org",
+  u5: "nico@cielosabiertos.org",
+  u6: "lucia@cielosabiertos.org",
+  u7: "diego@cielosabiertos.org",
+  u8: "ana@cielosabiertos.org",
+};
 
 const covers = [
   "linear-gradient(135deg,#1e3a8a,#7c3aed)",

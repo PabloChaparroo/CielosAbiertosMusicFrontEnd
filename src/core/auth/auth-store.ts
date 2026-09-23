@@ -20,14 +20,27 @@ export interface AuthenticatedUser {
  * mantienen para no tocar los call-sites existentes; internamente ahora
  * se traducen a un permiso real del catálogo del backend.
  */
-export type AppAction = "manageTeam" | "editSongs" | "createSetlist" | "viewStats" | "manageRoles";
+export type AppAction =
+  | "manageTeam"
+  | "editTeamMember"
+  | "removeTeamMember"
+  | "editSongs"
+  | "createSetlist"
+  | "viewStats"
+  | "manageRoles"
+  | "assignRole"
+  | "unassignRole";
 
 const ACTION_TO_PERMISSION: Record<AppAction, string> = {
   manageTeam: "equipo:write",
+  editTeamMember: "equipo:update",
+  removeTeamMember: "equipo:delete",
   editSongs: "cancion:write",
   createSetlist: "setlist:write",
   viewStats: "estadisticas:read",
   manageRoles: "rol:write",
+  assignRole: "rol:write",
+  unassignRole: "rol:delete",
 };
 
 export type AuthStatus = "loading" | "authenticated" | "anonymous";

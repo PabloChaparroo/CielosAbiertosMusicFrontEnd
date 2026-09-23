@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { CalendarDays, Flame, Heart, Play, Sparkles, TrendingUp } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
-import { roleLabels, useApp } from "@/hooks/useApp";
+import { useApp } from "@/hooks/useApp";
 
 export function InicioPage() {
   const { currentUser, songs, setlists, favorites, play } = useApp();
@@ -32,7 +32,8 @@ export function InicioPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
         <div className="relative px-4 py-16 sm:px-8 sm:py-24">
           <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/40 px-3 py-1 text-xs text-foreground/90 backdrop-blur">
-            <Sparkles className="h-3.5 w-3.5 text-primary" /> {roleLabels[currentUser.role]}
+            <Sparkles className="h-3.5 w-3.5 text-primary" />{" "}
+            {currentUser.roles.map((r) => r.name).join(" · ") || "Sin rol"}
           </p>
           <h2 className="font-display text-5xl leading-[0.95] font-bold sm:text-7xl">
             Cielos

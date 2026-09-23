@@ -108,7 +108,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             <p className="truncate text-sm font-semibold">{currentUser.name}</p>
             <p className="truncate text-xs text-muted-foreground">{currentUser.ministryRole}</p>
           </div>
-          <RoleBadge role={currentUser.role} />
+          <RoleBadge roles={currentUser.roles} />
         </div>
         <button
           onClick={() => void logout()}

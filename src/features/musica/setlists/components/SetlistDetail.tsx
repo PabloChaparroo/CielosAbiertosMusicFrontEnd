@@ -141,7 +141,9 @@ export function SetlistDetail({
                   </span>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{u.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">{u.ministryRole}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {u.fechaHoraBaja ? "Dado de baja" : u.ministryRole}
+                    </p>
                   </div>
                 </li>
               );

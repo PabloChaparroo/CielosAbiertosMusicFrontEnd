@@ -8,6 +8,7 @@ import {
   ListMusic,
   Music4,
   Settings,
+  ShieldCheck,
   Type,
   Users,
   X,
@@ -37,6 +38,7 @@ const groups = [
     items: [
       { to: "/equipo", label: "Equipo y Roles", icon: Users },
       { to: "/estadisticas", label: "Estadísticas", icon: BarChart3 },
+      { to: "/roles-permisos", label: "Roles y Permisos", icon: ShieldCheck },
     ],
   },
 ] as const;

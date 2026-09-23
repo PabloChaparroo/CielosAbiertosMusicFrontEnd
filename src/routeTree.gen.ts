@@ -16,6 +16,7 @@ import { Route as EscucharRouteImport } from './routes/escuchar'
 import { Route as EstadisticasRouteImport } from './routes/estadisticas'
 import { Route as FavoritosRouteImport } from './routes/favoritos'
 import { Route as LetrasRouteImport } from './routes/letras'
+import { Route as RolesPermisosRouteImport } from './routes/roles-permisos'
 import { Route as SetlistsRouteImport } from './routes/setlists'
 
 const IndexRoute = IndexRouteImport.update({
@@ -53,6 +54,11 @@ const LetrasRoute = LetrasRouteImport.update({
   path: '/letras',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RolesPermisosRoute = RolesPermisosRouteImport.update({
+  id: '/roles-permisos',
+  path: '/roles-permisos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SetlistsRoute = SetlistsRouteImport.update({
   id: '/setlists',
   path: '/setlists',
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/estadisticas': typeof EstadisticasRoute
   '/favoritos': typeof FavoritosRoute
   '/letras': typeof LetrasRoute
+  '/roles-permisos': typeof RolesPermisosRoute
   '/setlists': typeof SetlistsRoute
 }
 export interface FileRoutesByTo {
@@ -77,6 +84,7 @@ export interface FileRoutesByTo {
   '/estadisticas': typeof EstadisticasRoute
   '/favoritos': typeof FavoritosRoute
   '/letras': typeof LetrasRoute
+  '/roles-permisos': typeof RolesPermisosRoute
   '/setlists': typeof SetlistsRoute
 }
 export interface FileRoutesById {
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   '/estadisticas': typeof EstadisticasRoute
   '/favoritos': typeof FavoritosRoute
   '/letras': typeof LetrasRoute
+  '/roles-permisos': typeof RolesPermisosRoute
   '/setlists': typeof SetlistsRoute
 }
 export interface FileRouteTypes {
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/estadisticas'
     | '/favoritos'
     | '/letras'
+    | '/roles-permisos'
     | '/setlists'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/estadisticas'
     | '/favoritos'
     | '/letras'
+    | '/roles-permisos'
     | '/setlists'
   id:
     | '__root__'
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/estadisticas'
     | '/favoritos'
     | '/letras'
+    | '/roles-permisos'
     | '/setlists'
   fileRoutesById: FileRoutesById
 }
@@ -131,6 +143,7 @@ export interface RootRouteChildren {
   EstadisticasRoute: typeof EstadisticasRoute
   FavoritosRoute: typeof FavoritosRoute
   LetrasRoute: typeof LetrasRoute
+  RolesPermisosRoute: typeof RolesPermisosRoute
   SetlistsRoute: typeof SetlistsRoute
 }
 
@@ -185,6 +198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LetrasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/roles-permisos': {
+      id: '/roles-permisos'
+      path: '/roles-permisos'
+      fullPath: '/roles-permisos'
+      preLoaderRoute: typeof RolesPermisosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/setlists': {
       id: '/setlists'
       path: '/setlists'
@@ -203,6 +223,7 @@ const rootRouteChildren: RootRouteChildren = {
   EstadisticasRoute: EstadisticasRoute,
   FavoritosRoute: FavoritosRoute,
   LetrasRoute: LetrasRoute,
+  RolesPermisosRoute: RolesPermisosRoute,
   SetlistsRoute: SetlistsRoute,
 }
 export const routeTree = rootRouteImport

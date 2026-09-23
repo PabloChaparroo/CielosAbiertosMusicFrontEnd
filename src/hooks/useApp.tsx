@@ -11,10 +11,12 @@ import {
 import {
   annotations as mockAnnotations,
   members,
+  rolePermissions as mockRolePermissions,
+  roles as mockRoles,
   setlists as mockSetlists,
   songs as mockSongs,
 } from "@/mocks/data";
-import type { Annotation, Setlist, Song, SystemRole, User } from "@/types";
+import type { Annotation, Role, Setlist, Song, SystemRole, User } from "@/types";
 
 interface AppState {
   users: User[];
@@ -34,7 +36,13 @@ interface AppState {
   updateAnnotation: (id: string, text: string) => void;
   removeAnnotation: (id: string) => void;
   canEditAnnotation: (a: Annotation) => boolean;
-  can: (action: "manageTeam" | "editSongs" | "createSetlist" | "viewStats") => boolean;
+  can: (
+    action: "manageTeam" | "editSongs" | "createSetlist" | "viewStats" | "manageRoles",
+  ) => boolean;
+  roles: Role[];
+  rolePermissions: Record<string, string[]>;
+  addRole: (name: string) => void;
+  updateRolePermissions: (roleId: string, permissions: string[]) => void;
   // player
   current: Song | null;
   isPlaying: boolean;
@@ -54,6 +62,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [setlists, setSetlists] = useState<Setlist[]>(mockSetlists);
   const [annotationList, setAnnotationList] = useState<Annotation[]>(mockAnnotations);
   const [favorites, setFavorites] = useState<string[]>(["s1", "s3", "s12", "s18"]);
+  const [roles, setRoles] = useState<Role[]>(mockRoles);
+  const [rolePermissionsMap, setRolePermissionsMap] =
+    useState<Record<string, string[]>>(mockRolePermissions);
   const [current, setCurrent] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -78,10 +89,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const currentUser = users.find((u) => u.id === currentUserId) ?? users[0]!;
 
   const can = useCallback(
-    (action: "manageTeam" | "editSongs" | "createSetlist" | "viewStats") => {
+    (action: "manageTeam" | "editSongs" | "createSetlist" | "viewStats" | "manageRoles") => {
       const r = currentUser.role;
       if (r === "admin") return true;
-      if (r === "lider") return action !== "manageTeam";
+      if (r === "lider") return action !== "manageTeam" && action !== "manageRoles";
       return action === "viewStats";
     },
     [currentUser.role],
@@ -123,6 +134,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         currentUser.role === "admin" ||
         currentUser.role === "lider",
       can,
+      roles,
+      rolePermissions: rolePermissionsMap,
+      addRole: (name) => setRoles((prev) => [...prev, { id: `r${Date.now()}`, name }]),
+      updateRolePermissions: (roleId, permissions) =>
+        setRolePermissionsMap((prev) => ({ ...prev, [roleId]: permissions })),
       current,
       isPlaying,
       play: (song) => {
@@ -145,6 +161,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       annotationList,
       favorites,
       can,
+      roles,
+      rolePermissionsMap,
       current,
       isPlaying,
     ],

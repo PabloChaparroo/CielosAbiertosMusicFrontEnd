@@ -1,6 +1,5 @@
 import {
   createContext,
-  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -8,6 +7,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useAuth } from "@/core/auth/useAuth";
+import type { AppAction } from "@/core/auth/auth-store";
 import {
   annotations as mockAnnotations,
   members,
@@ -16,13 +17,11 @@ import {
   setlists as mockSetlists,
   songs as mockSongs,
 } from "@/mocks/data";
-import type { Annotation, Role, Setlist, Song, SystemRole, User } from "@/types";
+import type { Annotation, Role, Setlist, Song, User } from "@/types";
 
 interface AppState {
   users: User[];
   currentUser: User;
-  setCurrentUserId: (id: string) => void;
-  setRole: (role: SystemRole) => void;
   songs: Song[];
   addSong: (song: Song) => void;
   setlists: Setlist[];
@@ -36,9 +35,7 @@ interface AppState {
   updateAnnotation: (id: string, text: string) => void;
   removeAnnotation: (id: string) => void;
   canEditAnnotation: (a: Annotation) => boolean;
-  can: (
-    action: "manageTeam" | "editSongs" | "createSetlist" | "viewStats" | "manageRoles",
-  ) => boolean;
+  can: (action: AppAction) => boolean;
   roles: Role[];
   rolePermissions: Record<string, string[]>;
   addRole: (name: string) => void;
@@ -56,8 +53,14 @@ const Ctx = createContext<AppState | null>(null);
 const FAV_KEY = "ca_favorites";
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  // Identidad real (login contra el backend) — ver core/auth/. AppProvider
+  // solo se monta cuando AuthGate ya confirmó que hay sesión, así que
+  // `authUser` siempre debería existir acá; el fallback a members[0] es
+  // por las dudas (ej. un usuario real sin contraparte en el mock, caso
+  // documentado en el ticket) y no debería activarse en el uso normal.
+  const { user: authUser, can: canReal } = useAuth();
+
   const [users, setUsers] = useState<User[]>(members);
-  const [currentUserId, setCurrentUserId] = useState("u2");
   const [songs, setSongs] = useState<Song[]>(mockSongs);
   const [setlists, setSetlists] = useState<Setlist[]>(mockSetlists);
   const [annotationList, setAnnotationList] = useState<Annotation[]>(mockAnnotations);
@@ -86,25 +89,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [favorites]);
 
-  const currentUser = users.find((u) => u.id === currentUserId) ?? users[0]!;
-
-  const can = useCallback(
-    (action: "manageTeam" | "editSongs" | "createSetlist" | "viewStats" | "manageRoles") => {
-      const r = currentUser.role;
-      if (r === "admin") return true;
-      if (r === "lider") return action !== "manageTeam" && action !== "manageRoles";
-      return action === "viewStats";
-    },
-    [currentUser.role],
-  );
+  // Puente entre la identidad real (login) y los módulos de negocio que
+  // siguen 100% mockeados: las 8 personas del mock son las mismas 8 del
+  // seed real del backend (mismo email), así que "quién soy yo" para
+  // autoría de anotaciones/setlists mockeados se resuelve matcheando el
+  // email logueado contra ese mock — no inventa una identidad nueva.
+  const currentUser = users.find((u) => u.email === authUser?.email) ?? users[0]!;
 
   const value = useMemo<AppState>(
     () => ({
       users,
       currentUser,
-      setCurrentUserId,
-      setRole: (role) =>
-        setUsers((prev) => prev.map((u) => (u.id === currentUserId ? { ...u, role } : u))),
       songs,
       addSong: (song) => setSongs((prev) => [song, ...prev]),
       setlists,
@@ -129,11 +124,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateAnnotation: (id, text) =>
         setAnnotationList((prev) => prev.map((a) => (a.id === id ? { ...a, text } : a))),
       removeAnnotation: (id) => setAnnotationList((prev) => prev.filter((a) => a.id !== id)),
+      // Deuda conocida: compara contra el rol mock (fijo), no contra el
+      // permiso real anotacion:update/anotacion:delete que ya usa el
+      // backend. Puede discrepar si a alguien se le asigna/saca un rol real
+      // en runtime — las anotaciones siguen siendo un módulo mockeado y
+      // quedó fuera de alcance de este ticket (ver docs/estado-actual.md).
       canEditAnnotation: (a) =>
         a.authorId === currentUser.id ||
         currentUser.role === "admin" ||
         currentUser.role === "lider",
-      can,
+      can: canReal,
       roles,
       rolePermissions: rolePermissionsMap,
       addRole: (name) => setRoles((prev) => [...prev, { id: `r${Date.now()}`, name }]),
@@ -155,12 +155,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [
       users,
       currentUser,
-      currentUserId,
       songs,
       setlists,
       annotationList,
       favorites,
-      can,
+      canReal,
       roles,
       rolePermissionsMap,
       current,
@@ -177,7 +176,7 @@ export function useApp() {
   return ctx;
 }
 
-export const roleLabels: Record<SystemRole, string> = {
+export const roleLabels: Record<User["role"], string> = {
   admin: "Administrador",
   lider: "Líder de alabanza",
   musico: "Músico / Vocalista",

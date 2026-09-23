@@ -16,6 +16,7 @@ import { Route as EscucharRouteImport } from './routes/escuchar'
 import { Route as EstadisticasRouteImport } from './routes/estadisticas'
 import { Route as FavoritosRouteImport } from './routes/favoritos'
 import { Route as LetrasRouteImport } from './routes/letras'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as RolesPermisosRouteImport } from './routes/roles-permisos'
 import { Route as SetlistsRouteImport } from './routes/setlists'
 
@@ -54,6 +55,11 @@ const LetrasRoute = LetrasRouteImport.update({
   path: '/letras',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RolesPermisosRoute = RolesPermisosRouteImport.update({
   id: '/roles-permisos',
   path: '/roles-permisos',
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/estadisticas': typeof EstadisticasRoute
   '/favoritos': typeof FavoritosRoute
   '/letras': typeof LetrasRoute
+  '/login': typeof LoginRoute
   '/roles-permisos': typeof RolesPermisosRoute
   '/setlists': typeof SetlistsRoute
 }
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/estadisticas': typeof EstadisticasRoute
   '/favoritos': typeof FavoritosRoute
   '/letras': typeof LetrasRoute
+  '/login': typeof LoginRoute
   '/roles-permisos': typeof RolesPermisosRoute
   '/setlists': typeof SetlistsRoute
 }
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/estadisticas': typeof EstadisticasRoute
   '/favoritos': typeof FavoritosRoute
   '/letras': typeof LetrasRoute
+  '/login': typeof LoginRoute
   '/roles-permisos': typeof RolesPermisosRoute
   '/setlists': typeof SetlistsRoute
 }
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/estadisticas'
     | '/favoritos'
     | '/letras'
+    | '/login'
     | '/roles-permisos'
     | '/setlists'
   fileRoutesByTo: FileRoutesByTo
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/estadisticas'
     | '/favoritos'
     | '/letras'
+    | '/login'
     | '/roles-permisos'
     | '/setlists'
   id:
@@ -131,6 +142,7 @@ export interface FileRouteTypes {
     | '/estadisticas'
     | '/favoritos'
     | '/letras'
+    | '/login'
     | '/roles-permisos'
     | '/setlists'
   fileRoutesById: FileRoutesById
@@ -143,6 +155,7 @@ export interface RootRouteChildren {
   EstadisticasRoute: typeof EstadisticasRoute
   FavoritosRoute: typeof FavoritosRoute
   LetrasRoute: typeof LetrasRoute
+  LoginRoute: typeof LoginRoute
   RolesPermisosRoute: typeof RolesPermisosRoute
   SetlistsRoute: typeof SetlistsRoute
 }
@@ -198,6 +211,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LetrasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/roles-permisos': {
       id: '/roles-permisos'
       path: '/roles-permisos'
@@ -223,6 +243,7 @@ const rootRouteChildren: RootRouteChildren = {
   EstadisticasRoute: EstadisticasRoute,
   FavoritosRoute: FavoritosRoute,
   LetrasRoute: LetrasRoute,
+  LoginRoute: LoginRoute,
   RolesPermisosRoute: RolesPermisosRoute,
   SetlistsRoute: SetlistsRoute,
 }

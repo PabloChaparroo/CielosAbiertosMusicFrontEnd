@@ -1,6 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  Outlet,
   Link,
   createRootRouteWithContext,
   useRouter,
@@ -11,7 +10,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { AppProvider } from "@/hooks/useApp";
+import { AuthGate } from "@/core/guards/AuthGate";
 
 function NotFoundComponent() {
   return (
@@ -125,10 +124,8 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AppProvider>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-      </AppProvider>
+      {/* AuthGate renderiza el <Outlet/> de las rutas hijas una vez resuelta la sesión. */}
+      <AuthGate />
     </QueryClientProvider>
   );
 }

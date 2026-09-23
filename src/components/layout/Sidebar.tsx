@@ -6,17 +6,17 @@ import {
   Heart,
   Home,
   ListMusic,
+  LogOut,
   Music4,
-  Settings,
   ShieldCheck,
   Type,
   Users,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { roleLabels, useApp } from "@/hooks/useApp";
+import { useApp } from "@/hooks/useApp";
+import { useAuth } from "@/core/auth/useAuth";
 import { RoleBadge } from "@/components/common/ui-bits";
-import type { SystemRole } from "@/types";
 
 const groups = [
   {
@@ -44,7 +44,8 @@ const groups = [
 ] as const;
 
 export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
-  const { currentUser, setRole } = useApp();
+  const { currentUser } = useApp();
+  const { logout } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
@@ -109,20 +110,12 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           </div>
           <RoleBadge role={currentUser.role} />
         </div>
-        <label className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground">
-          <Settings className="h-3.5 w-3.5" />
-          <select
-            value={currentUser.role}
-            onChange={(e) => setRole(e.target.value as SystemRole)}
-            className="flex-1 rounded-lg border border-border bg-secondary px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/60"
-          >
-            {(Object.keys(roleLabels) as SystemRole[]).map((r) => (
-              <option key={r} value={r}>
-                {roleLabels[r]}
-              </option>
-            ))}
-          </select>
-        </label>
+        <button
+          onClick={() => void logout()}
+          className="mt-3 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+        >
+          <LogOut className="h-3.5 w-3.5" /> Cerrar sesión
+        </button>
       </div>
     </div>
   );

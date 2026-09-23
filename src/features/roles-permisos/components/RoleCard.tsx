@@ -1,27 +1,40 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, Save } from "lucide-react";
-import { actionLabels, PERMISSION_CATALOG, resourceLabels } from "@/lib/permissions";
-import type { Role } from "@/types";
+import { actionLabel, resourceLabel } from "@/lib/permissions";
+import { RolesService } from "../services/roles.service";
+import type { PermissionGroup, Role } from "../types/role";
+
+type LoadState = "idle" | "loading" | "ready" | "error";
 
 export function RoleCard({
   role,
-  grantedPermissions,
-  onSave,
+  catalog,
+  onSaved,
 }: {
   role: Role;
-  grantedPermissions: string[];
-  onSave: (permissions: string[]) => void;
+  catalog: PermissionGroup[];
+  onSaved: (roleId: string, permissionsCount: number) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [draft, setDraft] = useState<Set<string>>(new Set(grantedPermissions));
+  const [loadState, setLoadState] = useState<LoadState>("idle");
+  const [draft, setDraft] = useState<Set<string>>(new Set());
   const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Si cambian los permisos guardados del rol desde afuera (ej. otra pestaña
-  // del mock), resetea el borrador — nunca mientras el usuario está editando.
+  // Cada tarjeta pide sus propios permisos al expandirse por primera vez —
+  // no hay ningún estado compartido entre tarjetas que guardar una pueda
+  // pisarle a otra.
   useEffect(() => {
-    if (!dirty) setDraft(new Set(grantedPermissions));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [grantedPermissions]);
+    if (!expanded || loadState !== "idle") return;
+    setLoadState("loading");
+    RolesService.getRolePermissions(role.id)
+      .then((permissions) => {
+        setDraft(new Set(permissions));
+        setLoadState("ready");
+      })
+      .catch(() => setLoadState("error"));
+  }, [expanded, loadState, role.id]);
 
   const toggle = (permission: string) => {
     setDraft((prev) => {
@@ -31,6 +44,21 @@ export function RoleCard({
       return next;
     });
     setDirty(true);
+    setSaveError(null);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const saved = await RolesService.updateRolePermissions(role.id, [...draft]);
+      setDirty(false);
+      onSaved(role.id, saved.length);
+    } catch {
+      setSaveError("No se pudieron guardar los cambios. Probá de nuevo.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -42,7 +70,7 @@ export function RoleCard({
         <div>
           <h3 className="font-display text-lg font-semibold">{role.name}</h3>
           <p className="text-sm text-muted-foreground">
-            {grantedPermissions.length} {grantedPermissions.length === 1 ? "permiso" : "permisos"}
+            {role.permissionsCount} {role.permissionsCount === 1 ? "permiso" : "permisos"}
           </p>
         </div>
         <ChevronDown
@@ -52,47 +80,56 @@ export function RoleCard({
 
       {expanded ? (
         <div className="border-t border-border/60 p-5">
-          <div className="grid gap-4 sm:grid-cols-2">
-            {PERMISSION_CATALOG.map((group) => (
-              <div key={group.resource} className="rounded-xl bg-elevated/50 p-3">
-                <p className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                  {resourceLabels[group.resource]}
-                </p>
-                <div className="flex flex-wrap gap-x-4 gap-y-2">
-                  {group.permissions.map((permission) => {
-                    const action = permission.split(":")[1] as keyof typeof actionLabels;
-                    return (
-                      <label
-                        key={permission}
-                        className="flex items-center gap-2 text-sm text-foreground/90"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={draft.has(permission)}
-                          onChange={() => toggle(permission)}
-                          className="h-4 w-4 rounded border-border accent-primary"
-                        />
-                        {actionLabels[action]}
-                      </label>
-                    );
-                  })}
-                </div>
+          {loadState === "loading" ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Cargando permisos…</p>
+          ) : loadState === "error" ? (
+            <p className="py-6 text-center text-sm text-destructive">
+              No se pudieron cargar los permisos de este rol.
+            </p>
+          ) : (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {catalog.map((group) => (
+                  <div key={group.resource} className="rounded-xl bg-elevated/50 p-3">
+                    <p className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                      {resourceLabel(group.resource)}
+                    </p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-2">
+                      {group.permissions.map((permission) => {
+                        const action = permission.split(":")[1] ?? "";
+                        return (
+                          <label
+                            key={permission}
+                            className="flex items-center gap-2 text-sm text-foreground/90"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={draft.has(permission)}
+                              onChange={() => toggle(permission)}
+                              className="h-4 w-4 rounded border-border accent-primary"
+                            />
+                            {actionLabel(action)}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          <div className="mt-5 flex justify-end">
-            <button
-              disabled={!dirty}
-              onClick={() => {
-                onSave([...draft]);
-                setDirty(false);
-              }}
-              className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"
-            >
-              <Save className="h-4 w-4" /> Guardar
-            </button>
-          </div>
+              {saveError ? <p className="mt-3 text-sm text-destructive">{saveError}</p> : null}
+
+              <div className="mt-5 flex justify-end">
+                <button
+                  disabled={!dirty || saving}
+                  onClick={handleSave}
+                  className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"
+                >
+                  <Save className="h-4 w-4" /> {saving ? "Guardando…" : "Guardar"}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       ) : null}
     </div>

@@ -6,9 +6,23 @@ export function CreateRoleModal({
   onSave,
 }: {
   onClose: () => void;
-  onSave: (name: string) => void;
+  onSave: (name: string) => Promise<void>;
 }) {
   const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleCreate = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave(name.trim());
+      onClose();
+    } catch {
+      setError("No se pudo crear el rol. Probá de nuevo.");
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-4">
@@ -33,22 +47,21 @@ export function CreateRoleModal({
         <p className="mt-2 text-xs text-muted-foreground">
           Arranca sin permisos — se le otorgan desde la tarjeta una vez creado.
         </p>
+        {error ? <p className="mt-2 text-sm text-destructive">{error}</p> : null}
         <div className="mt-6 flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="rounded-full px-4 py-2 text-sm text-muted-foreground hover:bg-secondary"
+            disabled={saving}
+            className="rounded-full px-4 py-2 text-sm text-muted-foreground hover:bg-secondary disabled:opacity-40"
           >
             Cancelar
           </button>
           <button
-            disabled={!name.trim()}
-            onClick={() => {
-              onSave(name.trim());
-              onClose();
-            }}
+            disabled={!name.trim() || saving}
+            onClick={handleCreate}
             className="rounded-full gradient-gold px-5 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"
           >
-            Crear rol
+            {saving ? "Creando…" : "Crear rol"}
           </button>
         </div>
       </div>

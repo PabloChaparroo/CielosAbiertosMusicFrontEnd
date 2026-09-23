@@ -1,43 +1,13 @@
 /**
- * Espejo del catálogo de permisos real del backend
- * (CielosAbiertosAlabanzasBackEnd/src/common/authorization/permission.catalog.ts).
- * Mientras el frontend siga mockeado y sin conectar, este archivo es la
- * única fuente que hay que mantener sincronizada a mano; cuando se conecte
- * el backend real, esta pantalla debería consumir GET /permisos en su lugar
- * y este archivo deja de hacer falta.
+ * Etiquetas en español para el catálogo de permisos. El catálogo en sí
+ * (qué recursos y acciones existen) ya NO se hardcodea acá — viene siempre
+ * de GET /permisos (ver features/roles-permisos/services/roles.service.ts).
+ * Por eso estos mapas tienen fallback: un recurso nuevo en el backend no
+ * debería romper esta pantalla, solo mostrarse con una etiqueta genérica
+ * hasta que alguien le agregue una entrada acá.
  */
 
-export const CRUD_ACTIONS = ["read", "write", "update", "delete"] as const;
-export type CrudAction = (typeof CRUD_ACTIONS)[number];
-
-export const CRUD_RESOURCES = [
-  "cancion",
-  "setlist",
-  "equipo",
-  "anotacion",
-  "anotacion-propia",
-  "estadisticas",
-  "rol",
-] as const;
-export type CrudResource = (typeof CRUD_RESOURCES)[number];
-
-export type PermissionName = `${CrudResource}:${CrudAction}`;
-
-export function crudPermission(resource: CrudResource, action: CrudAction): PermissionName {
-  return `${resource}:${action}`;
-}
-
-export interface PermissionGroup {
-  resource: CrudResource;
-  permissions: PermissionName[];
-}
-
-export const PERMISSION_CATALOG: PermissionGroup[] = CRUD_RESOURCES.map((resource) => ({
-  resource,
-  permissions: CRUD_ACTIONS.map((action) => crudPermission(resource, action)),
-}));
-
-export const resourceLabels: Record<CrudResource, string> = {
+const resourceLabels: Record<string, string> = {
   cancion: "Canciones",
   setlist: "Setlists",
   equipo: "Equipo",
@@ -47,9 +17,17 @@ export const resourceLabels: Record<CrudResource, string> = {
   rol: "Roles y permisos",
 };
 
-export const actionLabels: Record<CrudAction, string> = {
+export function resourceLabel(resource: string): string {
+  return resourceLabels[resource] ?? resource;
+}
+
+const actionLabels: Record<string, string> = {
   read: "Ver",
   write: "Crear",
   update: "Editar",
   delete: "Eliminar",
 };
+
+export function actionLabel(action: string): string {
+  return actionLabels[action] ?? action;
+}

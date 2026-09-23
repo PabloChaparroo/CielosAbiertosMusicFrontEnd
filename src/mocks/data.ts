@@ -1,5 +1,4 @@
-import { crudPermission } from "@/lib/permissions";
-import type { Annotation, Role, Setlist, Song, User } from "@/types";
+import type { Annotation, Setlist, Song, User } from "@/types";
 
 export const members: User[] = [
   {
@@ -293,43 +292,3 @@ export const annotations: Annotation[] = [
     createdAt: "2026-08-30T21:00:00",
   },
 ];
-
-export const roles: Role[] = [
-  { id: "r1", name: "Admin" },
-  { id: "r2", name: "Líder" },
-  { id: "r3", name: "Músico" },
-];
-
-const crudActions = ["read", "write", "update", "delete"] as const;
-
-// Espejo del seed real de la migración AddRolesAndPermissions del backend.
-export const rolePermissions: Record<string, string[]> = {
-  r1: [
-    "cancion",
-    "setlist",
-    "equipo",
-    "anotacion",
-    "anotacion-propia",
-    "estadisticas",
-    "rol",
-  ].flatMap((resource) => crudActions.map((action) => crudPermission(resource as never, action))),
-  r2: [
-    ...["cancion", "setlist", "anotacion"].flatMap((resource) =>
-      crudActions.map((action) => crudPermission(resource as never, action)),
-    ),
-    "equipo:read",
-    "anotacion-propia:update",
-    "anotacion-propia:delete",
-    "estadisticas:read",
-  ],
-  r3: [
-    "cancion:read",
-    "setlist:read",
-    "equipo:read",
-    "anotacion:read",
-    "anotacion-propia:write",
-    "anotacion-propia:update",
-    "anotacion-propia:delete",
-    "estadisticas:read",
-  ],
-};

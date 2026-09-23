@@ -12,12 +12,10 @@ import type { AppAction } from "@/core/auth/auth-store";
 import {
   annotations as mockAnnotations,
   members,
-  rolePermissions as mockRolePermissions,
-  roles as mockRoles,
   setlists as mockSetlists,
   songs as mockSongs,
 } from "@/mocks/data";
-import type { Annotation, Role, Setlist, Song, User } from "@/types";
+import type { Annotation, Setlist, Song, User } from "@/types";
 
 interface AppState {
   users: User[];
@@ -36,10 +34,6 @@ interface AppState {
   removeAnnotation: (id: string) => void;
   canEditAnnotation: (a: Annotation) => boolean;
   can: (action: AppAction) => boolean;
-  roles: Role[];
-  rolePermissions: Record<string, string[]>;
-  addRole: (name: string) => void;
-  updateRolePermissions: (roleId: string, permissions: string[]) => void;
   // player
   current: Song | null;
   isPlaying: boolean;
@@ -65,9 +59,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [setlists, setSetlists] = useState<Setlist[]>(mockSetlists);
   const [annotationList, setAnnotationList] = useState<Annotation[]>(mockAnnotations);
   const [favorites, setFavorites] = useState<string[]>(["s1", "s3", "s12", "s18"]);
-  const [roles, setRoles] = useState<Role[]>(mockRoles);
-  const [rolePermissionsMap, setRolePermissionsMap] =
-    useState<Record<string, string[]>>(mockRolePermissions);
   const [current, setCurrent] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -134,11 +125,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         currentUser.role === "admin" ||
         currentUser.role === "lider",
       can: canReal,
-      roles,
-      rolePermissions: rolePermissionsMap,
-      addRole: (name) => setRoles((prev) => [...prev, { id: `r${Date.now()}`, name }]),
-      updateRolePermissions: (roleId, permissions) =>
-        setRolePermissionsMap((prev) => ({ ...prev, [roleId]: permissions })),
       current,
       isPlaying,
       play: (song) => {
@@ -152,19 +138,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toggle: () => setIsPlaying((p) => !p),
       audioRef,
     }),
-    [
-      users,
-      currentUser,
-      songs,
-      setlists,
-      annotationList,
-      favorites,
-      canReal,
-      roles,
-      rolePermissionsMap,
-      current,
-      isPlaying,
-    ],
+    [users, currentUser, songs, setlists, annotationList, favorites, canReal, current, isPlaying],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

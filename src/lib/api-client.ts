@@ -73,7 +73,12 @@ export async function apiRequest<T>(
 
   const response = await fetch(`${API_URL}${path}`, init);
 
-  if (response.status === 401 && onUnauthorized) {
+  // Un 401 de /auth/login es "credenciales inválidas", no "tu sesión expiró"
+  // — no debe disparar el logout/redirect global, si no LoginPage nunca
+  // llega a mostrar el error (la página ya está navegando a /login).
+  const isLoginAttempt = path === "/auth/login";
+
+  if (response.status === 401 && onUnauthorized && !isLoginAttempt) {
     logoutPromise ??= onUnauthorized().finally(() => {
       logoutPromise = null;
     });

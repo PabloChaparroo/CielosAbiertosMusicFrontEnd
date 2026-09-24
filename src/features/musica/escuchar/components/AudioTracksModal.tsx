@@ -92,7 +92,11 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
       );
       setUploadPct(null);
 
-      const dto: CreateAudioTrackInput = { label: label.trim(), audioKey: key, order: tracks.length };
+      const dto: CreateAudioTrackInput = {
+        label: label.trim(),
+        audioKey: key,
+        order: tracks.length,
+      };
       const created = await AudioTracksService.create(song.id, dto);
       setTracks((prev) => [...prev, created]);
       setLabel("");
@@ -187,7 +191,9 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
                 <button
                   onClick={() => void handlePlay(track)}
                   disabled={resolvingId === track.id}
-                  aria-label={playingId === track.id ? `Pausar ${track.label}` : `Reproducir ${track.label}`}
+                  aria-label={
+                    playingId === track.id ? `Pausar ${track.label}` : `Reproducir ${track.label}`
+                  }
                   className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-elevated hover:text-primary disabled:opacity-50"
                 >
                   {playingId === track.id ? (

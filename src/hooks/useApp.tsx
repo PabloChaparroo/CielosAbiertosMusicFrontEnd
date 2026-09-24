@@ -194,7 +194,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setFavorites((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]));
         FavoritesService.toggle(id).catch(() => {
           // revierte el optimista si el toggle real falló
-          setFavorites((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]));
+          setFavorites((prev) =>
+            prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id],
+          );
         });
       },
       annotations: annotationList,

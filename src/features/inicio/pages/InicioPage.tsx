@@ -15,7 +15,10 @@ export function InicioPage() {
   // ventana extra en la que sigue vacío aunque songsLoadState ya diga "ready".
   if (songsLoadState !== "ready" || setlists.length === 0) {
     return (
-      <AppLayout title="Inicio" subtitle={`Bienvenido/a de nuevo, ${currentUser.name.split(" ")[0]}`}>
+      <AppLayout
+        title="Inicio"
+        subtitle={`Bienvenido/a de nuevo, ${currentUser.name.split(" ")[0]}`}
+      >
         <Skeletons rows={5} />
       </AppLayout>
     );

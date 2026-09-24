@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ListMusic, Search, X } from "lucide-react";
+import { GripVertical, ListMusic, Search, X } from "lucide-react";
 import { Cover } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import { SetlistsService } from "../services/setlists.service";
@@ -21,6 +21,7 @@ export function NewSetlistModal({
   const [type, setType] = useState<EventType>("Culto Domingo");
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [team, setTeam] = useState<string[]>([currentUser.id]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +32,9 @@ export function NewSetlistModal({
   );
 
   const activeUsers = useMemo(() => users.filter((u) => !u.fechaHoraBaja), [users]);
+  const pickedSongs = picked
+    .map((id) => songs.find((song) => song.id === id))
+    .filter((song): song is (typeof songs)[number] => Boolean(song));
 
   const canSave = title.trim() !== "" && picked.length > 0 && !saving;
 
@@ -130,6 +134,61 @@ export function NewSetlistModal({
                 </button>
               );
             })}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                Orden del servicio
+              </p>
+              <span className="text-xs text-muted-foreground">{pickedSongs.length} canciones</span>
+            </div>
+            {pickedSongs.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+                Agregá canciones para armar el orden del servicio.
+              </p>
+            ) : (
+              <div className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+                {pickedSongs.map((song, index) => (
+                  <div
+                    key={song.id}
+                    draggable
+                    onDragStart={() => setDragIndex(index)}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={() => {
+                      if (dragIndex === null || dragIndex === index) return;
+                      setPicked((current) => {
+                        const next = [...current];
+                        const [moved] = next.splice(dragIndex, 1);
+                        if (moved) next.splice(index, 0, moved);
+                        return next;
+                      });
+                      setDragIndex(null);
+                    }}
+                    onDragEnd={() => setDragIndex(null)}
+                    className={`flex items-center gap-2 bg-card px-3 py-2 ${
+                      dragIndex === index ? "opacity-50" : ""
+                    }`}
+                  >
+                    <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground" />
+                    <span className="w-5 text-xs text-muted-foreground">{index + 1}</span>
+                    <Cover song={song} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{song.title}</p>
+                      <p className="truncate text-xs text-muted-foreground">{song.artist}</p>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label={`Quitar ${song.title}`}
+                      onClick={() => setPicked((current) => current.filter((id) => id !== song.id))}
+                      className="rounded-full p-1.5 text-muted-foreground hover:text-destructive"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>

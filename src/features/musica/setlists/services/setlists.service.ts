@@ -17,6 +17,7 @@ interface RawSetlist {
   id: string;
   title: string;
   date: string;
+  fechaHoraAlta?: string;
   type: EventType;
   leader: RawRef;
   team: RawRef[];
@@ -56,6 +57,7 @@ function mapSetlist(raw: RawSetlist): Setlist {
     id: raw.id,
     title: raw.title,
     date: raw.date,
+    ...(raw.fechaHoraAlta ? { createdAt: raw.fechaHoraAlta } : {}),
     type: raw.type,
     leaderId: raw.leader.id,
     teamIds: raw.team.map((u) => u.id),

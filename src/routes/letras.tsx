@@ -2,6 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { LetrasPage } from "@/features/musica/letras/pages/LetrasPage";
 
 export const Route = createFileRoute("/letras")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    songId: typeof search.songId === "string" ? search.songId : undefined,
+    songIds: typeof search.songIds === "string" ? search.songIds : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Letras — Cielos Abiertos" },

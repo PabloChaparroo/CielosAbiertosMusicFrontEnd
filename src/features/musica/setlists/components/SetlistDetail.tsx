@@ -1,5 +1,15 @@
 import { useState } from "react";
-import { AlertTriangle, ArrowLeft, FileDown, GripVertical, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Check,
+  FileDown,
+  GripVertical,
+  Music2,
+  Trash2,
+  Type,
+} from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Avatar, Cover } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
@@ -20,7 +30,10 @@ export function SetlistDetail({
   canEdit: boolean;
 }) {
   const { songs, users } = useApp();
+  const navigate = useNavigate();
+  const setlistSongIds = setlist.items.map((item) => item.songId).join(",");
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<"acordes" | "letras">("acordes");
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Cada cambio (mover, cambiar tonalidad, sacar una canción) persiste ya
@@ -42,6 +55,11 @@ export function SetlistDetail({
     items.splice(to, 0, it);
     persist({ ...setlist, items });
   };
+
+  const openSong = (path: "/acordes" | "/letras", songId: string) =>
+    navigate({ to: path, search: { songId, songIds: setlistSongIds } });
+
+  const openSelectedSong = (songId: string) => openSong(`/${viewMode}`, songId);
 
   return (
     <AppLayout
@@ -77,6 +95,31 @@ export function SetlistDetail({
 
       <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
         <div className="surface-card divide-y divide-border/60">
+          <div className="flex items-center justify-between gap-3 border-b border-border/60 p-3">
+            <span className="text-sm font-medium">Abrir canciones como</span>
+            <div className="flex rounded-lg border border-border p-1">
+              {(
+                [
+                  ["acordes", "Acordes"],
+                  ["letras", "Letras"],
+                ] as const
+              ).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setViewMode(mode)}
+                  className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                    viewMode === mode
+                      ? "bg-primary/15 text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {viewMode === mode ? <Check className="h-3.5 w-3.5" /> : null}
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           {setlist.items.map((item, i) => {
             const song = songs.find((s) => s.id === item.songId);
             if (!song) return null;
@@ -99,13 +142,42 @@ export function SetlistDetail({
                 ) : (
                   <span className="w-4 text-center text-sm text-muted-foreground">{i + 1}</span>
                 )}
-                <Cover song={song} size="sm" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{song.title}</p>
-                  <p className="truncate text-sm text-muted-foreground">
-                    {song.artist} · {song.bpm} BPM
-                    {item.note ? ` · ${item.note}` : ""}
-                  </p>
+                <button
+                  type="button"
+                  onClick={() => openSelectedSong(song.id)}
+                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                  aria-label={`Abrir ${song.title} en ${viewMode}`}
+                >
+                  <Cover song={song} size="sm" />
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{song.title}</span>
+                    <span className="block truncate text-sm text-muted-foreground">
+                      {song.artist} · {song.bpm} BPM
+                      {item.note ? ` · ${item.note}` : ""}
+                    </span>
+                  </span>
+                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    aria-label={`Abrir acordes de ${song.title}`}
+                    title="Abrir acordes"
+                    onClick={() =>
+                      openSong("/acordes", song.id)
+                    }
+                    className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
+                  >
+                    <Music2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Abrir letra de ${song.title}`}
+                    title="Abrir letra"
+                    onClick={() => openSong("/letras", song.id)}
+                    className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
+                  >
+                    <Type className="h-4 w-4" />
+                  </button>
                 </div>
                 <select
                   disabled={!canEdit}

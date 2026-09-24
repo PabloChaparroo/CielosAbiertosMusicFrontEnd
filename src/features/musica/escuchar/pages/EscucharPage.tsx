@@ -82,18 +82,18 @@ export function EscucharPage() {
         />
       ) : (
         <div className="surface-card overflow-hidden">
-          <div className="hidden grid-cols-[40px_1fr_180px_120px_90px] gap-4 border-b border-border/60 px-4 py-3 text-[11px] tracking-widest text-muted-foreground uppercase md:grid">
+          <div className="hidden grid-cols-[40px_1fr_180px_150px_90px] gap-4 border-b border-border/60 px-4 py-3 text-[11px] tracking-widest text-muted-foreground uppercase md:grid">
             <span>#</span>
             <span>Título</span>
             <span>Temas</span>
-            <span>Tono / BPM</span>
+            <span>Tono / Compás / BPM</span>
             <span className="text-right">Duración</span>
           </div>
           {filtered.map((song, i) => (
             <div
               key={song.id}
               onDoubleClick={() => play(song)}
-              className={`group grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-2.5 transition-colors hover:bg-elevated/70 md:grid-cols-[40px_1fr_180px_120px_90px] ${
+              className={`group grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-2.5 transition-colors hover:bg-elevated/70 md:grid-cols-[40px_1fr_180px_150px_90px] ${
                 current?.id === song.id ? "bg-elevated/60" : ""
               }`}
             >
@@ -122,7 +122,7 @@ export function EscucharPage() {
                 ))}
               </div>
               <span className="hidden text-sm text-muted-foreground md:block">
-                {song.key} · {song.bpm} BPM
+                {song.key} · {song.compas} · {song.bpm} BPM
               </span>
               <div className="flex items-center justify-end gap-1">
                 <FavButton songId={song.id} />

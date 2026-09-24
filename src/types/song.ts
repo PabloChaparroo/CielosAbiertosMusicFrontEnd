@@ -7,6 +7,7 @@ export interface Song {
   artist: string;
   key: string;
   bpm: number;
+  compas: string;
   duration: number; // seconds
   tags: Tag[];
   cover: string; // css gradient

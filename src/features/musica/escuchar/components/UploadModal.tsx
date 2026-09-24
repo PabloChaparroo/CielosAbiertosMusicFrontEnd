@@ -72,6 +72,7 @@ export function UploadModal({
   const [artist, setArtist] = useState(song?.artist ?? "");
   const [key, setKey] = useState(song?.key ?? "G");
   const [bpm, setBpm] = useState(song?.bpm ?? 80);
+  const [compas, setCompas] = useState(song?.compas ?? "4/4");
   const [durationMinutes, setDurationMinutes] = useState(Math.floor((song?.duration ?? 240) / 60));
   const [durationSeconds, setDurationSeconds] = useState((song?.duration ?? 240) % 60);
   const [chordpro, setChordpro] = useState(
@@ -116,8 +117,7 @@ export function UploadModal({
     setAudioFile(file);
   };
 
-  const canSave =
-    title.trim() !== "" && artist.trim() !== "" && chordpro.trim() !== "" && !saving;
+  const canSave = title.trim() !== "" && artist.trim() !== "" && chordpro.trim() !== "" && !saving;
 
   const handleSave = async () => {
     setSaving(true);
@@ -149,6 +149,7 @@ export function UploadModal({
         artist: artist.trim(),
         key,
         bpm,
+        compas,
         duration: durationMinutes * 60 + durationSeconds,
         cover: isEdit ? (song?.cover ?? coverFor(title.trim())) : coverFor(title.trim()),
         chordpro,
@@ -273,6 +274,16 @@ export function UploadModal({
               />
             </Field>
           </div>
+
+          <Field label="Compás">
+            <select className={inputCls} value={compas} onChange={(e) => setCompas(e.target.value)}>
+              {["2/4", "3/4", "4/4", "6/8", "12/8"].map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </Field>
 
           <Field
             label="Duración"

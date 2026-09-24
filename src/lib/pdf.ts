@@ -82,13 +82,13 @@ export function exportChordsPdf(
     });
     doc.setTextColor(190, 130, 30);
     doc.text(chordLine, 14, y);
-    y += size * 0.62;
+    y += size * 0.75;
     y = ensure(doc, y);
     if (opts.mode === "both") {
       doc.setFont("courier", "normal");
       doc.setTextColor(20, 20, 20);
       doc.text(lyricLine, 14, y);
-      y += size * 0.7;
+      y += size * 0.75;
     }
   });
 

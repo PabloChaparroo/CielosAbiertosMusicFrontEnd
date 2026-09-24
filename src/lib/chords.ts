@@ -32,7 +32,7 @@ function rootIndex(root: string): number {
   return FLAT.indexOf(root);
 }
 
-function useFlats(key: string): boolean {
+function shouldUseFlats(key: string): boolean {
   return key.includes("b") || ["F", "Fm", "Dm", "Gm", "Cm"].includes(key);
 }
 
@@ -47,7 +47,7 @@ export function transposeChord(chord: string, semitones: number, targetKey = "C"
       const idx = rootIndex(m[1]!);
       if (idx < 0) return part;
       const next = (((idx + semitones) % 12) + 12) % 12;
-      const scale = useFlats(targetKey) ? FLAT : SHARP;
+      const scale = shouldUseFlats(targetKey) ? FLAT : SHARP;
       return scale[next]! + (m[2] ?? "");
     })
     .join("/");
@@ -69,6 +69,19 @@ export function transposeKey(key: string, semitones: number): string {
   return SHARP[next]! + (minor ? "m" : "");
 }
 
+export function diatonicChords(key: string): string[] {
+  const root = key.replace(/m$/, "");
+  const idx = rootIndex(root);
+  if (idx < 0) return [];
+  const scale = shouldUseFlats(key) ? FLAT : SHARP;
+  const intervals = [0, 2, 4, 5, 7, 9, 11];
+  const qualities = ["", "m", "m", "", "", "m", "dim"];
+  return intervals.map((interval, index) => {
+    const note = scale[(idx + interval) % 12]!;
+    return `${note}${qualities[index]}`;
+  });
+}
+
 export interface ChordPair {
   chord: string;
   text: string;
@@ -76,12 +89,52 @@ export interface ChordPair {
 export type ParsedLine =
   { kind: "section"; label: string } | { kind: "blank" } | { kind: "line"; pairs: ChordPair[] };
 
-export function parseChordPro(body: string, semitones: number, targetKey: string): ParsedLine[] {
+export function isSectionLabel(value: string): boolean {
+  return !/^[A-G](?:#|b)?(?:m|min|maj|sus|add|dim|aug)?\d*(?:\/[A-G](?:#|b)?)?$/.test(value.trim());
+}
+
+export function lyricsLines(body: string): Array<{ kind: "section" | "text"; value: string }> {
   return body.split("\n").map((raw) => {
+    const line = raw.replace(/\r/g, "");
+    const braceSection = line.trim().match(/^\{(.+)\}$/);
+    const bracketSection = line.trim().match(/^\[([^\]]+)\]$/);
+    const section =
+      braceSection?.[1] ??
+      (bracketSection && isSectionLabel(bracketSection[1]!) ? bracketSection[1] : null);
+    return section
+      ? { kind: "section" as const, value: section.toUpperCase() }
+      : { kind: "text" as const, value: line.replace(/\[[^\]]+\]/g, "") };
+  });
+}
+
+export function parseChordPro(body: string, semitones: number, targetKey: string): ParsedLine[] {
+  const sourceLines = body.split("\n");
+  const normalizedLines: string[] = [];
+
+  for (let index = 0; index < sourceLines.length; index += 1) {
+    const current = sourceLines[index]!;
+    const chordOnly = current.trim() && /^(?:\[[^\]]+\]\s*)+$/.test(current.trim());
+    const next = sourceLines[index + 1];
+    const nextText = next?.trim() ?? "";
+    const nextIsLyrics = nextText && !nextText.startsWith("[") && !nextText.startsWith("{");
+
+    if (chordOnly && nextIsLyrics) {
+      normalizedLines.push(`${current}${next}`);
+      index += 1;
+    } else {
+      normalizedLines.push(current);
+    }
+  }
+
+  return normalizedLines.map((raw) => {
     const line = raw.replace(/\r/g, "");
     if (!line.trim()) return { kind: "blank" as const };
     const section = line.trim().match(/^\{(.+)\}$/);
     if (section) return { kind: "section" as const, label: section[1]!.toUpperCase() };
+    const bracketSection = line.trim().match(/^\[([^\]]+)\]$/);
+    if (bracketSection && isSectionLabel(bracketSection[1]!)) {
+      return { kind: "section" as const, label: bracketSection[1]!.toUpperCase() };
+    }
 
     const pairs: ChordPair[] = [];
     const regex = /\[([^\]]+)\]/g;
@@ -109,7 +162,7 @@ export function chordsOnly(lines: ParsedLine[]): ParsedLine[] {
 }
 
 export function plainLyrics(body: string): string {
-  return body
-    .replace(/\[[^\]]+\]/g, "")
-    .replace(/^\{(.+)\}$/gm, (_m, g1: string) => `[${g1.toUpperCase()}]`);
+  return lyricsLines(body)
+    .map((line) => (line.kind === "section" ? `[${line.value}]` : line.value))
+    .join("\n");
 }

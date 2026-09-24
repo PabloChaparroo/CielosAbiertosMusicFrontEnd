@@ -35,14 +35,15 @@ export function SetlistsPage() {
   }
 
   const now = Date.now();
+  const createdTime = (setlist: (typeof setlists)[number]) =>
+    new Date(setlist.createdAt ?? setlist.date).getTime();
   const sorted = [...setlists].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    (a, b) => createdTime(b) - createdTime(a),
   );
   const upcoming = sorted.filter((s) => new Date(s.date).getTime() >= now - 86400000);
   const past = sorted
     .filter((s) => new Date(s.date).getTime() < now - 86400000)
-    .filter((s) => s.title.toLowerCase().includes(query.toLowerCase()))
-    .reverse();
+    .filter((s) => s.title.toLowerCase().includes(query.toLowerCase()));
 
   const setlist = setlists.find((s) => s.id === selected);
 

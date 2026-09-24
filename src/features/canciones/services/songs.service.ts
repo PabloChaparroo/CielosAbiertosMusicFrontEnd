@@ -18,6 +18,7 @@ interface RawSong {
   artist: string;
   key: string;
   bpm: number;
+  compas: string;
   duration: number;
   cover: string;
   audioKey: string | null;
@@ -41,6 +42,7 @@ export interface CreateSongInput {
   artist: string;
   key: string;
   bpm: number;
+  compas: string;
   duration: number;
   cover: string;
   chordpro: string;
@@ -70,6 +72,7 @@ function mapSong(raw: RawSong): Song {
     artist: raw.artist,
     key: raw.key,
     bpm: raw.bpm,
+    compas: raw.compas ?? "4/4",
     duration: raw.duration,
     tags: raw.tags.map((t) => t.valor) as Tag[],
     cover: raw.cover,

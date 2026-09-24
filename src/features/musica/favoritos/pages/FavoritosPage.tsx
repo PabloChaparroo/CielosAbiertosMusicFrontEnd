@@ -1,16 +1,22 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Heart, Play } from "lucide-react";
+import { Heart, Play, Search } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { EmptyState, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 
 export function FavoritosPage() {
   const { songs, favorites, play } = useApp();
-  const list = songs.filter((s) => favorites.includes(s.id));
+  const [query, setQuery] = useState("");
+  const favoriteSongs = songs.filter((s) => favorites.includes(s.id));
+  const list = favoriteSongs.filter((song) => {
+    const text = `${song.title} ${song.artist}`.toLowerCase();
+    return text.includes(query.toLowerCase());
+  });
 
   return (
-    <AppLayout title="Favoritos" subtitle={`${list.length} canciones guardadas`}>
-      {list.length === 0 ? (
+    <AppLayout title="Favoritos" subtitle={`${favoriteSongs.length} canciones guardadas`}>
+      {favoriteSongs.length === 0 ? (
         <EmptyState
           icon={<Heart className="h-6 w-6" />}
           title="Todavía no marcaste favoritos"
@@ -25,39 +31,57 @@ export function FavoritosPage() {
           }
         />
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
-          {list.map((song) => (
-            <div
-              key={song.id}
-              className="surface-card group relative p-4 hover:-translate-y-1 hover:border-primary/40"
-            >
+        <>
+          <div className="relative mb-4 max-w-sm">
+            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar favorito por nombre..."
+              className="w-full rounded-full border border-border bg-card py-2.5 pr-4 pl-10 text-sm outline-none focus:border-primary/60"
+            />
+          </div>
+          {list.length === 0 ? (
+            <EmptyState
+              icon={<Search className="h-6 w-6" />}
+              title="No encontramos favoritos"
+              description="Probá con otro nombre o artista."
+            />
+          ) : null}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6">
+            {list.map((song) => (
               <div
-                className="mb-3 aspect-square w-full rounded-xl"
-                style={{ backgroundImage: song.cover }}
-              />
-              <p className="truncate font-semibold">{song.title}</p>
-              <p className="truncate text-sm text-muted-foreground">{song.artist}</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {song.tags.map((t) => (
-                  <TagChip key={t} tag={t} />
-                ))}
-              </div>
-              <div className="mt-3 flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">
-                  {song.key} · {formatDuration(song.duration)}
-                </span>
-                <FavButton songId={song.id} />
-              </div>
-              <button
-                onClick={() => play(song)}
-                aria-label={`Reproducir ${song.title}`}
-                className="absolute top-[40%] right-6 flex h-11 w-11 translate-y-2 items-center justify-center rounded-full gradient-gold text-primary-foreground opacity-0 shadow-lg transition-all group-hover:translate-y-0 group-hover:opacity-100"
+                key={song.id}
+                className="surface-card group relative p-2.5 hover:-translate-y-1 hover:border-primary/40"
               >
-                <Play className="ml-0.5 h-4 w-4" />
-              </button>
-            </div>
-          ))}
-        </div>
+                <div
+                  className="mb-2 aspect-square w-full rounded-lg"
+                  style={{ backgroundImage: song.cover }}
+                />
+                <p className="truncate text-sm font-semibold">{song.title}</p>
+                <p className="truncate text-xs text-muted-foreground">{song.artist}</p>
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {song.tags.map((t) => (
+                    <TagChip key={t} tag={t} />
+                  ))}
+                </div>
+                <div className="mt-1.5 flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    {song.key} · {formatDuration(song.duration)}
+                  </span>
+                  <FavButton songId={song.id} />
+                </div>
+                <button
+                  onClick={() => play(song)}
+                  aria-label={`Reproducir ${song.title}`}
+                  className="absolute top-[40%] right-6 flex h-11 w-11 translate-y-2 items-center justify-center rounded-full gradient-gold text-primary-foreground opacity-0 shadow-lg transition-all group-hover:translate-y-0 group-hover:opacity-100"
+                >
+                  <Play className="ml-0.5 h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </AppLayout>
   );

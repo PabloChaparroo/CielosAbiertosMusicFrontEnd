@@ -29,6 +29,7 @@ export function ChordSheet({
           <div
             key={i}
             className={`flex flex-nowrap whitespace-nowrap ${centered ? "justify-center" : ""}`}
+            style={{ marginBottom: `${fontSize * 0.18}px` }}
           >
             {line.pairs.map((p, j) => (
               <span key={j} className="inline-flex flex-col">

@@ -1,5 +1,5 @@
 import { jsPDF } from "jspdf";
-import { parseChordPro, plainLyrics, type ParsedLine } from "./chords";
+import { lyricsLines, parseChordPro, type ParsedLine } from "./chords";
 import type { Setlist, Song } from "@/types";
 
 const CHURCH = "Cielos Abiertos";
@@ -32,16 +32,28 @@ function ensure(doc: jsPDF, y: number): number {
 
 export function exportLyricsPdf(song: Song) {
   const doc = new jsPDF();
-  header(doc, song.title, `${song.artist} · Tonalidad ${song.key} · ${song.tags.join(", ")}`);
+  header(
+    doc,
+    song.title,
+    `${song.artist} · Tonalidad ${song.key} · Compás ${song.compas} · ${song.tags.join(", ")}`,
+  );
   let y = 60;
-  doc.setFontSize(11);
-  plainLyrics(song.chordpro)
-    .split("\n")
-    .forEach((line) => {
-      y = ensure(doc, y);
-      doc.text(line || " ", 14, y);
-      y += 6;
-    });
+  lyricsLines(song.chordpro).forEach((line) => {
+    y = ensure(doc, y);
+    if (line.kind === "section") {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.setTextColor(190, 130, 30);
+      doc.text(line.value, 14, y);
+      doc.setTextColor(20, 20, 20);
+      y += 8;
+      return;
+    }
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.text(line.value || " ", 14, y);
+    y += 6;
+  });
   doc.save(`${song.title} - letra.pdf`);
 }
 
@@ -50,7 +62,11 @@ export function exportChordsPdf(
   opts: { semitones: number; targetKey: string; mode: "both" | "chords"; fontSize: number },
 ) {
   const doc = new jsPDF();
-  header(doc, song.title, `${song.artist} · Tonalidad ${opts.targetKey} · ${song.bpm} BPM`);
+  header(
+    doc,
+    song.title,
+    `${song.artist} · Tonalidad ${opts.targetKey} · Compás ${song.compas} · ${song.bpm} BPM`,
+  );
   const lines: ParsedLine[] = parseChordPro(song.chordpro, opts.semitones, opts.targetKey);
   const size = Math.min(16, Math.max(8, Math.round(opts.fontSize * 0.55)));
   let y = 60;

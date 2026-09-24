@@ -168,6 +168,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return SetlistsService.updateSetlist(s.id, {
           title: s.title,
           date: s.date,
+          isUpcoming: s.isUpcoming,
           type: s.type,
           leaderId: s.leaderId,
           teamIds: s.teamIds,

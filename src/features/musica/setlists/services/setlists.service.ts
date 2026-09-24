@@ -17,6 +17,7 @@ interface RawSetlist {
   id: string;
   title: string;
   date: string;
+  isUpcoming?: boolean;
   fechaHoraAlta?: string;
   type: EventType;
   leader: RawRef;
@@ -33,6 +34,8 @@ export interface UpsertSetlistItemInput {
 export interface UpsertSetlistInput {
   title: string;
   date: string;
+  isUpcoming?: boolean;
+  isUpcoming?: boolean;
   type: EventType;
   leaderId: string;
   teamIds: string[];
@@ -57,6 +60,7 @@ function mapSetlist(raw: RawSetlist): Setlist {
     id: raw.id,
     title: raw.title,
     date: raw.date,
+    isUpcoming: raw.isUpcoming ?? false,
     ...(raw.fechaHoraAlta ? { createdAt: raw.fechaHoraAlta } : {}),
     type: raw.type,
     leaderId: raw.leader.id,

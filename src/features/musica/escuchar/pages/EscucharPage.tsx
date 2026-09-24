@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import { Layers, Music4, Pencil, Play, Plus, Search } from "lucide-react";
+import { Layers, Link2, Music4, Pencil, Play, Plus, Search } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, EmptyState, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import type { Song, Tag } from "@/types";
 import { AudioTracksModal } from "../components/AudioTracksModal";
+import { SongLinksModal } from "../components/SongLinksModal";
 import { UploadModal } from "../components/UploadModal";
 
 const ALL_TAGS: Tag[] = [
@@ -25,6 +26,7 @@ export function EscucharPage() {
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<Song | null>(null);
   const [managingTracks, setManagingTracks] = useState<Song | null>(null);
+  const [managingLinks, setManagingLinks] = useState<Song | null>(null);
 
   const filtered = useMemo(
     () =>
@@ -136,6 +138,14 @@ export function EscucharPage() {
                 >
                   <Layers className="h-3.5 w-3.5" />
                 </button>
+                <button
+                  onClick={() => setManagingLinks(song)}
+                  aria-label={`Links relacionados de ${song.title}`}
+                  title="Links relacionados"
+                  className="rounded-full p-2 text-muted-foreground hover:text-primary"
+                >
+                  <Link2 className="h-3.5 w-3.5" />
+                </button>
                 {can("editSongs") ? (
                   <button
                     onClick={() => setEditing(song)}
@@ -164,6 +174,9 @@ export function EscucharPage() {
       ) : null}
       {managingTracks ? (
         <AudioTracksModal song={managingTracks} onClose={() => setManagingTracks(null)} />
+      ) : null}
+      {managingLinks ? (
+        <SongLinksModal song={managingLinks} onClose={() => setManagingLinks(null)} />
       ) : null}
     </AppLayout>
   );

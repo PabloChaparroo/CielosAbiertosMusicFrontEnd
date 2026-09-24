@@ -1,3 +1,4 @@
+import { CalendarCheck, CalendarX } from "lucide-react";
 import { Avatar } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import type { EventType, Setlist } from "@/types";
@@ -11,17 +12,24 @@ const eventColor: Record<EventType, string> = {
 export function SetlistCard({
   s,
   onClick,
+  onToggleUpcoming,
   muted,
 }: {
   s: Setlist;
   onClick: () => void;
+  onToggleUpcoming?: () => void;
   muted?: boolean;
 }) {
   const { users, songs } = useApp();
   const leader = users.find((u) => u.id === s.leaderId);
   return (
-    <button
+    <div
       onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") onClick();
+      }}
       className={`surface-card w-full p-5 text-left hover:-translate-y-1 hover:border-primary/40 ${muted ? "opacity-80" : ""}`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -42,9 +50,29 @@ export function SetlistCard({
             })}
           </p>
         </div>
-        <div className="text-right text-xs text-muted-foreground">
-          <p className="font-semibold text-foreground">{s.items.length}</p>
-          canciones
+        <div className="flex items-start gap-3 text-right text-xs text-muted-foreground">
+          <div>
+            <p className="font-semibold text-foreground">{s.items.length}</p>
+            canciones
+          </div>
+          {onToggleUpcoming ? (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleUpcoming();
+              }}
+              title={s.isUpcoming ? "Sacar de próximas" : "Poner en próximas"}
+              aria-label={s.isUpcoming ? "Sacar de próximas" : "Poner en próximas"}
+              className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
+            >
+              {s.isUpcoming ? (
+                <CalendarX className="h-4 w-4" />
+              ) : (
+                <CalendarCheck className="h-4 w-4" />
+              )}
+            </button>
+          ) : null}
         </div>
       </div>
       <div className="mt-4 flex -space-x-2">
@@ -65,6 +93,6 @@ export function SetlistCard({
       <p className="mt-3 truncate text-sm text-muted-foreground">
         {s.items.map((i) => songs.find((so) => so.id === i.songId)?.title).join(" · ")}
       </p>
-    </button>
+    </div>
   );
 }

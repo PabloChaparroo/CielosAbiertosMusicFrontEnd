@@ -10,6 +10,7 @@ export interface Setlist {
   id: string;
   title: string;
   date: string; // ISO
+  isUpcoming: boolean;
   createdAt?: string; // ISO; fallback para datos antiguos sin fecha de alta
   type: EventType;
   leaderId: string;

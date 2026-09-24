@@ -34,16 +34,17 @@ export function SetlistsPage() {
     );
   }
 
-  const now = Date.now();
   const createdTime = (setlist: (typeof setlists)[number]) =>
     new Date(setlist.createdAt ?? setlist.date).getTime();
-  const sorted = [...setlists].sort(
-    (a, b) => createdTime(b) - createdTime(a),
-  );
-  const upcoming = sorted.filter((s) => new Date(s.date).getTime() >= now - 86400000);
+  const sorted = [...setlists].sort((a, b) => createdTime(b) - createdTime(a));
+  const upcoming = sorted.filter((s) => s.isUpcoming);
   const past = sorted
-    .filter((s) => new Date(s.date).getTime() < now - 86400000)
+    .filter((s) => !s.isUpcoming)
     .filter((s) => s.title.toLowerCase().includes(query.toLowerCase()));
+
+  const toggleUpcoming = (target: (typeof setlists)[number]) => {
+    void updateSetlist({ ...target, isUpcoming: !target.isUpcoming });
+  };
 
   const setlist = setlists.find((s) => s.id === selected);
 
@@ -86,7 +87,12 @@ export function SetlistsPage() {
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
             {upcoming.map((s) => (
-              <SetlistCard key={s.id} s={s} onClick={() => setSelected(s.id)} />
+              <SetlistCard
+                key={s.id}
+                s={s}
+                onClick={() => setSelected(s.id)}
+                onToggleUpcoming={() => toggleUpcoming(s)}
+              />
             ))}
           </div>
         )}
@@ -107,7 +113,13 @@ export function SetlistsPage() {
         </div>
         <div className="grid gap-4 lg:grid-cols-2">
           {past.map((s) => (
-            <SetlistCard key={s.id} s={s} onClick={() => setSelected(s.id)} muted />
+            <SetlistCard
+              key={s.id}
+              s={s}
+              onClick={() => setSelected(s.id)}
+              onToggleUpcoming={() => toggleUpcoming(s)}
+              muted
+            />
           ))}
         </div>
       </section>

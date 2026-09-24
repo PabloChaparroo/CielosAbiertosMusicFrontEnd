@@ -45,6 +45,7 @@ export function NewSetlistModal({
       const created = await SetlistsService.createSetlist({
         title: title.trim(),
         date: new Date(date).toISOString(),
+        isUpcoming: true,
         type,
         leaderId: currentUser.id,
         teamIds: team,
@@ -203,9 +204,7 @@ export function NewSetlistModal({
                     key={u.id}
                     type="button"
                     onClick={() =>
-                      setTeam((prev) =>
-                        on ? prev.filter((id) => id !== u.id) : [...prev, u.id],
-                      )
+                      setTeam((prev) => (on ? prev.filter((id) => id !== u.id) : [...prev, u.id]))
                     }
                     className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
                       on

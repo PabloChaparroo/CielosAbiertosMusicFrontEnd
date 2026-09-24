@@ -26,7 +26,7 @@ export function AcordesPage() {
   const { songId: requestedSongId, songIds } = useSearch({ from: "/acordes" });
   const [songId, setSongId] = useState<string | null>(null);
   const [semitones, setSemitones] = useState(0);
-  const [fontSize, setFontSize] = useState(17);
+  const [fontSize, setFontSize] = useState(25);
   const [mode, setMode] = useState<"both" | "chords">("both");
   const [query, setQuery] = useState("");
   const [live, setLive] = useState(false);

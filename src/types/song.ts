@@ -14,7 +14,8 @@ export interface Song {
   audioKey: string | null;
   /** ChordPro-style body: chords inside [] before the syllable */
   chordpro: string;
-  lyricsImage?: string;
+  /** Key del objeto en S3/MinIO, no una URL — mismo criterio que audioKey. null si la canción no tiene foto de letra cargada. */
+  lyricsImageKey: string | null;
   addedAt: string;
   playsByMonth: Record<string, number>; // "2026-03" -> plays
 }

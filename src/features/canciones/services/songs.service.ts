@@ -46,6 +46,7 @@ export interface CreateSongInput {
   chordpro: string;
   tags: string[];
   audioKey?: string;
+  lyricsImageKey?: string;
 }
 
 export type UpdateSongInput = Partial<CreateSongInput>;
@@ -74,7 +75,7 @@ function mapSong(raw: RawSong): Song {
     cover: raw.cover,
     audioKey: raw.audioKey,
     chordpro: raw.chordpro,
-    ...(raw.lyricsImageKey ? { lyricsImage: raw.lyricsImageKey } : {}),
+    lyricsImageKey: raw.lyricsImageKey,
     addedAt: raw.fechaHoraAlta,
     playsByMonth: Object.fromEntries((raw.playStats ?? []).map((p) => [p.month, p.plays])),
   };

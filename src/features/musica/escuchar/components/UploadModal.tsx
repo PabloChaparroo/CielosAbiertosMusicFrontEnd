@@ -206,7 +206,7 @@ export function UploadModal({
             />
           </Field>
 
-          <Field label="Archivo de audio" help="mp3, wav, ogg, m4a o aac — hasta 20MB.">
+          <Field label="Archivo de audio" help="mp3, wav, ogg, m4a o aac — hasta 100MB.">
             {uploading ? (
               <div className="rounded-xl border border-border bg-secondary px-3 py-3">
                 <div className="mb-1.5 flex items-center justify-between text-xs">

@@ -17,14 +17,14 @@ export const ALLOWED_AUDIO_TYPES = [
 // Límite puramente client-side: un PutObjectCommand firmado no lleva
 // restricción de tamaño, así que esto no es una barrera real de seguridad,
 // solo evita subidas larguísimas por error desde la UI.
-export const MAX_AUDIO_BYTES = 20 * 1024 * 1024;
+export const MAX_AUDIO_BYTES = 100 * 1024 * 1024;
 
 export function validateAudioFile(file: File): string | null {
   if (!ALLOWED_AUDIO_TYPES.includes(file.type)) {
     return "Formato no soportado — subí un archivo de audio (mp3, wav, ogg, m4a, aac).";
   }
   if (file.size > MAX_AUDIO_BYTES) {
-    return "El archivo supera el límite de 20MB.";
+    return "El archivo supera el límite de 100MB.";
   }
   return null;
 }

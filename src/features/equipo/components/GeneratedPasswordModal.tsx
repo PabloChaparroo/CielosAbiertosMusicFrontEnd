@@ -48,8 +48,8 @@ export function GeneratedPasswordModal({
         </div>
 
         <p className="mt-3 text-xs text-muted-foreground">
-          Esta contraseña no se vuelve a mostrar. Copiála y comunicásela al integrante ahora — si
-          se pierde, vas a tener que restablecerla editando su perfil.
+          Esta contraseña no se vuelve a mostrar. Copiála y comunicásela al integrante ahora — si se
+          pierde, vas a tener que restablecerla editando su perfil.
         </p>
 
         <button

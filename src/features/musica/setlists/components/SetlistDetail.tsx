@@ -162,9 +162,7 @@ export function SetlistDetail({
                     type="button"
                     aria-label={`Abrir acordes de ${song.title}`}
                     title="Abrir acordes"
-                    onClick={() =>
-                      openSong("/acordes", song.id)
-                    }
+                    onClick={() => openSong("/acordes", song.id)}
                     className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
                   >
                     <Music2 className="h-4 w-4" />

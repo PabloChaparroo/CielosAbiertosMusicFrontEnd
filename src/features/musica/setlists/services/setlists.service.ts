@@ -35,7 +35,6 @@ export interface UpsertSetlistInput {
   title: string;
   date: string;
   isUpcoming?: boolean;
-  isUpcoming?: boolean;
   type: EventType;
   leaderId: string;
   teamIds: string[];

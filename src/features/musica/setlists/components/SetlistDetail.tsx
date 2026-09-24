@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { AlertTriangle, ArrowLeft, FileDown, GripVertical, Trash2 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Cover } from "@/components/common/ui-bits";
+import { Avatar, Cover } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import { KEYS } from "@/lib/chords";
 import { exportSetlistPdf } from "@/lib/pdf";
@@ -155,12 +155,10 @@ export function SetlistDetail({
               if (!u) return null;
               return (
                 <li key={id} className="flex items-center gap-3">
-                  <span
-                    className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-background"
-                    style={{ backgroundImage: u.avatarColor }}
-                  >
-                    {u.initials}
-                  </span>
+                  <Avatar
+                    user={u}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-background"
+                  />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{u.name}</p>
                     <p className="truncate text-xs text-muted-foreground">

@@ -1,8 +1,83 @@
 import { Heart } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useApp } from "@/hooks/useApp";
+import { StorageClient } from "@/lib/storage-client";
 import type { Song, UserRole } from "@/types";
+
+/**
+ * Cache en memoria de URLs firmadas ya resueltas, por avatarKey. Cada
+ * subida de foto genera un avatarKey nuevo (randomUUID en el backend, igual
+ * que audioKey/lyricsImageKey) — nunca se reusa el mismo key sobreescribiendo
+ * el archivo — así que esta cache nunca queda desactualizada: si cambia la
+ * foto, cambia la key, y la entrada vieja del Map simplemente deja de
+ * referenciarse (no hace falta invalidarla a mano). Evita repetir el pedido
+ * de URL firmada para el mismo avatar en cada componente que lo muestre
+ * dentro de la misma sesión (dura 1h del lado del storage).
+ */
+const avatarUrlCache = new Map<string, string>();
+
+/**
+ * Componente compartido para no repetir la lógica de "resolver URL firmada
+ * o caer al círculo de color+iniciales" en cada lugar que muestra un
+ * avatar (Sidebar, Equipo, autoría de anotaciones, equipo de un setlist).
+ * El `className` lo controla el caller (tamaño, borde, tipografía) — se
+ * aplica igual tanto al círculo de iniciales como a la imagen real.
+ */
+export function Avatar({
+  user,
+  className,
+  title,
+}: {
+  user: { avatarKey?: string | null; avatarColor: string; initials: string; name?: string };
+  className: string;
+  title?: string;
+}) {
+  const [url, setUrl] = useState<string | null>(
+    user.avatarKey ? (avatarUrlCache.get(user.avatarKey) ?? null) : null,
+  );
+
+  useEffect(() => {
+    if (!user.avatarKey) {
+      setUrl(null);
+      return;
+    }
+    const cached = avatarUrlCache.get(user.avatarKey);
+    if (cached) {
+      setUrl(cached);
+      return;
+    }
+    let cancelled = false;
+    StorageClient.getDownloadUrl(user.avatarKey)
+      .then((res) => {
+        avatarUrlCache.set(user.avatarKey!, res.url);
+        if (!cancelled) setUrl(res.url);
+      })
+      .catch(() => {
+        /* sin foto real disponible; se queda con el círculo de color+iniciales */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user.avatarKey]);
+
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt={user.name ? `Foto de ${user.name}` : "Foto de perfil"}
+        title={title}
+        className={cn(className, "object-cover")}
+      />
+    );
+  }
+
+  return (
+    <div className={className} style={{ backgroundImage: user.avatarColor }} title={title}>
+      {user.initials}
+    </div>
+  );
+}
 
 export function Cover({
   song,

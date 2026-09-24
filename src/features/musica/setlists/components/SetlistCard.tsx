@@ -1,3 +1,4 @@
+import { Avatar } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import type { EventType, Setlist } from "@/types";
 
@@ -51,14 +52,12 @@ export function SetlistCard({
           const u = users.find((x) => x.id === id);
           if (!u) return null;
           return (
-            <span
+            <Avatar
               key={id}
+              user={u}
               title={u.name}
               className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-card text-[11px] font-bold text-background"
-              style={{ backgroundImage: u.avatarColor }}
-            >
-              {u.initials}
-            </span>
+            />
           );
         })}
         <span className="pl-4 text-xs text-muted-foreground">Lidera {leader?.name}</span>

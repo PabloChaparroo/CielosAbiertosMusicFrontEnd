@@ -13,6 +13,8 @@ export interface User {
   instruments: string[];
   avatarColor: string;
   initials: string;
+  /** Key del objeto en S3/MinIO de la foto de perfil real, mismo criterio que Song.audioKey. null si el usuario no subió ninguna (se muestra avatarColor/initials). */
+  avatarKey: string | null;
   email: string;
   fechaHoraAlta: string;
   /** null si está activo; con fecha si está dado de baja. Solo viene poblado cuando se pidió incluirBajas. */

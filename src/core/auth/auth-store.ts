@@ -12,6 +12,7 @@ export interface AuthenticatedUser {
   instruments: string[];
   avatarColor: string;
   initials: string;
+  avatarKey: string | null;
   permissions: string[];
 }
 
@@ -126,6 +127,13 @@ export const authStore = {
       setSnapshot({ status: "anonymous", user: null });
     }
     return snapshot;
+  },
+
+  /** Re-pega a /auth/me y actualiza el snapshot — a diferencia de ensureRestored(), lo hace siempre, no solo la primera vez. Se usa después de guardar el perfil propio para que Sidebar/etc. reflejen el cambio sin relogear. */
+  async refresh(): Promise<void> {
+    if (snapshot.status !== "authenticated") return;
+    const user = await fetchMe();
+    setSnapshot({ status: "authenticated", user });
   },
 
   async login(email: string, password: string): Promise<void> {

@@ -16,7 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useApp } from "@/hooks/useApp";
 import { useAuth } from "@/core/auth/useAuth";
-import { RoleBadge } from "@/components/common/ui-bits";
+import { Avatar, RoleBadge } from "@/components/common/ui-bits";
 
 const groups = [
   {
@@ -43,7 +43,13 @@ const groups = [
   },
 ] as const;
 
-export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+export function SidebarContent({
+  onNavigate,
+  onOpenPerfil,
+}: {
+  onNavigate?: () => void;
+  onOpenPerfil: () => void;
+}) {
   const { currentUser } = useApp();
   const { logout } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -97,19 +103,20 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="border-t border-sidebar-border p-4">
-        <div className="flex items-center gap-3">
-          <div
-            className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-background"
-            style={{ backgroundImage: currentUser.avatarColor }}
-          >
-            {currentUser.initials}
-          </div>
+        <button
+          onClick={onOpenPerfil}
+          className="flex w-full items-center gap-3 rounded-xl p-1.5 text-left transition-colors hover:bg-sidebar-accent/60"
+        >
+          <Avatar
+            user={currentUser}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-background"
+          />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">{currentUser.name}</p>
             <p className="truncate text-xs text-muted-foreground">{currentUser.ministryRole}</p>
           </div>
           <RoleBadge roles={currentUser.roles} />
-        </div>
+        </button>
         <button
           onClick={() => void logout()}
           className="mt-3 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
@@ -121,7 +128,15 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function MobileSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function MobileSidebar({
+  open,
+  onClose,
+  onOpenPerfil,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onOpenPerfil: () => void;
+}) {
   return (
     <div
       className={cn(
@@ -149,7 +164,13 @@ export function MobileSidebar({ open, onClose }: { open: boolean; onClose: () =>
         >
           <X className="h-4 w-4" />
         </button>
-        <SidebarContent onNavigate={onClose} />
+        <SidebarContent
+          onNavigate={onClose}
+          onOpenPerfil={() => {
+            onClose();
+            onOpenPerfil();
+          }}
+        />
       </div>
     </div>
   );

@@ -14,6 +14,7 @@ export function useAuth() {
     can: (action: AppAction) => authStore.can(action),
     hasAnyPermission: (permissions: string[]) => authStore.hasAnyPermission(permissions),
     login: authStore.login,
+    refresh: authStore.refresh,
     logout: authStore.logout,
   };
 }

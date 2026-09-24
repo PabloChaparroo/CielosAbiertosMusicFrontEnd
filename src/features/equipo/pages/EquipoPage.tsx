@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { ArrowLeft, Mail, Pencil, Plus, Users } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { EmptyState, RoleBadge, Skeletons } from "@/components/common/ui-bits";
+import { Avatar, EmptyState, RoleBadge, Skeletons } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import { AddMemberModal } from "../components/AddMemberModal";
 import { EditMemberModal } from "../components/EditMemberModal";
@@ -68,12 +68,10 @@ export function EquipoPage() {
 
         <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
           <div className="surface-card p-6 text-center">
-            <div
+            <Avatar
+              user={member}
               className="mx-auto flex h-24 w-24 items-center justify-center rounded-full text-2xl font-bold text-background"
-              style={{ backgroundImage: member.avatarColor }}
-            >
-              {member.initials}
-            </div>
+            />
             <h3 className="mt-4 font-display text-xl font-semibold">{member.name}</h3>
             <p className="text-sm text-muted-foreground">{member.ministryRole}</p>
             <div className="mt-3 flex justify-center">
@@ -205,12 +203,10 @@ export function EquipoPage() {
                 u.fechaHoraBaja ? "opacity-50" : ""
               }`}
             >
-              <div
+              <Avatar
+                user={u}
                 className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-lg font-bold text-background"
-                style={{ backgroundImage: u.avatarColor }}
-              >
-                {u.initials}
-              </div>
+              />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold">{u.name}</p>
                 <p className="truncate text-sm text-muted-foreground">{u.ministryRole}</p>

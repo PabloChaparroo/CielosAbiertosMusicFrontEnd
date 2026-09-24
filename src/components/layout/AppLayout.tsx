@@ -3,6 +3,7 @@ import { Menu } from "lucide-react";
 import { MobileSidebar, SidebarContent } from "./Sidebar";
 import { MiniPlayer } from "./MiniPlayer";
 import { useApp } from "@/hooks/useApp";
+import { MiPerfilModal } from "@/features/perfil/components/MiPerfilModal";
 
 export function AppLayout({
   title,
@@ -18,14 +19,19 @@ export function AppLayout({
   bleed?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [showPerfil, setShowPerfil] = useState(false);
   const { current } = useApp();
 
   return (
     <div className="min-h-screen bg-background">
       <aside className="fixed top-0 left-0 hidden h-screen w-[272px] border-r border-sidebar-border lg:block">
-        <SidebarContent />
+        <SidebarContent onOpenPerfil={() => setShowPerfil(true)} />
       </aside>
-      <MobileSidebar open={open} onClose={() => setOpen(false)} />
+      <MobileSidebar
+        open={open}
+        onClose={() => setOpen(false)}
+        onOpenPerfil={() => setShowPerfil(true)}
+      />
 
       <main className="lg:pl-[272px]">
         <header className="sticky top-0 z-30 border-b border-border/70 bg-background/80 backdrop-blur-xl">
@@ -55,6 +61,8 @@ export function AppLayout({
       </main>
 
       <MiniPlayer />
+
+      {showPerfil ? <MiPerfilModal onClose={() => setShowPerfil(false)} /> : null}
     </div>
   );
 }

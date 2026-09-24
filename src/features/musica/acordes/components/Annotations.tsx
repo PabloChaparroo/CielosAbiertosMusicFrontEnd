@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Guitar, Lock, MessageSquarePlus, Pencil, Trash2 } from "lucide-react";
-import { EmptyState } from "@/components/common/ui-bits";
+import { Avatar, EmptyState } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import { useAuth } from "@/core/auth/useAuth";
 
@@ -47,12 +47,14 @@ export function Annotations({ songId }: { songId: string }) {
             return (
               <li key={a.id} className="rounded-xl bg-elevated/60 p-4">
                 <div className="mb-2 flex items-center gap-2">
-                  <span
-                    className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold text-background"
-                    style={{ backgroundImage: author?.avatarColor }}
-                  >
-                    {author?.initials}
-                  </span>
+                  {author ? (
+                    <Avatar
+                      user={author}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-background"
+                    />
+                  ) : (
+                    <span className="h-7 w-7 shrink-0 rounded-full bg-secondary" />
+                  )}
                   <span className="text-sm font-medium">{author?.name}</span>
                   <span className="text-xs text-muted-foreground">
                     {new Date(a.createdAt).toLocaleDateString("es-AR")}

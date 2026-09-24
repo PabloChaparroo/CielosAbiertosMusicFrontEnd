@@ -139,6 +139,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           instruments: authUser.instruments,
           avatarColor: authUser.avatarColor,
           initials: authUser.initials,
+          avatarKey: authUser.avatarKey,
           email: authUser.email,
           fechaHoraAlta: "",
           fechaHoraBaja: null,

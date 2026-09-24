@@ -1,0 +1,42 @@
+# Verificación, no deploy: Vercel ya despliega solo en cada push a main.
+# Este workflow frena un cambio roto (tipos, lint o build) visible en el PR antes de mergear.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# un push nuevo a la misma rama/PR cancela la corrida anterior, que ya quedó vieja
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    name: tsc + lint + build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Tipos (tsc --noEmit)
+        run: npx tsc --noEmit
+
+      - name: Lint (eslint)
+        run: npm run lint
+
+      - name: Build (vite build)
+        run: npm run build

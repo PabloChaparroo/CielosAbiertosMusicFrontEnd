@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { X } from "lucide-react";
+import { useApp } from "@/hooks/useApp";
 import { EquipoService } from "../services/equipo.service";
 import { avatarColorFor, generatePassword, initialsFor } from "../lib/generate-password";
 import type { User } from "@/types";
@@ -14,9 +15,24 @@ export function AddMemberModal({
   onClose: () => void;
   onCreated: (user: User, password: string) => void;
 }) {
+  const { users } = useApp();
+  // Desplegable con los roles de ministerio que ya existen en el equipo —
+  // no un catálogo fijo, se arma de lo que ya está cargado. Solo de
+  // integrantes activos (mismo criterio que el filtro de instrumentos de
+  // EquipoPage) para no arrastrar valores de cuentas dadas de baja.
+  const ministryRoleOptions = useMemo(
+    () =>
+      [...new Set(users.filter((u) => !u.fechaHoraBaja).map((u) => u.ministryRole))].sort((a, b) =>
+        a.localeCompare(b),
+      ),
+    [users],
+  );
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [ministryRole, setMinistryRole] = useState("Vocalista");
+  const [ministryRole, setMinistryRole] = useState(
+    ministryRoleOptions.includes("Vocalista") ? "Vocalista" : (ministryRoleOptions[0] ?? ""),
+  );
   const [instrument, setInstrument] = useState("Voz");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,12 +87,17 @@ export function AddMemberModal({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <input
+          <select
             className={inputCls}
-            placeholder="Rol en el ministerio"
             value={ministryRole}
             onChange={(e) => setMinistryRole(e.target.value)}
-          />
+          >
+            {ministryRoleOptions.map((role) => (
+              <option key={role} value={role}>
+                {role}
+              </option>
+            ))}
+          </select>
           <input
             className={inputCls}
             placeholder="Instrumento"

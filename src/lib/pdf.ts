@@ -1,5 +1,5 @@
 import { jsPDF } from "jspdf";
-import { lyricsLines, parseChordPro, type ParsedLine } from "./chords";
+import { displayLyricsLines, parseChordPro, type ParsedLine } from "./chords";
 import type { Setlist, Song } from "@/types";
 
 const CHURCH = "Cielos Abiertos";
@@ -38,7 +38,7 @@ export function exportLyricsPdf(song: Song) {
     `${song.artist} · Tonalidad ${song.key} · Compás ${song.compas} · ${song.tags.join(", ")}`,
   );
   let y = 60;
-  lyricsLines(song.chordpro).forEach((line) => {
+  displayLyricsLines(song.chordpro).forEach((line) => {
     y = ensure(doc, y);
     if (line.kind === "section") {
       doc.setFont("helvetica", "bold");

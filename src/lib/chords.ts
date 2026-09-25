@@ -141,6 +141,39 @@ function isSectionLine(bare: string): boolean {
   return !!match && match[1]!.trim() !== "%" && isSectionLabel(match[1]!);
 }
 
+/**
+ * Letra para mostrar en Letras (pantalla y PDF): solo la letra y los títulos de sección, sin
+ * nada que sea para músicos — acordes, notas "(…)", ":]", los "-" que unen acordes y las
+ * marcas ("%", "x3", "Sube Tono"). Una línea que solo tenía eso no se muestra.
+ */
+export function displayLyricsLines(
+  body: string,
+): Array<{ kind: "section" | "text"; value: string }> {
+  return body.split("\n").flatMap<{ kind: "section" | "text"; value: string }>((raw) => {
+    const line = raw.replace(/\r/g, "");
+    const bare = extractNotes(line).text.trim();
+    const braceSection = bare.match(/^\{(.+)\}$/);
+    if (braceSection) return [{ kind: "section" as const, value: braceSection[1]!.toUpperCase() }];
+    const bracketSection = bare.match(/^\[([^\]]+)\]$/);
+    if (
+      bracketSection &&
+      bracketSection[1]!.trim() !== "%" &&
+      !isChartMarker(bracketSection[1]!) &&
+      isSectionLabel(bracketSection[1]!)
+    ) {
+      return [{ kind: "section" as const, value: bracketSection[1]!.toUpperCase() }];
+    }
+    const text = bare
+      .replace(/\[[^\]]+\]/g, "")
+      .replace(/:\]/g, "")
+      .replace(/(^|\s)-(?=\s|$)/g, "$1")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+    if (!text && line.trim()) return [];
+    return [{ kind: "text" as const, value: text }];
+  });
+}
+
 export function lyricsLines(body: string): Array<{ kind: "section" | "text"; value: string }> {
   return body.split("\n").map((raw) => {
     const line = raw.replace(/\r/g, "");

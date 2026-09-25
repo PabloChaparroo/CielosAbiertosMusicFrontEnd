@@ -16,7 +16,7 @@ import {
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, FavButton } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
-import { lyricsLines, plainLyrics } from "@/lib/chords";
+import { displayLyricsLines, plainLyrics } from "@/lib/chords";
 import { exportLyricsPdf } from "@/lib/pdf";
 import { StorageClient } from "@/lib/storage-client";
 import { validateImageFile } from "@/features/canciones/lib/image-validation";
@@ -281,7 +281,7 @@ function SongLyricsDetail({
 
   const renderLyrics = (className: string) => (
     <div className={className}>
-      {lyricsLines(song.chordpro).map((line, index) =>
+      {displayLyricsLines(song.chordpro).map((line, index) =>
         line.kind === "section" ? (
           <div key={index} className="mt-6 mb-3 text-xl font-semibold tracking-widest text-primary">
             {line.value}

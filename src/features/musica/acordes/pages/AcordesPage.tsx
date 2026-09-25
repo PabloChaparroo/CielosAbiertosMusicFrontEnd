@@ -363,10 +363,36 @@ export function AcordesPage() {
                 <Pencil className="h-4 w-4" /> Editar
               </button>
             ) : null}
+            {/* Guardar/Cancelar arriba, a mano sin importar lo larga que sea la canción */}
+            {editing ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handleCancelEditing}
+                  disabled={saving}
+                  className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                >
+                  <X className="h-4 w-4" /> Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleSaveChords()}
+                  disabled={saving}
+                  className="flex items-center gap-2 rounded-full border border-primary/50 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+                >
+                  <Check className="h-4 w-4" /> {saving ? "Guardando…" : "Guardar"}
+                </button>
+              </>
+            ) : null}
           </div>
 
           {editing ? (
             <div className="space-y-3">
+              {saveError ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {saveError}
+                </p>
+              ) : null}
               <div className="surface-card flex flex-wrap items-center gap-2 p-3">
                 <span className="mr-1 text-xs font-semibold text-muted-foreground">Secciones:</span>
                 {sectionShortcuts.map((section) => (
@@ -448,29 +474,6 @@ export function AcordesPage() {
                   <ChordSheet lines={draftLines} fontSize={fontSize} mode={mode} />
                 </div>
               </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={handleCancelEditing}
-                  disabled={saving}
-                  className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
-                >
-                  <X className="h-4 w-4" /> Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleSaveChords()}
-                  disabled={saving}
-                  className="flex items-center gap-2 rounded-full border border-primary/50 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
-                >
-                  <Check className="h-4 w-4" /> {saving ? "Guardando…" : "Guardar"}
-                </button>
-              </div>
-              {saveError ? (
-                <p role="alert" className="text-sm text-destructive">
-                  {saveError}
-                </p>
-              ) : null}
             </div>
           ) : (
             <div className="surface-card overflow-x-auto p-5 sm:p-8">

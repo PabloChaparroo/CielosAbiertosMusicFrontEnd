@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearch } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
-  Check,
   FileDown,
   ImageIcon,
   Maximize2,
@@ -16,12 +15,11 @@ import {
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, FavButton } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
-import { displayLyricsLines, plainLyrics } from "@/lib/chords";
+import { displayLyricsLines } from "@/lib/chords";
 import { exportLyricsPdf } from "@/lib/pdf";
 import { StorageClient } from "@/lib/storage-client";
 import { validateImageFile } from "@/features/canciones/lib/image-validation";
 import { SongsService } from "@/features/canciones/services/songs.service";
-import { ChordProEditor } from "../../components/ChordProEditor";
 import type { Song } from "@/types";
 
 export function LetrasPage() {
@@ -29,7 +27,6 @@ export function LetrasPage() {
   const { songId: requestedSongId, songIds } = useSearch({ from: "/letras" });
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
   const scopedSongIds = useMemo(() => (songIds ? new Set(songIds.split(",")) : null), [songIds]);
   const availableSongs = useMemo(
     () => (scopedSongIds ? songs.filter((item) => scopedSongIds.has(item.id)) : songs),
@@ -39,7 +36,6 @@ export function LetrasPage() {
   useEffect(() => {
     if (!requestedSongId || !availableSongs.some((song) => song.id === requestedSongId)) return;
     setSelected(requestedSongId);
-    setDraft("");
   }, [requestedSongId, availableSongs]);
 
   const filtered = useMemo(
@@ -76,7 +72,6 @@ export function LetrasPage() {
                   key={item.id}
                   onClick={() => {
                     setSelected(item.id);
-                    setDraft("");
                     play(item);
                   }}
                   className={`flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left transition-colors ${
@@ -88,7 +83,6 @@ export function LetrasPage() {
                     onClick={(event) => {
                       event.stopPropagation();
                       setSelected(item.id);
-                      setDraft("");
                     }}
                     className="flex min-w-0 flex-1 items-center gap-3 text-left"
                   >
@@ -129,13 +123,7 @@ export function LetrasPage() {
 
         <div className="order-1 min-w-0 lg:order-2">
           {song ? (
-            <SongLyricsDetail
-              song={song}
-              draft={draft}
-              setDraft={setDraft}
-              canEdit={can("editSongs")}
-              onSave={updateSong}
-            />
+            <SongLyricsDetail song={song} canEdit={can("editSongs")} onSave={updateSong} />
           ) : (
             <div className="surface-card flex min-h-[420px] flex-col items-center justify-center gap-3 p-10 text-center">
               <TypeIcon className="h-8 w-8 text-primary" />
@@ -177,14 +165,10 @@ function ModeBtn({
 
 function SongLyricsDetail({
   song,
-  draft,
-  setDraft,
   canEdit,
   onSave,
 }: {
   song: Song;
-  draft: string;
-  setDraft: (v: string) => void;
   canEdit: boolean;
   onSave: (s: Song) => void;
 }) {
@@ -200,18 +184,15 @@ function SongLyricsDetail({
   const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [editing, setEditing] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
-  const lyricsInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    setEditing(false);
     setFullscreen(false);
-    setDraft("");
     setMode(song.lyricsImageKey ? "imagen" : "texto");
     setSaveError(null);
-  }, [song.id, song.lyricsImageKey, setDraft]);
+  }, [song.id, song.lyricsImageKey]);
 
   useEffect(() => {
     setResolvedUrl(null);
@@ -329,55 +310,6 @@ function SongLyricsDetail({
     );
   }
 
-  const handleStartEditing = () => {
-    setDraft(plainLyrics(song.chordpro));
-    setEditing(true);
-    setSaveError(null);
-  };
-
-  const handleCancelEditing = () => {
-    setEditing(false);
-    setDraft("");
-    setSaveError(null);
-  };
-
-  const handleSaveLyrics = async () => {
-    setSaving(true);
-    setSaveError(null);
-    try {
-      const updated = await SongsService.updateSong(song.id, { chordpro: draft });
-      onSave(updated);
-      setEditing(false);
-      setDraft("");
-    } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "No se pudo guardar la letra");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const insertSection = (label: string) => {
-    const input = lyricsInputRef.current;
-    const scrollTop = input?.scrollTop ?? 0;
-    const start = input?.selectionStart ?? draft.length;
-    const end = input?.selectionEnd ?? draft.length;
-    const before = draft.slice(0, start);
-    const after = draft.slice(end);
-    const prefix = before && !before.endsWith("\n") ? "\n" : "";
-    const suffix = after && !after.startsWith("\n") ? "\n" : "";
-    const inserted = `${prefix}[${label}]${suffix}`;
-    const nextDraft = `${before}${inserted}${after}`;
-    setDraft(nextDraft);
-
-    requestAnimationFrame(() => {
-      if (!input) return;
-      const cursor = before.length + inserted.length;
-      input.focus();
-      input.setSelectionRange(cursor, cursor);
-      input.scrollTop = scrollTop;
-    });
-  };
-
   return (
     <div className="space-y-5">
       <div className="surface-card flex flex-wrap items-center gap-3 p-4">
@@ -430,10 +362,13 @@ function SongLyricsDetail({
             <span className="hidden sm:inline">Pantalla completa</span>
           </button>
         </div>
-        {mode === "texto" && canEdit && !editing ? (
+        {/* La letra se edita en Acordes: editar acá solo la letra y guardarla como chordpro
+            borraba todos los acordes de la canción (ver docs/estado-actual.md del backend) */}
+        {mode === "texto" && canEdit ? (
           <button
             type="button"
-            onClick={handleStartEditing}
+            onClick={() => navigate({ to: "/acordes", search: { songId: song.id, editar: true } })}
+            title="Se edita en Acordes, con la vista previa en vivo"
             className="flex items-center gap-2 rounded-full border border-border px-4 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
           >
             <Pencil className="h-3.5 w-3.5" /> Editar
@@ -442,63 +377,9 @@ function SongLyricsDetail({
       </div>
 
       {mode === "texto" ? (
-        editing ? (
-          <>
-            <div className="surface-card flex flex-wrap items-center gap-2 p-3">
-              <span className="mr-1 text-xs font-semibold text-muted-foreground">
-                Agregar sección:
-              </span>
-              {[
-                "INTRO",
-                "ESTROFA 1",
-                "ESTROFA 2",
-                "CORO",
-                "PRE-CORO",
-                "PUENTE",
-                "INTERLUDIO",
-                "FINAL",
-                "SOLO",
-              ].map((label) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => insertSection(label)}
-                  className="rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <ChordProEditor
-              textareaRef={lyricsInputRef}
-              value={draft}
-              onChange={setDraft}
-              className="min-h-[420px] w-full rounded-2xl border border-border bg-card p-6 font-sans text-lg leading-relaxed whitespace-pre-wrap outline-none focus:border-primary/50"
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={handleCancelEditing}
-                disabled={saving}
-                className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
-              >
-                <X className="h-4 w-4" /> Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleSaveLyrics()}
-                disabled={saving}
-                className="flex items-center gap-2 rounded-full border border-primary/50 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
-              >
-                <Check className="h-4 w-4" /> {saving ? "Guardando…" : "Guardar"}
-              </button>
-            </div>
-          </>
-        ) : (
-          <article className="surface-card p-6 text-lg leading-relaxed sm:p-10">
-            {renderLyrics("")}
-          </article>
-        )
+        <article className="surface-card p-6 text-lg leading-relaxed sm:p-10">
+          {renderLyrics("")}
+        </article>
       ) : song.lyricsImageKey ? (
         <div className="surface-card overflow-auto p-3 sm:p-6">
           {imgLoadError ? (
@@ -582,12 +463,6 @@ function SongLyricsDetail({
             {uploading ? "Subiendo…" : saving ? "Guardando…" : "Guardar imagen"}
           </button>
         </div>
-      ) : null}
-
-      {mode === "texto" && saveError ? (
-        <p role="alert" className="text-sm text-destructive">
-          {saveError}
-        </p>
       ) : null}
     </div>
   );

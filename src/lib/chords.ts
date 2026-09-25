@@ -174,22 +174,6 @@ export function displayLyricsLines(
   });
 }
 
-export function lyricsLines(body: string): Array<{ kind: "section" | "text"; value: string }> {
-  return body.split("\n").map((raw) => {
-    const line = raw.replace(/\r/g, "");
-    const braceSection = line.trim().match(/^\{(.+)\}$/);
-    const bracketSection = line.trim().match(/^\[([^\]]+)\]$/);
-    const section =
-      braceSection?.[1] ??
-      (bracketSection && bracketSection[1]!.trim() !== "%" && isSectionLabel(bracketSection[1]!)
-        ? bracketSection[1]
-        : null);
-    return section
-      ? { kind: "section" as const, value: section.toUpperCase() }
-      : { kind: "text" as const, value: line.replace(/\[[^\]]+\]/g, "") };
-  });
-}
-
 export function parseChordPro(body: string, semitones: number, targetKey: string): ParsedLine[] {
   const sourceLines = body.split("\n").map((raw) => raw.replace(/\r/g, ""));
   const normalizedLines: string[] = [];
@@ -263,10 +247,4 @@ export function chordsOnly(lines: ParsedLine[]): ParsedLine[] {
         }
       : l,
   );
-}
-
-export function plainLyrics(body: string): string {
-  return lyricsLines(body)
-    .map((line) => (line.kind === "section" ? `[${line.value}]` : line.value))
-    .join("\n");
 }

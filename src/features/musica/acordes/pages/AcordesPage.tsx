@@ -24,7 +24,9 @@ import { ChordProEditor } from "../../components/ChordProEditor";
 
 export function AcordesPage() {
   const { songs, songsLoadState, current, isPlaying, play, toggle, can, updateSong } = useApp();
-  const { songId: requestedSongId, songIds } = useSearch({ from: "/acordes" });
+  const { songId: requestedSongId, songIds, editar } = useSearch({ from: "/acordes" });
+  // "Editar" desde Letras abre el editor acá una sola vez, cuando la canción pedida ya cargó
+  const autoEditDoneRef = useRef(false);
   const [songId, setSongId] = useState<string | null>(null);
   const [semitones, setSemitones] = useState(0);
   const [fontSize, setFontSize] = useState(25);
@@ -54,6 +56,16 @@ export function AcordesPage() {
     setDraft("");
     setSaveError(null);
   }, [songId]);
+
+  // va después del reset de arriba: en el mismo render, este setEditing(true) es el que queda
+  useEffect(() => {
+    if (!editar || autoEditDoneRef.current || !can("editSongs")) return;
+    const requestedSong = availableSongs.find((item) => item.id === requestedSongId);
+    if (!requestedSong || songId !== requestedSong.id) return;
+    autoEditDoneRef.current = true;
+    setDraft(requestedSong.chordpro);
+    setEditing(true);
+  }, [editar, requestedSongId, availableSongs, songId, can]);
 
   // Las canciones ahora se cargan del backend real; mientras se resuelve el
   // fetch, `songs` está vacío (antes el mock siempre tenía datos ya listos).

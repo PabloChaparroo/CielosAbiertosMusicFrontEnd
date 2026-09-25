@@ -19,11 +19,14 @@ export function EquipoPage() {
   const activeUsers = useMemo(() => users.filter((u) => !u.fechaHoraBaja), [users]);
   const visibleUsers = showBajas ? users : activeUsers;
 
-  const instruments = useMemo(
-    () => ["Todos", ...new Set(activeUsers.flatMap((u) => u.instruments))],
+  const ministryRoles = useMemo(
+    () => [
+      "Todos",
+      ...[...new Set(activeUsers.map((u) => u.ministryRole))].sort((a, b) => a.localeCompare(b)),
+    ],
     [activeUsers],
   );
-  const list = visibleUsers.filter((u) => filter === "Todos" || u.instruments.includes(filter));
+  const list = visibleUsers.filter((u) => filter === "Todos" || u.ministryRole === filter);
   const member = users.find((u) => u.id === selected);
   const editingUser = users.find((u) => u.id === editing);
 
@@ -91,13 +94,6 @@ export function EquipoPage() {
                 <Pencil className="h-3.5 w-3.5" /> Editar
               </button>
             ) : null}
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
-              {member.instruments.map((i) => (
-                <span key={i} className="rounded-full bg-secondary px-3 py-1 text-xs">
-                  {i}
-                </span>
-              ))}
-            </div>
           </div>
 
           <div className="surface-card p-6">
@@ -162,7 +158,7 @@ export function EquipoPage() {
       }
     >
       <div className="mb-6 flex flex-wrap items-center gap-2">
-        {instruments.map((i) => (
+        {ministryRoles.map((i) => (
           <button
             key={i}
             onClick={() => setFilter(i)}
@@ -191,7 +187,7 @@ export function EquipoPage() {
         <EmptyState
           icon={<Users className="h-6 w-6" />}
           title="Sin miembros"
-          description="No hay integrantes con ese instrumento."
+          description="No hay integrantes con ese rol."
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -210,9 +206,6 @@ export function EquipoPage() {
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold">{u.name}</p>
                 <p className="truncate text-sm text-muted-foreground">{u.ministryRole}</p>
-                <p className="mt-1 truncate text-xs text-muted-foreground">
-                  {u.instruments.join(" · ")}
-                </p>
                 {u.fechaHoraBaja ? (
                   <p className="mt-1 text-[11px] font-semibold text-destructive">Dado de baja</p>
                 ) : null}

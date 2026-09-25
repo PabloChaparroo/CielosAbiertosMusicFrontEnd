@@ -16,7 +16,6 @@ export function MiPerfilModal({ onClose }: { onClose: () => void }) {
 
   const [name, setName] = useState(currentUser.name);
   const [ministryRole, setMinistryRole] = useState(currentUser.ministryRole);
-  const [instrument, setInstrument] = useState(currentUser.instruments[0] ?? "");
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -84,7 +83,6 @@ export function MiPerfilModal({ onClose }: { onClose: () => void }) {
       await PerfilService.updateMyProfile({
         name: name.trim(),
         ministryRole,
-        instruments: instrument ? [instrument] : currentUser.instruments,
         ...(avatarKey ? { avatarKey } : {}),
       });
 
@@ -213,12 +211,6 @@ export function MiPerfilModal({ onClose }: { onClose: () => void }) {
             placeholder="Rol en el ministerio"
             value={ministryRole}
             onChange={(e) => setMinistryRole(e.target.value)}
-          />
-          <input
-            className={inputCls}
-            placeholder="Instrumento"
-            value={instrument}
-            onChange={(e) => setInstrument(e.target.value)}
           />
 
           {saveError ? (

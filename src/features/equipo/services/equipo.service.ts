@@ -6,7 +6,6 @@ export interface CreateMemberDto {
   password: string;
   name: string;
   ministryRole: string;
-  instruments: string[];
   avatarColor: string;
   initials: string;
 }

@@ -3,7 +3,6 @@ import { apiRequest } from "@/lib/api-client";
 export interface UpdateMyProfileInput {
   name?: string;
   ministryRole?: string;
-  instruments?: string[];
   avatarKey?: string;
 }
 

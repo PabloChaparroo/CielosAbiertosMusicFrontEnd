@@ -9,7 +9,6 @@ export interface AuthenticatedUser {
   name: string;
   roles: string[];
   ministryRole: string;
-  instruments: string[];
   avatarColor: string;
   initials: string;
   avatarKey: string | null;

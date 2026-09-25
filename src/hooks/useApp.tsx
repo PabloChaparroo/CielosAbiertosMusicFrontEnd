@@ -136,7 +136,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           name: authUser.name,
           roles: authUser.roles.map((name) => ({ id: name, name })),
           ministryRole: authUser.ministryRole,
-          instruments: authUser.instruments,
           avatarColor: authUser.avatarColor,
           initials: authUser.initials,
           avatarKey: authUser.avatarKey,

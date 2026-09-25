@@ -18,7 +18,7 @@ export function AddMemberModal({
   const { users } = useApp();
   // Desplegable con los roles de ministerio que ya existen en el equipo —
   // no un catálogo fijo, se arma de lo que ya está cargado. Solo de
-  // integrantes activos (mismo criterio que el filtro de instrumentos de
+  // integrantes activos (mismo criterio que el filtro por rol de
   // EquipoPage) para no arrastrar valores de cuentas dadas de baja.
   const ministryRoleOptions = useMemo(
     () =>
@@ -33,7 +33,6 @@ export function AddMemberModal({
   const [ministryRole, setMinistryRole] = useState(
     ministryRoleOptions.includes("Vocalista") ? "Vocalista" : (ministryRoleOptions[0] ?? ""),
   );
-  const [instrument, setInstrument] = useState("Voz");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,7 +48,6 @@ export function AddMemberModal({
         password,
         name: name.trim(),
         ministryRole,
-        instruments: [instrument],
         avatarColor: avatarColorFor(name.trim()),
         initials: initialsFor(name.trim()),
       });
@@ -98,12 +96,6 @@ export function AddMemberModal({
               </option>
             ))}
           </select>
-          <input
-            className={inputCls}
-            placeholder="Instrumento"
-            value={instrument}
-            onChange={(e) => setInstrument(e.target.value)}
-          />
           <p className="text-xs text-muted-foreground">
             La contraseña inicial se genera automáticamente y se muestra una única vez al crear el
             integrante. Los roles del sistema se asignan después, desde su perfil.

@@ -287,24 +287,28 @@ function SongLyricsDetail({
         >
           <X className="h-5 w-5" />
         </button>
-        <div className="mx-auto max-w-5xl pb-10">
-          <div className="mb-8 pr-12">
-            <p className="text-sm text-muted-foreground">{song.artist}</p>
-            <h2 className="font-display text-3xl font-semibold">{song.title}</h2>
+        {/* Bloque centrado en la pantalla (horizontal, y vertical si la letra es corta), con el
+            texto alineado a la izquierda adentro */}
+        <div className="flex min-h-full flex-col">
+          <div className="m-auto w-fit max-w-full pb-10">
+            <div className="mb-8 pr-12">
+              <p className="text-sm text-muted-foreground">{song.artist}</p>
+              <h2 className="font-display text-3xl font-semibold">{song.title}</h2>
+            </div>
+            {mode === "texto" ? (
+              renderLyrics("text-lg leading-relaxed sm:text-xl sm:leading-relaxed")
+            ) : resolvedUrl ? (
+              <img
+                src={resolvedUrl}
+                alt={`Letra de ${song.title}`}
+                className="mx-auto max-h-[calc(100vh-150px)] w-auto object-contain"
+              />
+            ) : (
+              <p className="py-14 text-center text-sm text-muted-foreground">
+                No hay una imagen disponible para esta letra.
+              </p>
+            )}
           </div>
-          {mode === "texto" ? (
-            renderLyrics("text-lg leading-relaxed sm:text-xl sm:leading-relaxed")
-          ) : resolvedUrl ? (
-            <img
-              src={resolvedUrl}
-              alt={`Letra de ${song.title}`}
-              className="mx-auto max-h-[calc(100vh-150px)] w-auto object-contain"
-            />
-          ) : (
-            <p className="py-14 text-center text-sm text-muted-foreground">
-              No hay una imagen disponible para esta letra.
-            </p>
-          )}
         </div>
       </div>
     );

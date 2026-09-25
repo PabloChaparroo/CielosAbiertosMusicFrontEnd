@@ -213,9 +213,14 @@ export function AcordesPage() {
             <Plus className="h-4 w-4" />
           </IconBtn>
         </div>
-        <h2 className="mb-8 font-display text-2xl text-white">{song.title}</h2>
-        <div ref={sheetBoxRef}>
-          <ChordSheet lines={lines} fontSize={fontSize} mode={mode} dark />
+        {/* Bloque centrado en la pantalla (horizontal, y vertical si la canción es corta), con el
+            texto alineado a la izquierda adentro. sheetBoxRef va en el contenedor de ancho completo:
+            el ajuste de tamaño necesita un ancho que no dependa del propio contenido. */}
+        <div ref={sheetBoxRef} className="flex min-h-full flex-col pb-16">
+          <div className="m-auto w-fit max-w-full">
+            <h2 className="mb-8 font-display text-2xl text-white">{song.title}</h2>
+            <ChordSheet lines={lines} fontSize={fontSize} mode={mode} dark />
+          </div>
         </div>
       </div>
     );

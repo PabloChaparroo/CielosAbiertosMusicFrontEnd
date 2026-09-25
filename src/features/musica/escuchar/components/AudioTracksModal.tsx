@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Pause, Play, Plus, Trash2, Upload, X } from "lucide-react";
+import { Check, Pause, Play, Plus, Star, Trash2, Upload, X } from "lucide-react";
 import { StorageClient } from "@/lib/storage-client";
 import { validateAudioFile } from "@/features/canciones/lib/audio-validation";
+import { SongsService } from "@/features/canciones/services/songs.service";
 import {
   AudioTracksService,
   type CreateAudioTrackInput,
@@ -16,7 +17,7 @@ const inputCls =
 type LoadState = "loading" | "ready" | "error";
 
 export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () => void }) {
-  const { can, isPlaying: mainIsPlaying, toggle: toggleMain } = useApp();
+  const { can, isPlaying: mainIsPlaying, toggle: toggleMain, updateSong } = useApp();
 
   const [tracks, setTracks] = useState<AudioTrack[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
@@ -92,7 +93,11 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
       );
       setUploadPct(null);
 
-      const dto: CreateAudioTrackInput = { label: label.trim(), audioKey: key, order: tracks.length };
+      const dto: CreateAudioTrackInput = {
+        label: label.trim(),
+        audioKey: key,
+        order: tracks.length,
+      };
       const created = await AudioTracksService.create(song.id, dto);
       setTracks((prev) => [...prev, created]);
       setLabel("");
@@ -116,6 +121,17 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
       setTracks((prev) => prev.filter((t) => t.id !== id));
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo borrar la pista");
+    }
+  };
+
+  const handleSetPrimary = async (track: AudioTrack) => {
+    if (song.audioKey === track.audioKey) return;
+    setError(null);
+    try {
+      const updated = await SongsService.updateSong(song.id, { audioKey: track.audioKey });
+      updateSong(updated);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo definir el audio principal");
     }
   };
 
@@ -187,7 +203,9 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
                 <button
                   onClick={() => void handlePlay(track)}
                   disabled={resolvingId === track.id}
-                  aria-label={playingId === track.id ? `Pausar ${track.label}` : `Reproducir ${track.label}`}
+                  aria-label={
+                    playingId === track.id ? `Pausar ${track.label}` : `Reproducir ${track.label}`
+                  }
                   className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-elevated hover:text-primary disabled:opacity-50"
                 >
                   {playingId === track.id ? (
@@ -197,6 +215,31 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
                   )}
                 </button>
                 <span className="flex-1 truncate text-sm font-medium">{track.label}</span>
+                {canEdit ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleSetPrimary(track)}
+                    aria-label={
+                      song.audioKey === track.audioKey
+                        ? `${track.label} es el audio principal`
+                        : `Usar ${track.label} como audio principal`
+                    }
+                    title={
+                      song.audioKey === track.audioKey ? "Audio principal" : "Usar como principal"
+                    }
+                    className={`rounded-full p-2 transition-colors ${
+                      song.audioKey === track.audioKey
+                        ? "text-primary"
+                        : "text-muted-foreground hover:text-primary"
+                    }`}
+                  >
+                    {song.audioKey === track.audioKey ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Star className="h-4 w-4" />
+                    )}
+                  </button>
+                ) : null}
                 {canDelete ? (
                   <button
                     onClick={() => void handleRemove(track.id)}

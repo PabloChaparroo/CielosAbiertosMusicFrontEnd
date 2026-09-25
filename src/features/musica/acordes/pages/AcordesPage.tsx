@@ -20,6 +20,7 @@ import { exportChordsPdf } from "@/lib/pdf";
 import { SongsService } from "@/features/canciones/services/songs.service";
 import { Annotations } from "../components/Annotations";
 import { ChordSheet } from "../components/ChordSheet";
+import { ChordProEditor } from "../../components/ChordProEditor";
 
 export function AcordesPage() {
   const { songs, songsLoadState, current, isPlaying, play, toggle, can, updateSong } = useApp();
@@ -63,6 +64,10 @@ export function AcordesPage() {
   const song = availableSongs.find((s) => s.id === songId) ?? availableSongs[0];
   const targetKey = song ? transposeKey(song.key, semitones) : "C";
 
+  useEffect(() => {
+    setSemitones(0);
+  }, [song?.id, song?.key]);
+
   const lines = useMemo(() => {
     if (!song) return [];
     const parsed = parseChordPro(song.chordpro, semitones, targetKey);
@@ -88,6 +93,7 @@ export function AcordesPage() {
 
   const insertAtCursor = (value: string, lineBreaks: boolean) => {
     const input = chordInputRef.current;
+    const scrollTop = input?.scrollTop ?? 0;
     const start = input?.selectionStart ?? draft.length;
     const end = input?.selectionEnd ?? draft.length;
     const before = draft.slice(0, start);
@@ -103,6 +109,7 @@ export function AcordesPage() {
       const cursor = before.length + inserted.length;
       input.focus();
       input.setSelectionRange(cursor, cursor);
+      input.scrollTop = scrollTop;
     });
   };
 
@@ -214,13 +221,20 @@ export function AcordesPage() {
               filtered.map((s) => (
                 <div
                   key={s.id}
+                  onClick={() => {
+                    setSongId(s.id);
+                    play(s);
+                  }}
                   className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors ${
                     s.id === song.id ? "bg-primary/15 text-primary" : "hover:bg-elevated/70"
                   }`}
                 >
                   <button
                     type="button"
-                    onClick={() => setSongId(s.id)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setSongId(s.id);
+                    }}
                     className="flex min-w-0 flex-1 items-center gap-3 text-left"
                     aria-label={`Ver acordes de ${s.title}`}
                   >
@@ -236,7 +250,8 @@ export function AcordesPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={(event) => {
+                      event.stopPropagation();
                       if (current?.id === s.id && isPlaying) toggle();
                       else play(s);
                     }}
@@ -373,16 +388,30 @@ export function AcordesPage() {
                 ))}
                 <button
                   type="button"
+                  onClick={() => insertAtCursor(" - ", false)}
+                  className="rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-white/60 hover:bg-white/10"
+                >
+                  -
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertAtCursor(":]", false)}
+                  className="rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-white/60 hover:bg-white/10"
+                >
+                  :]
+                </button>
+                <button
+                  type="button"
                   onClick={() => insertAtCursor("    ", false)}
                   className="rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-white/60 hover:bg-white/10"
                 >
                   Tab
                 </button>
               </div>
-              <textarea
-                ref={chordInputRef}
+              <ChordProEditor
+                textareaRef={chordInputRef}
                 value={draft}
-                onChange={(e) => setDraft(e.target.value)}
+                onChange={setDraft}
                 className="min-h-[420px] w-full rounded-2xl border border-border bg-card p-6 font-mono text-lg leading-relaxed whitespace-pre-wrap outline-none focus:border-primary/50"
               />
               <div className="flex justify-end gap-2">

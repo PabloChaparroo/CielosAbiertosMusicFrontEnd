@@ -5,7 +5,9 @@ import {
   FileDown,
   ImageIcon,
   Maximize2,
+  Pause,
   Pencil,
+  Play,
   Search,
   Type as TypeIcon,
   Upload,
@@ -19,10 +21,11 @@ import { exportLyricsPdf } from "@/lib/pdf";
 import { StorageClient } from "@/lib/storage-client";
 import { validateImageFile } from "@/features/canciones/lib/image-validation";
 import { SongsService } from "@/features/canciones/services/songs.service";
+import { ChordProEditor } from "../../components/ChordProEditor";
 import type { Song } from "@/types";
 
 export function LetrasPage() {
-  const { songs, can, updateSong } = useApp();
+  const { songs, can, updateSong, current, isPlaying, play, toggle } = useApp();
   const { songId: requestedSongId, songIds } = useSearch({ from: "/letras" });
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
@@ -69,23 +72,56 @@ export function LetrasPage() {
               <p className="p-4 text-center text-sm text-muted-foreground">Sin resultados</p>
             ) : (
               filtered.map((item) => (
-                <button
+                <div
                   key={item.id}
-                  type="button"
                   onClick={() => {
                     setSelected(item.id);
                     setDraft("");
+                    play(item);
                   }}
-                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors ${
+                  className={`flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left transition-colors ${
                     item.id === song?.id ? "bg-primary/15 text-primary" : "hover:bg-elevated/70"
                   }`}
                 >
-                  <Cover song={item} size="sm" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{item.title}</p>
-                    <p className="truncate text-xs text-muted-foreground">{item.artist}</p>
-                  </div>
-                </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setSelected(item.id);
+                      setDraft("");
+                    }}
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                  >
+                    <Cover song={item} size="sm" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">{item.title}</span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {item.artist}
+                      </span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (current?.id === item.id && isPlaying) toggle();
+                      else play(item);
+                    }}
+                    aria-label={
+                      current?.id === item.id && isPlaying
+                        ? `Pausar ${item.title}`
+                        : `Reproducir ${item.title}`
+                    }
+                    title={current?.id === item.id && isPlaying ? "Pausar" : "Reproducir"}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-primary"
+                  >
+                    {current?.id === item.id && isPlaying ? (
+                      <Pause className="h-3.5 w-3.5" />
+                    ) : (
+                      <Play className="ml-0.5 h-3.5 w-3.5" />
+                    )}
+                  </button>
+                </div>
               ))
             )}
           </div>
@@ -322,6 +358,7 @@ function SongLyricsDetail({
 
   const insertSection = (label: string) => {
     const input = lyricsInputRef.current;
+    const scrollTop = input?.scrollTop ?? 0;
     const start = input?.selectionStart ?? draft.length;
     const end = input?.selectionEnd ?? draft.length;
     const before = draft.slice(0, start);
@@ -337,6 +374,7 @@ function SongLyricsDetail({
       const cursor = before.length + inserted.length;
       input.focus();
       input.setSelectionRange(cursor, cursor);
+      input.scrollTop = scrollTop;
     });
   };
 
@@ -431,10 +469,10 @@ function SongLyricsDetail({
                 </button>
               ))}
             </div>
-            <textarea
-              ref={lyricsInputRef}
+            <ChordProEditor
+              textareaRef={lyricsInputRef}
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={setDraft}
               className="min-h-[420px] w-full rounded-2xl border border-border bg-card p-6 font-sans text-lg leading-relaxed whitespace-pre-wrap outline-none focus:border-primary/50"
             />
             <div className="flex justify-end gap-2">

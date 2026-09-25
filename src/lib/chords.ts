@@ -100,7 +100,9 @@ export function lyricsLines(body: string): Array<{ kind: "section" | "text"; val
     const bracketSection = line.trim().match(/^\[([^\]]+)\]$/);
     const section =
       braceSection?.[1] ??
-      (bracketSection && isSectionLabel(bracketSection[1]!) ? bracketSection[1] : null);
+      (bracketSection && bracketSection[1]!.trim() !== "%" && isSectionLabel(bracketSection[1]!)
+        ? bracketSection[1]
+        : null);
     return section
       ? { kind: "section" as const, value: section.toUpperCase() }
       : { kind: "text" as const, value: line.replace(/\[[^\]]+\]/g, "") };
@@ -132,7 +134,7 @@ export function parseChordPro(body: string, semitones: number, targetKey: string
     const section = line.trim().match(/^\{(.+)\}$/);
     if (section) return { kind: "section" as const, label: section[1]!.toUpperCase() };
     const bracketSection = line.trim().match(/^\[([^\]]+)\]$/);
-    if (bracketSection && isSectionLabel(bracketSection[1]!)) {
+    if (bracketSection && bracketSection[1]!.trim() !== "%" && isSectionLabel(bracketSection[1]!)) {
       return { kind: "section" as const, label: bracketSection[1]!.toUpperCase() };
     }
 
@@ -157,7 +159,15 @@ export function parseChordPro(body: string, semitones: number, targetKey: string
 
 export function chordsOnly(lines: ParsedLine[]): ParsedLine[] {
   return lines.map((l) =>
-    l.kind === "line" ? { ...l, pairs: l.pairs.map((p) => ({ chord: p.chord, text: "" })) } : l,
+    l.kind === "line"
+      ? {
+          ...l,
+          pairs: l.pairs.map((p) => ({
+            chord: p.chord,
+            text: p.text.includes(":]") ? ":]" : p.text.includes("-") ? "-" : "",
+          })),
+        }
+      : l,
   );
 }
 

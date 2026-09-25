@@ -15,7 +15,10 @@ export function InicioPage() {
   // ventana extra en la que sigue vacío aunque songsLoadState ya diga "ready".
   if (songsLoadState !== "ready" || setlists.length === 0) {
     return (
-      <AppLayout title="Inicio" subtitle={`Bienvenido/a de nuevo, ${currentUser.name.split(" ")[0]}`}>
+      <AppLayout
+        title="Inicio"
+        subtitle={`Bienvenido/a de nuevo, ${currentUser.name.split(" ")[0]}`}
+      >
         <Skeletons rows={5} />
       </AppLayout>
     );
@@ -144,19 +147,19 @@ export function InicioPage() {
               Ver estadísticas
             </Link>
           </div>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6">
             {top.map((song) => (
               <div
                 key={song.id}
-                className="surface-card group relative p-4 hover:-translate-y-1 hover:border-primary/40"
+                className="surface-card group relative p-2.5 hover:-translate-y-1 hover:border-primary/40"
               >
                 <div
-                  className="mb-3 aspect-square w-full rounded-xl"
+                  className="mb-2 aspect-square w-full rounded-lg"
                   style={{ backgroundImage: song.cover }}
                 />
-                <p className="truncate font-semibold">{song.title}</p>
-                <p className="truncate text-sm text-muted-foreground">{song.artist}</p>
-                <div className="mt-2 flex items-center justify-between">
+                <p className="truncate text-sm font-semibold">{song.title}</p>
+                <p className="truncate text-xs text-muted-foreground">{song.artist}</p>
+                <div className="mt-1.5 flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">
                     {formatDuration(song.duration)} · {song.key}
                   </span>

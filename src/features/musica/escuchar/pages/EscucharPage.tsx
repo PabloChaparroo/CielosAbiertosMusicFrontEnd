@@ -83,8 +83,8 @@ export function EscucharPage() {
           description="Probá con otro nombre o quitá el filtro de tema."
         />
       ) : (
-        <div className="surface-card overflow-hidden">
-          <div className="hidden grid-cols-[40px_1fr_180px_150px_90px] gap-4 border-b border-border/60 px-4 py-3 text-[11px] tracking-widest text-muted-foreground uppercase md:grid">
+        <div className="surface-card overflow-x-auto">
+          <div className="hidden min-w-[1050px] grid-cols-[40px_minmax(260px,1fr)_180px_180px_220px] gap-4 border-b border-border/60 px-4 py-3 text-[11px] tracking-widest text-muted-foreground uppercase md:grid">
             <span>#</span>
             <span>Título</span>
             <span>Temas</span>
@@ -94,8 +94,8 @@ export function EscucharPage() {
           {filtered.map((song, i) => (
             <div
               key={song.id}
-              onDoubleClick={() => play(song)}
-              className={`group grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-2.5 transition-colors hover:bg-elevated/70 md:grid-cols-[40px_1fr_180px_150px_90px] ${
+              onClick={() => play(song)}
+              className={`group grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-2.5 transition-colors hover:bg-elevated/70 md:min-w-[1050px] md:grid-cols-[40px_minmax(260px,1fr)_180px_180px_220px] ${
                 current?.id === song.id ? "bg-elevated/60" : ""
               }`}
             >
@@ -123,23 +123,29 @@ export function EscucharPage() {
                   <TagChip key={t} tag={t} />
                 ))}
               </div>
-              <span className="hidden text-sm text-muted-foreground md:block">
+              <span className="hidden whitespace-nowrap text-sm text-muted-foreground md:block">
                 {song.key} · {song.compas} · {song.bpm} BPM
               </span>
-              <div className="flex items-center justify-end gap-1">
+              <div className="flex items-center justify-end gap-1 whitespace-nowrap">
                 <FavButton songId={song.id} />
                 <span className="hidden w-12 text-right text-sm text-muted-foreground md:inline">
                   {formatDuration(song.duration)}
                 </span>
                 <button
-                  onClick={() => setManagingTracks(song)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setManagingTracks(song);
+                  }}
                   aria-label={`Pistas adicionales de ${song.title}`}
                   className="rounded-full p-2 text-muted-foreground hover:text-primary"
                 >
                   <Layers className="h-3.5 w-3.5" />
                 </button>
                 <button
-                  onClick={() => setManagingLinks(song)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setManagingLinks(song);
+                  }}
                   aria-label={`Links relacionados de ${song.title}`}
                   title="Links relacionados"
                   className="rounded-full p-2 text-muted-foreground hover:text-primary"
@@ -148,7 +154,10 @@ export function EscucharPage() {
                 </button>
                 {can("editSongs") ? (
                   <button
-                    onClick={() => setEditing(song)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setEditing(song);
+                    }}
                     aria-label={`Editar ${song.title}`}
                     className="rounded-full p-2 text-muted-foreground hover:text-primary"
                   >
@@ -156,7 +165,10 @@ export function EscucharPage() {
                   </button>
                 ) : null}
                 <button
-                  onClick={() => play(song)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    play(song);
+                  }}
                   aria-label={`Reproducir ${song.title}`}
                   className="rounded-full p-2 text-muted-foreground hover:text-primary md:hidden"
                 >

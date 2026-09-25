@@ -57,17 +57,32 @@ export function exportLyricsPdf(song: Song) {
   doc.save(`${song.title} - letra.pdf`);
 }
 
-/** Anotaciones "(…)" al costado de la línea; "->" porque las fuentes estándar de jsPDF no tienen "↱" */
-function drawNotes(doc: jsPDF, notes: string[], x: number, y: number, size: number) {
-  if (!notes.length) return;
+/**
+ * Anotación "(…)" en azul y más chica en (x, y); "->" porque las fuentes estándar de jsPDF no
+ * tienen "↱". Restaura fuente, tamaño y color que había.
+ */
+function drawNoteAt(doc: jsPDF, label: string, x: number, y: number, size: number) {
   const font = doc.getFont();
+  const color = doc.getTextColor();
   doc.setFont("courier", "normal");
   doc.setFontSize(size * 0.65);
   doc.setTextColor(70, 110, 200);
-  doc.text(notes.map((note) => `-> ${note}`).join("   "), x + 6, y);
+  doc.text(label, x, y);
   doc.setFont(font.fontName, font.fontStyle);
   doc.setFontSize(size);
-  doc.setTextColor(190, 130, 30);
+  doc.setTextColor(color);
+}
+
+/** Columnas (en caracteres de tamaño normal) que ocupa una nota dibujada al 65%, más un margen */
+const noteWidth = (label: string) => Math.ceil(label.length * 0.65) + 2;
+
+/** Anotaciones de una sección ("[CORO] (suave)"), a continuación del título */
+function drawNotes(doc: jsPDF, notes: string[], x: number, y: number, size: number) {
+  notes.forEach((note, index) => {
+    const label = `-> ${note}`;
+    const offset = notes.slice(0, index).reduce((w, n) => w + doc.getTextWidth(`-> ${n}   `), 0);
+    drawNoteAt(doc, label, x + 6 + offset * 0.65, y, size);
+  });
 }
 
 export function exportChordsPdf(
@@ -103,22 +118,51 @@ export function exportChordsPdf(
     doc.setFontSize(size);
     let chordLine = "";
     let lyricLine = "";
+    // Notas "(…)" en su posición: se reserva el lugar con espacios (courier es monoespaciada)
+    // y después se dibujan encima, en azul y más chicas. Van en la fila de la letra si se imprime
+    // y la línea tiene letra; si no, en la de acordes.
+    const lyricsPrinted =
+      opts.mode === "both" &&
+      line.pairs.some((p) => !p.note && p.text.replace(/:\]/g, "").replace(/-/g, "").trim());
+    const notes: Array<{ row: "chord" | "lyric"; col: number; label: string }> = [];
     line.pairs.forEach((p) => {
+      if (p.note) {
+        const label = `-> ${p.note}`;
+        if (lyricsPrinted) {
+          notes.push({ row: "lyric", col: lyricLine.length + 1, label });
+          lyricLine += " ".repeat(noteWidth(label));
+        } else {
+          chordLine = chordLine.padEnd(Math.max(chordLine.length, lyricLine.length), " ");
+          notes.push({ row: "chord", col: chordLine.length + 1, label });
+          chordLine += " ".repeat(noteWidth(label));
+          lyricLine = lyricLine.padEnd(chordLine.length, " ");
+        }
+        return;
+      }
       const text = p.text;
       const chord = p.chord;
       chordLine = chordLine.padEnd(lyricLine.length, " ") + chord;
       lyricLine = lyricLine + text;
-      if (chord.length > text.length) lyricLine = lyricLine.padEnd(chordLine.length, " ");
+      // +1: que dos acordes seguidos no queden pegados cuando la letra de abajo es más corta
+      if (chord && chord.length >= text.length)
+        lyricLine = lyricLine.padEnd(chordLine.length + 1, " ");
     });
+    const drawRowNotes = (row: "chord" | "lyric", rowText: string) =>
+      notes
+        .filter((n) => n.row === row)
+        .forEach((n) =>
+          drawNoteAt(doc, n.label, 14 + doc.getTextWidth(rowText.slice(0, n.col)), y, size),
+        );
     doc.setTextColor(190, 130, 30);
     doc.text(chordLine, 14, y);
-    drawNotes(doc, line.notes, 14 + doc.getTextWidth(chordLine), y, size);
+    drawRowNotes("chord", chordLine);
     y += size * 0.75;
     y = ensure(doc, y);
     if (opts.mode === "both") {
       doc.setFont("courier", "normal");
       doc.setTextColor(20, 20, 20);
       doc.text(lyricLine, 14, y);
+      drawRowNotes("lyric", lyricLine);
       y += size * 0.75;
     }
   });

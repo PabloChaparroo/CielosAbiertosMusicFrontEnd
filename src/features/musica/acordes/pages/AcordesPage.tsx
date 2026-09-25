@@ -408,6 +408,16 @@ export function AcordesPage() {
                 >
                   :]
                 </button>
+                {["%", "x3", "x4", "Sube Tono", "Baja Tono"].map((marker) => (
+                  <button
+                    key={marker}
+                    type="button"
+                    onClick={() => insertAtCursor(`[${marker}]`, false)}
+                    className="rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-white/60 hover:bg-white/10"
+                  >
+                    {marker}
+                  </button>
+                ))}
                 <button
                   type="button"
                   title="Anotación al costado de la línea, ej. (coro 2)"

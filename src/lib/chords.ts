@@ -85,12 +85,14 @@ export function diatonicChords(key: string): string[] {
 export interface ChordPair {
   chord: string;
   text: string;
+  /** Anotación "(…)" en esta posición de la línea, ej. "coro 2 | E |" — si está, chord y text van vacíos */
+  note?: string;
 }
-/** `notes`: anotaciones escritas entre paréntesis, ej. "(coro 2 | E |)" — se muestran al final de la línea */
+/** `notes` de una sección: anotaciones escritas al lado del título, ej. "[CORO] (suave)" */
 export type ParsedLine =
   | { kind: "section"; label: string; notes: string[] }
   | { kind: "blank" }
-  | { kind: "line"; pairs: ChordPair[]; notes: string[] };
+  | { kind: "line"; pairs: ChordPair[] };
 
 const NOTE_PATTERN = /\(([^()\n]+)\)/g;
 
@@ -99,6 +101,34 @@ function extractNotes(line: string): { text: string; notes: string[] } {
   const notes = [...line.matchAll(NOTE_PATTERN)].map((match) => match[1]!.trim()).filter(Boolean);
   const text = notes.length ? line.replace(NOTE_PATTERN, "").replace(/\s+$/, "") : line;
   return { text, notes };
+}
+
+/** Parte el texto de un acorde en tramos de texto y notas "(…)", respetando dónde se escribieron */
+function splitNotes(chord: string, text: string): ChordPair[] {
+  const out: ChordPair[] = [];
+  let last = 0;
+  for (const match of text.matchAll(NOTE_PATTERN)) {
+    const before = text.slice(last, match.index);
+    if (out.length === 0 ? chord || before : before) {
+      out.push({ chord: out.length === 0 ? chord : "", text: before });
+    }
+    const note = match[1]!.trim();
+    if (note) out.push({ chord: "", text: "", note });
+    last = match.index + match[0].length;
+  }
+  const rest = text.slice(last);
+  if (out.length === 0 || rest) out.push({ chord: out.length === 0 ? chord : "", text: rest });
+  return out;
+}
+
+/**
+ * Marcas de la hoja que van entre corchetes pero no son acordes: repeticiones ("x3", "x4")
+ * e indicaciones con espacios ("Sube Tono", "Baja Tono"). No se transponen — "Baja Tono"
+ * empieza con B — y en "Solo acordes" no abren un compás nuevo.
+ */
+export function isChartMarker(value: string): boolean {
+  const trimmed = value.trim();
+  return /^x\d+$/i.test(trimmed) || /\s/.test(trimmed);
 }
 
 export function isSectionLabel(value: string): boolean {
@@ -122,32 +152,32 @@ export function lyricsLines(body: string): Array<{ kind: "section" | "text"; val
 }
 
 export function parseChordPro(body: string, semitones: number, targetKey: string): ParsedLine[] {
-  const sourceLines = body.split("\n").map((raw) => extractNotes(raw.replace(/\r/g, "")));
-  const normalizedLines: Array<{ text: string; notes: string[] }> = [];
+  const sourceLines = body.split("\n").map((raw) => raw.replace(/\r/g, ""));
+  const normalizedLines: string[] = [];
 
   for (let index = 0; index < sourceLines.length; index += 1) {
     const current = sourceLines[index]!;
-    const chordOnly = current.text.trim() && /^(?:\[[^\]]+\]\s*)+$/.test(current.text.trim());
+    // las notas "(…)" no cuentan para decidir si es una línea de solo acordes
+    const currentBare = extractNotes(current).text.trim();
+    const chordOnly = currentBare && /^(?:\[[^\]]+\]\s*)+$/.test(currentBare);
     const next = sourceLines[index + 1];
-    const nextText = next?.text.trim() ?? "";
+    const nextText = next === undefined ? "" : extractNotes(next).text.trim();
     const nextIsLyrics = nextText && !nextText.startsWith("[") && !nextText.startsWith("{");
 
-    if (chordOnly && next && nextIsLyrics) {
-      normalizedLines.push({
-        text: `${current.text}${next.text}`,
-        notes: [...current.notes, ...next.notes],
-      });
+    if (chordOnly && next !== undefined && nextIsLyrics) {
+      normalizedLines.push(`${current}${next}`);
       index += 1;
     } else {
       normalizedLines.push(current);
     }
   }
 
-  return normalizedLines.map(({ text: line, notes }) => {
-    if (!line.trim() && !notes.length) return { kind: "blank" as const };
-    const section = line.trim().match(/^\{(.+)\}$/);
+  return normalizedLines.map((line) => {
+    if (!line.trim()) return { kind: "blank" as const };
+    const { text: bare, notes } = extractNotes(line);
+    const section = bare.trim().match(/^\{(.+)\}$/);
     if (section) return { kind: "section" as const, label: section[1]!.toUpperCase(), notes };
-    const bracketSection = line.trim().match(/^\[([^\]]+)\]$/);
+    const bracketSection = bare.trim().match(/^\[([^\]]+)\]$/);
     if (bracketSection && bracketSection[1]!.trim() !== "%" && isSectionLabel(bracketSection[1]!)) {
       return { kind: "section" as const, label: bracketSection[1]!.toUpperCase(), notes };
     }
@@ -158,16 +188,21 @@ export function parseChordPro(body: string, semitones: number, targetKey: string
     let match: RegExpExecArray | null;
     while ((match = regex.exec(line))) {
       const before = line.slice(last, match.index);
-      if (before) pairs.push({ chord: "", text: before });
+      if (before) pairs.push(...splitNotes("", before));
       const next = regex.lastIndex;
       const nextMatch = line.slice(next).search(/\[/);
       const text = nextMatch === -1 ? line.slice(next) : line.slice(next, next + nextMatch);
-      pairs.push({ chord: transposeChord(match[1]!, semitones, targetKey), text });
+      const raw = match[1]!;
+      const chord =
+        raw.trim() === "%" || isChartMarker(raw)
+          ? raw.trim()
+          : transposeChord(raw, semitones, targetKey);
+      pairs.push(...splitNotes(chord, text));
       last = next + (nextMatch === -1 ? line.length : nextMatch);
       regex.lastIndex = last;
     }
-    if (pairs.length === 0 && line.trim()) pairs.push({ chord: "", text: line });
-    return { kind: "line" as const, pairs, notes };
+    if (pairs.length === 0) pairs.push(...splitNotes("", line));
+    return { kind: "line" as const, pairs };
   });
 }
 
@@ -176,10 +211,14 @@ export function chordsOnly(lines: ParsedLine[]): ParsedLine[] {
     l.kind === "line"
       ? {
           ...l,
-          pairs: l.pairs.map((p) => ({
-            chord: p.chord,
-            text: p.text.includes(":]") ? ":]" : p.text.includes("-") ? "-" : "",
-          })),
+          pairs: l.pairs.map((p) =>
+            p.note
+              ? p
+              : {
+                  chord: p.chord,
+                  text: p.text.includes(":]") ? ":]" : p.text.includes("-") ? "-" : "",
+                },
+          ),
         }
       : l,
   );

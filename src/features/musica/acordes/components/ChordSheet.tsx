@@ -13,10 +13,10 @@ function chordChartText(pairs: { chord: string; text: string }[]): string {
         result += " -";
         joinsNextChord = true;
       } else if (notation.includes(":]")) {
-        result += " | :]";
+        result += " |:]";
       }
     } else if (notation.includes(":]")) {
-      result += " | :]";
+      result += " |:]";
     } else if (notation.includes("-")) {
       result += " -";
       joinsNextChord = true;

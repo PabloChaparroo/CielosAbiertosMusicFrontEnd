@@ -148,33 +148,60 @@ export function ChordSheet({
           );
         if (mode === "chords") {
           const pairs = line.pairs.filter((pair) => pair.chord || pair.note || pair.text.trim());
+          const hasChords = pairs.some((pair) => pair.chord);
+          const segments: ChartSegment[] = hasChords
+            ? chordChartSegments(pairs)
+            : pairs.map((pair) =>
+                pair.note
+                  ? { kind: "note", value: pair.note }
+                  : { kind: "chart", value: pair.text },
+              );
+          // Las notas van en un renglón chico ARRIBA de los compases, en la columna donde se
+          // escribieron (como en una hoja a mano: "_2doVers" sobre "| G |"); la línea de compases
+          // queda limpia. Si dos notas se pisarían, la segunda se corre.
+          let base = "";
+          let noteEnd = 0;
+          const notes: Array<{ col: number; value: string }> = [];
+          segments.forEach((segment) => {
+            if (segment.kind === "chart") {
+              base += segment.value;
+              return;
+            }
+            const col = Math.max(base.length + 1, noteEnd);
+            notes.push({ col, value: segment.value });
+            noteEnd = col + noteWidthCh(segment.value);
+          });
+          // una línea que es solo una nota ("(repetir intro)") se muestra como línea normal
+          const notesAbove = base.trim() !== "";
           return (
-            <div
-              key={i}
-              className="flex flex-nowrap whitespace-pre"
-              style={{ marginBottom: `${fontSize * 0.18}px`, lineHeight: `${fontSize}px` }}
-            >
-              {pairs.some((pair) => pair.chord) ? (
-                <span className="font-semibold text-primary">
-                  {chordChartSegments(pairs).map((segment, j) =>
-                    segment.kind === "note" ? (
-                      <NoteMark key={j} note={segment.value} fontSize={fontSize} />
-                    ) : (
-                      <span key={j}>{segment.value}</span>
-                    ),
-                  )}
-                </span>
-              ) : (
-                <span>
-                  {pairs.map((pair, j) =>
-                    pair.note ? (
-                      <NoteMark key={j} note={pair.note} fontSize={fontSize} />
-                    ) : (
-                      <span key={j}>{pair.text}</span>
-                    ),
-                  )}
-                </span>
-              )}
+            <div key={i} style={{ marginBottom: `${fontSize * 0.18}px` }}>
+              {notesAbove && notes.length ? (
+                <div className="relative" style={{ height: fontSize * 0.7 }}>
+                  {notes.map((note, j) => (
+                    // el left en ch se mide con la letra de la hoja; la nota chica va adentro
+                    <span key={j} className="absolute bottom-0" style={{ left: `${note.col}ch` }}>
+                      <span
+                        className="font-normal tracking-normal whitespace-pre text-primary"
+                        style={{ fontSize: fontSize * 0.55, lineHeight: 1 }}
+                      >
+                        ↱ {note.value}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              <div
+                className="flex flex-nowrap whitespace-pre"
+                style={{ lineHeight: `${fontSize}px` }}
+              >
+                {notesAbove ? (
+                  <span className={hasChords ? "font-semibold text-primary" : undefined}>
+                    {base}
+                  </span>
+                ) : (
+                  notes.map((note, j) => <NoteMark key={j} note={note.value} fontSize={fontSize} />)
+                )}
+              </div>
             </div>
           );
         }

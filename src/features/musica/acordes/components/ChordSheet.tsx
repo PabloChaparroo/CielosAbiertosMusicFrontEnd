@@ -74,26 +74,42 @@ const displayText = (text: string) => text.replace(/\s-\s/g, " ").replace(/\s:\]
 const noteWidthCh = (note: string) => Math.ceil((note.length + 2) * 0.55) + 2;
 
 /**
- * Las notas se dibujan encima de la fila de acordes sin ocupar lugar (la letra no se corta).
- * Si el acorde siguiente queda más cerca que el ancho de la nota, se lo corre lo justo para
- * que no se superpongan: devuelve cuántos caracteres correr cada par.
+ * Las notas se dibujan encima de la fila de acordes sin ocupar lugar: la letra nunca se mueve.
+ * Si la nota no entra antes del acorde siguiente, se corre a la izquierda, al espacio libre de
+ * la fila de acordes; solo si tampoco entra así, se corre ese acorde (solo el acorde, no su
+ * letra). Todo en caracteres — la fuente es monoespaciada. Devuelve, por par, cuánto correr la
+ * nota (negativo = a la izquierda) y cuánto correr el acorde.
  */
-function noteShifts(pairs: ChordPair[]): number[] {
-  const shifts = pairs.map(() => 0);
-  pairs.forEach((pair, j) => {
-    if (!pair.note) return;
-    let gap = 0;
-    for (let k = j + 1; k < pairs.length; k += 1) {
-      const next = pairs[k]!;
-      if (next.note) break;
-      if (next.chord) {
-        shifts[k] = Math.max(shifts[k]!, noteWidthCh(pair.note) - gap);
-        break;
+function placeNotes(pairs: ChordPair[]): { noteOffset: number[]; chordNudge: number[] } {
+  // ancho de cada columna: el acorde (+1ch de margen) o " " arriba; la letra o " " abajo
+  const widths = pairs.map((p) =>
+    p.note ? 0 : Math.max(p.chord ? p.chord.length + 1 : 1, displayText(p.text).length || 1),
+  );
+  const starts: number[] = [];
+  widths.reduce((x, w, j) => ((starts[j] = x), x + w), 0);
+
+  const noteOffset = pairs.map(() => 0);
+  const chordNudge = pairs.map(() => 0);
+  // hasta dónde está ocupada la fila de acordes por lo ya dibujado
+  let occupiedUntil = 0;
+  pairs.forEach((p, j) => {
+    if (!p.note) {
+      if (p.chord) {
+        // en cadena: si algo anterior (nota o acorde corrido) todavía ocupa este lugar, se corre
+        chordNudge[j] = Math.max(0, occupiedUntil - starts[j]!);
+        occupiedUntil = starts[j]! + chordNudge[j]! + p.chord.length + 1;
       }
-      gap += displayText(next.text).length;
+      return;
     }
+    const width = noteWidthCh(p.note);
+    const k = pairs.findIndex((q, idx) => idx > j && !q.note && q.chord);
+    const nextChordAt = k === -1 ? Infinity : starts[k]!;
+    let start = Math.max(starts[j]!, occupiedUntil);
+    if (start + width > nextChordAt) start = Math.max(occupiedUntil, nextChordAt - width);
+    noteOffset[j] = start - starts[j]!;
+    occupiedUntil = start + width;
   });
-  return shifts;
+  return { noteOffset, chordNudge };
 }
 
 export function ChordSheet({
@@ -157,7 +173,7 @@ export function ChordSheet({
             </div>
           );
         }
-        const shifts = noteShifts(line.pairs);
+        const { noteOffset, chordNudge } = placeNotes(line.pairs);
         return (
           <div
             key={i}
@@ -165,26 +181,27 @@ export function ChordSheet({
             style={{ marginBottom: `${fontSize * 0.18}px` }}
           >
             {line.pairs.map((p, j) =>
-              // la nota va en la fila de los acordes, donde se escribió, sin ocupar lugar (ver noteShifts)
+              // la nota va en la fila de los acordes sin ocupar lugar (ver placeNotes)
               p.note ? (
                 <span key={j} className="relative w-0">
-                  <span className="absolute top-0 left-0" style={{ lineHeight: `${fontSize}px` }}>
+                  <span
+                    className="absolute top-0"
+                    style={{ left: `${noteOffset[j]}ch`, lineHeight: `${fontSize}px` }}
+                  >
                     <NoteMark note={p.note} fontSize={fontSize} />
                   </span>
                 </span>
               ) : (
-                <span
-                  key={j}
-                  className="inline-flex flex-col"
-                  style={shifts[j] ? { marginLeft: `${shifts[j]}ch` } : undefined}
-                >
+                <span key={j} className="inline-flex flex-col">
                   <span
-                    className="font-semibold whitespace-pre text-primary"
+                    className="relative font-semibold whitespace-pre text-primary"
                     style={{
                       minHeight: p.chord ? undefined : 1,
                       lineHeight: `${fontSize}px`,
                       // separa acordes consecutivos cuando la letra de abajo es más corta que el acorde
                       paddingRight: p.chord ? "1ch" : undefined,
+                      // corrido solo si una nota no entraba antes (la letra no se mueve)
+                      left: chordNudge[j] ? `${chordNudge[j]}ch` : undefined,
                     }}
                   >
                     {p.chord || " "}

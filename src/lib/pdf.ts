@@ -113,36 +113,52 @@ export function exportChordsPdf(
     }
     doc.setFont("courier", "bold");
     doc.setFontSize(size);
-    let chordLine = "";
+    // Primera pasada: letra y columna de cada acorde, sin que las notas ocupen lugar.
+    let chordEnd = 0;
     let lyricLine = "";
-    // Notas "(…)" en la fila de los acordes, en la columna donde se escribieron (courier es
-    // monoespaciada), dibujadas encima sin reservar lugar — así la letra no se corta. Solo si
-    // el acorde siguiente quedaría debajo de la nota, se lo corre hasta donde ella termina.
-    const notes: Array<{ col: number; label: string }> = [];
-    let nextChordFrom = 0;
+    const items: Array<{ kind: "chord" | "note"; col: number; text: string }> = [];
     line.pairs.forEach((p) => {
       if (p.note) {
-        const col = Math.max(chordLine.length, lyricLine.length) + 1;
-        const label = `-> ${p.note}`;
-        notes.push({ col, label });
-        nextChordFrom = col + Math.ceil(label.length * 0.65) + 1;
+        items.push({
+          kind: "note",
+          col: Math.max(chordEnd, lyricLine.length) + 1,
+          text: `-> ${p.note}`,
+        });
         return;
       }
-      const text = p.text;
-      const chord = p.chord;
-      if (chord && lyricLine.length < nextChordFrom)
-        lyricLine = lyricLine.padEnd(nextChordFrom, " ");
-      if (chord) nextChordFrom = 0;
-      chordLine = chordLine.padEnd(lyricLine.length, " ") + chord;
-      lyricLine = lyricLine + text;
+      const { text, chord } = p;
+      const col = Math.max(chordEnd, lyricLine.length);
+      if (chord) items.push({ kind: "chord", col, text: chord });
+      chordEnd = col + chord.length;
+      lyricLine = lyricLine.padEnd(col, " ") + text;
       // +1: que dos acordes seguidos no queden pegados cuando la letra de abajo es más corta
-      if (chord && chord.length >= text.length)
-        lyricLine = lyricLine.padEnd(chordLine.length + 1, " ");
+      if (chord && chord.length >= text.length) lyricLine = lyricLine.padEnd(chordEnd + 1, " ");
     });
+    // Segunda pasada — mismo criterio que en pantalla: la nota va donde se escribió; si no entra
+    // antes del acorde siguiente se corre a la izquierda (al espacio libre de la fila de
+    // acordes) y, si tampoco, se corre ese acorde. La letra nunca se mueve.
+    let occupiedUntil = 0;
+    items.forEach((item, index) => {
+      if (item.kind === "chord") {
+        item.col = Math.max(item.col, occupiedUntil);
+        occupiedUntil = item.col + item.text.length + 1;
+        return;
+      }
+      const width = Math.ceil(item.text.length * 0.65) + 1;
+      const next = items.slice(index + 1).find((i) => i.kind === "chord");
+      let start = Math.max(item.col, occupiedUntil);
+      if (next && start + width > next.col) start = Math.max(occupiedUntil, next.col - width);
+      item.col = start;
+      occupiedUntil = start + width;
+    });
+    const chordLine = items
+      .filter((i) => i.kind === "chord")
+      .reduce((acc, i) => acc.padEnd(i.col, " ") + i.text, "");
+    const notes = items.filter((i) => i.kind === "note");
     doc.setTextColor(190, 130, 30);
     doc.text(chordLine, 14, y);
     notes.forEach((n) =>
-      drawNoteAt(doc, n.label, 14 + doc.getTextWidth(" ".repeat(n.col)), y, size),
+      drawNoteAt(doc, n.text, 14 + doc.getTextWidth(" ".repeat(n.col)), y, size),
     );
     y += size * 0.75;
     y = ensure(doc, y);

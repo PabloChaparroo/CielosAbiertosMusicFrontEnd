@@ -5,12 +5,14 @@ export function GeneratedPasswordModal({
   email,
   password,
   warning,
+  title = "Integrante creado",
   onClose,
 }: {
   email: string;
   password: string;
   /** Aviso extra, ej. el rol no se pudo asignar */
   warning?: string;
+  title?: string;
   onClose: () => void;
 }) {
   const [copied, setCopied] = useState(false);
@@ -32,7 +34,7 @@ export function GeneratedPasswordModal({
           <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-gold text-primary-foreground">
             <KeyRound className="h-5 w-5" />
           </div>
-          <h2 className="font-display text-xl font-semibold">Integrante creado</h2>
+          <h2 className="font-display text-xl font-semibold">{title}</h2>
         </div>
 
         {warning ? (

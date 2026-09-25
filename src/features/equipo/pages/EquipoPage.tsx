@@ -19,6 +19,7 @@ export function EquipoPage() {
     email: string;
     password: string;
     roleWarning?: string;
+    title?: string;
   } | null>(null);
 
   const activeUsers = useMemo(() => users.filter((u) => !u.fechaHoraBaja), [users]);
@@ -67,6 +68,18 @@ export function EquipoPage() {
       </AppLayout>
     );
   }
+
+  // Se muestra en la lista (alta) y en el detalle (contraseña nueva desde Editar): la contraseña
+  // generada se ve una sola vez, así que no puede quedar sin mostrarse en ninguna de las dos vistas.
+  const generatedPasswordModal = generated ? (
+    <GeneratedPasswordModal
+      email={generated.email}
+      password={generated.password}
+      {...(generated.roleWarning ? { warning: generated.roleWarning } : {})}
+      {...(generated.title ? { title: generated.title } : {})}
+      onClose={() => setGenerated(null)}
+    />
+  ) : null;
 
   if (member) {
     const participations = setlists.filter((s) => s.teamIds.includes(member.id));
@@ -145,8 +158,13 @@ export function EquipoPage() {
               setSelected(null);
               reloadUsers();
             }}
+            onPasswordReset={(email, password) => {
+              setEditing(null);
+              setGenerated({ email, password, title: "Contraseña nueva generada" });
+            }}
           />
         ) : null}
+        {generatedPasswordModal}
       </AppLayout>
     );
   }
@@ -235,14 +253,7 @@ export function EquipoPage() {
         />
       ) : null}
 
-      {generated ? (
-        <GeneratedPasswordModal
-          email={generated.email}
-          password={generated.password}
-          {...(generated.roleWarning ? { warning: generated.roleWarning } : {})}
-          onClose={() => setGenerated(null)}
-        />
-      ) : null}
+      {generatedPasswordModal}
     </AppLayout>
   );
 }

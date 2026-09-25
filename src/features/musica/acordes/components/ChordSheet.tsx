@@ -116,22 +116,23 @@ export function ChordSheet({
   lines,
   fontSize,
   mode,
-  centered,
+  dark,
 }: {
   lines: ParsedLine[];
   fontSize: number;
   mode: "both" | "chords";
-  centered?: boolean;
+  /** Fondo negro (modo En vivo): texto en blanco */
+  dark?: boolean;
 }) {
   return (
-    <div className={`font-mono leading-none ${centered ? "text-white" : ""}`} style={{ fontSize }}>
+    <div className={`font-mono leading-none ${dark ? "text-white" : ""}`} style={{ fontSize }}>
       {lines.map((line, i) => {
         if (line.kind === "blank") return <div key={i} style={{ height: fontSize }} />;
         if (line.kind === "section")
           return (
             <p
               key={i}
-              className={`mt-6 mb-3 font-semibold tracking-widest text-primary ${centered ? "text-center" : ""}`}
+              className="mt-6 mb-3 font-semibold tracking-widest text-primary"
               style={{ fontSize: fontSize * 1.15 }}
             >
               {line.label}
@@ -146,7 +147,7 @@ export function ChordSheet({
           return (
             <div
               key={i}
-              className={`flex flex-nowrap whitespace-pre ${centered ? "justify-center" : ""}`}
+              className="flex flex-nowrap whitespace-pre"
               style={{ marginBottom: `${fontSize * 0.18}px`, lineHeight: `${fontSize}px` }}
             >
               {pairs.some((pair) => pair.chord) ? (
@@ -177,7 +178,7 @@ export function ChordSheet({
         return (
           <div
             key={i}
-            className={`flex flex-nowrap whitespace-nowrap ${centered ? "justify-center" : ""}`}
+            className="flex flex-nowrap whitespace-nowrap"
             style={{ marginBottom: `${fontSize * 0.18}px` }}
           >
             {line.pairs.map((p, j) =>

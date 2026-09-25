@@ -159,7 +159,7 @@ export function AcordesPage() {
 
   if (live) {
     return (
-      <div className="fixed inset-0 z-50 overflow-y-auto bg-black px-5 py-10 text-center">
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-black px-5 py-10 sm:px-10">
         <button
           onClick={() => setLive(false)}
           aria-label="Salir del modo presentación"
@@ -185,7 +185,7 @@ export function AcordesPage() {
           </IconBtn>
         </div>
         <h2 className="mb-8 font-display text-2xl text-white">{song.title}</h2>
-        <ChordSheet lines={lines} fontSize={fontSize} mode={mode} centered />
+        <ChordSheet lines={lines} fontSize={fontSize} mode={mode} dark />
       </div>
     );
   }

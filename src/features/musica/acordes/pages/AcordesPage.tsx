@@ -74,6 +74,13 @@ export function AcordesPage() {
     return mode === "chords" ? chordsOnly(parsed) : parsed;
   }, [song, semitones, targetKey, mode]);
 
+  // Vista previa en vivo del borrador mientras se edita — mismo parser y mismo render que la vista normal
+  const draftLines = useMemo(() => {
+    if (!editing) return [];
+    const parsed = parseChordPro(draft, semitones, targetKey);
+    return mode === "chords" ? chordsOnly(parsed) : parsed;
+  }, [editing, draft, semitones, targetKey, mode]);
+
   const filtered = availableSongs.filter((s) =>
     (s.title + s.artist).toLowerCase().includes(query.toLowerCase()),
   );
@@ -417,12 +424,20 @@ export function AcordesPage() {
                   Tab
                 </button>
               </div>
-              <ChordProEditor
-                textareaRef={chordInputRef}
-                value={draft}
-                onChange={setDraft}
-                className="min-h-[420px] w-full rounded-2xl border border-border bg-card p-6 font-mono text-lg leading-relaxed whitespace-pre-wrap outline-none focus:border-primary/50"
-              />
+              <div className="grid items-start gap-4 xl:grid-cols-2">
+                <ChordProEditor
+                  textareaRef={chordInputRef}
+                  value={draft}
+                  onChange={setDraft}
+                  className="min-h-[420px] w-full rounded-2xl border border-border bg-card p-6 font-mono text-lg leading-relaxed whitespace-pre-wrap outline-none focus:border-primary/50"
+                />
+                <div className="surface-card overflow-auto p-5 sm:p-6 xl:sticky xl:top-24 xl:max-h-[calc(100vh-8rem)]">
+                  <p className="mb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                    Vista previa
+                  </p>
+                  <ChordSheet lines={draftLines} fontSize={fontSize} mode={mode} />
+                </div>
+              </div>
               <div className="flex justify-end gap-2">
                 <button
                   type="button"

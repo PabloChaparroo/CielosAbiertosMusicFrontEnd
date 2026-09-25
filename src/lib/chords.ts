@@ -135,6 +135,12 @@ export function isSectionLabel(value: string): boolean {
   return !/^[A-G](?:#|b)?(?:m|min|maj|sus|add|dim|aug)?\d*(?:\/[A-G](?:#|b)?)?$/.test(value.trim());
 }
 
+/** true si la línea (sin notas) es un título de sección entre corchetes, ej. "[CORO]" */
+function isSectionLine(bare: string): boolean {
+  const match = bare.match(/^\[([^\]]+)\]$/);
+  return !!match && match[1]!.trim() !== "%" && isSectionLabel(match[1]!);
+}
+
 export function lyricsLines(body: string): Array<{ kind: "section" | "text"; value: string }> {
   return body.split("\n").map((raw) => {
     const line = raw.replace(/\r/g, "");
@@ -157,9 +163,11 @@ export function parseChordPro(body: string, semitones: number, targetKey: string
 
   for (let index = 0; index < sourceLines.length; index += 1) {
     const current = sourceLines[index]!;
-    // las notas "(…)" no cuentan para decidir si es una línea de solo acordes
+    // las notas "(…)" no cuentan para decidir si es una línea de solo acordes; un título de
+    // sección ("[CORO]") tampoco lo es — si no, se unía con la letra siguiente como si fuera un acorde
     const currentBare = extractNotes(current).text.trim();
-    const chordOnly = currentBare && /^(?:\[[^\]]+\]\s*)+$/.test(currentBare);
+    const chordOnly =
+      currentBare && !isSectionLine(currentBare) && /^(?:\[[^\]]+\]\s*)+$/.test(currentBare);
     const next = sourceLines[index + 1];
     const nextText = next === undefined ? "" : extractNotes(next).text.trim();
     const nextIsLyrics = nextText && !nextText.startsWith("[") && !nextText.startsWith("{");

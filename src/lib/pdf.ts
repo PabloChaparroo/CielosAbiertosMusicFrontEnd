@@ -58,7 +58,7 @@ export function exportLyricsPdf(song: Song) {
 }
 
 /**
- * Anotación "(…)" en azul y más chica en (x, y); "->" porque las fuentes estándar de jsPDF no
+ * Anotación "(…)" más chica y del color de los acordes en (x, y); "->" porque las fuentes estándar de jsPDF no
  * tienen "↱". Restaura fuente, tamaño y color que había.
  */
 function drawNoteAt(doc: jsPDF, label: string, x: number, y: number, size: number) {
@@ -66,15 +66,12 @@ function drawNoteAt(doc: jsPDF, label: string, x: number, y: number, size: numbe
   const color = doc.getTextColor();
   doc.setFont("courier", "normal");
   doc.setFontSize(size * 0.65);
-  doc.setTextColor(70, 110, 200);
+  doc.setTextColor(190, 130, 30);
   doc.text(label, x, y);
   doc.setFont(font.fontName, font.fontStyle);
   doc.setFontSize(size);
   doc.setTextColor(color);
 }
-
-/** Columnas (en caracteres de tamaño normal) que ocupa una nota dibujada al 65%, más un margen */
-const noteWidth = (label: string) => Math.ceil(label.length * 0.65) + 2;
 
 /** Anotaciones de una sección ("[CORO] (suave)"), a continuación del título */
 function drawNotes(doc: jsPDF, notes: string[], x: number, y: number, size: number) {
@@ -118,20 +115,24 @@ export function exportChordsPdf(
     doc.setFontSize(size);
     let chordLine = "";
     let lyricLine = "";
-    // Notas "(…)" en la fila de los acordes, en su posición: se reserva el lugar con espacios
-    // (courier es monoespaciada) y después se dibujan encima, en azul y más chicas.
+    // Notas "(…)" en la fila de los acordes, en la columna donde se escribieron (courier es
+    // monoespaciada), dibujadas encima sin reservar lugar — así la letra no se corta. Solo si
+    // el acorde siguiente quedaría debajo de la nota, se lo corre hasta donde ella termina.
     const notes: Array<{ col: number; label: string }> = [];
+    let nextChordFrom = 0;
     line.pairs.forEach((p) => {
       if (p.note) {
+        const col = Math.max(chordLine.length, lyricLine.length) + 1;
         const label = `-> ${p.note}`;
-        chordLine = chordLine.padEnd(Math.max(chordLine.length, lyricLine.length), " ");
-        notes.push({ col: chordLine.length + 1, label });
-        chordLine += " ".repeat(noteWidth(label));
-        lyricLine = lyricLine.padEnd(chordLine.length, " ");
+        notes.push({ col, label });
+        nextChordFrom = col + Math.ceil(label.length * 0.65) + 1;
         return;
       }
       const text = p.text;
       const chord = p.chord;
+      if (chord && lyricLine.length < nextChordFrom)
+        lyricLine = lyricLine.padEnd(nextChordFrom, " ");
+      if (chord) nextChordFrom = 0;
       chordLine = chordLine.padEnd(lyricLine.length, " ") + chord;
       lyricLine = lyricLine + text;
       // +1: que dos acordes seguidos no queden pegados cuando la letra de abajo es más corta
@@ -141,7 +142,7 @@ export function exportChordsPdf(
     doc.setTextColor(190, 130, 30);
     doc.text(chordLine, 14, y);
     notes.forEach((n) =>
-      drawNoteAt(doc, n.label, 14 + doc.getTextWidth(chordLine.slice(0, n.col)), y, size),
+      drawNoteAt(doc, n.label, 14 + doc.getTextWidth(" ".repeat(n.col)), y, size),
     );
     y += size * 0.75;
     y = ensure(doc, y);

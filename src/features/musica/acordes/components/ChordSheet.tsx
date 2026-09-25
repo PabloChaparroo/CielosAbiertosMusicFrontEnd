@@ -55,16 +55,45 @@ function chordChartSegments(pairs: ChordPair[]): ChartSegment[] {
   return segments;
 }
 
-/** Anotación "(…)": flecha + texto chico en color, en el lugar de la línea donde se escribió */
+/** Anotación "(…)": flecha + texto chico, del color de los acordes, donde se escribió */
 function NoteMark({ note, fontSize }: { note: string; fontSize: number }) {
   return (
     <span
-      className="mx-2 inline-block font-normal tracking-normal whitespace-pre text-sky"
+      className="mx-2 inline-block font-normal tracking-normal whitespace-pre text-primary"
       style={{ fontSize: fontSize * 0.55, lineHeight: `${fontSize}px` }}
     >
       ↱ {note}
     </span>
   );
+}
+
+/** Texto de letra tal como se muestra en "Letra + acordes" */
+const displayText = (text: string) => text.replace(/\s-\s/g, " ").replace(/\s:\]/g, "");
+
+/** Ancho (en caracteres de la fuente de acordes) que ocupa una nota dibujada al 55%, más margen */
+const noteWidthCh = (note: string) => Math.ceil((note.length + 2) * 0.55) + 2;
+
+/**
+ * Las notas se dibujan encima de la fila de acordes sin ocupar lugar (la letra no se corta).
+ * Si el acorde siguiente queda más cerca que el ancho de la nota, se lo corre lo justo para
+ * que no se superpongan: devuelve cuántos caracteres correr cada par.
+ */
+function noteShifts(pairs: ChordPair[]): number[] {
+  const shifts = pairs.map(() => 0);
+  pairs.forEach((pair, j) => {
+    if (!pair.note) return;
+    let gap = 0;
+    for (let k = j + 1; k < pairs.length; k += 1) {
+      const next = pairs[k]!;
+      if (next.note) break;
+      if (next.chord) {
+        shifts[k] = Math.max(shifts[k]!, noteWidthCh(pair.note) - gap);
+        break;
+      }
+      gap += displayText(next.text).length;
+    }
+  });
+  return shifts;
 }
 
 export function ChordSheet({
@@ -128,6 +157,7 @@ export function ChordSheet({
             </div>
           );
         }
+        const shifts = noteShifts(line.pairs);
         return (
           <div
             key={i}
@@ -135,16 +165,19 @@ export function ChordSheet({
             style={{ marginBottom: `${fontSize * 0.18}px` }}
           >
             {line.pairs.map((p, j) =>
-              // la nota va siempre en la fila de los acordes, en la posición donde se escribió
+              // la nota va en la fila de los acordes, donde se escribió, sin ocupar lugar (ver noteShifts)
               p.note ? (
-                <span key={j} className="inline-flex flex-col">
-                  <span style={{ minHeight: fontSize, lineHeight: `${fontSize}px` }}>
+                <span key={j} className="relative w-0">
+                  <span className="absolute top-0 left-0" style={{ lineHeight: `${fontSize}px` }}>
                     <NoteMark note={p.note} fontSize={fontSize} />
                   </span>
-                  <span style={{ minHeight: fontSize, lineHeight: `${fontSize}px` }} />
                 </span>
               ) : (
-                <span key={j} className="inline-flex flex-col">
+                <span
+                  key={j}
+                  className="inline-flex flex-col"
+                  style={shifts[j] ? { marginLeft: `${shifts[j]}ch` } : undefined}
+                >
                   <span
                     className="font-semibold whitespace-pre text-primary"
                     style={{
@@ -157,7 +190,7 @@ export function ChordSheet({
                     {p.chord || " "}
                   </span>
                   <span className="whitespace-pre" style={{ lineHeight: `${fontSize}px` }}>
-                    {p.text.replace(/\s-\s/g, " ").replace(/\s:\]/g, "") || " "}
+                    {displayText(p.text) || " "}
                   </span>
                 </span>
               ),

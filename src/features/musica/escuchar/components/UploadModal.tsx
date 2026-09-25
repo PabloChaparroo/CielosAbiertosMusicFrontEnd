@@ -5,6 +5,7 @@ import { KEYS } from "@/lib/chords";
 import { StorageClient } from "@/lib/storage-client";
 import { SongsService } from "@/features/canciones/services/songs.service";
 import { validateAudioFile } from "@/features/canciones/lib/audio-validation";
+import { readAudioDuration, readFileDuration } from "@/features/canciones/lib/audio-duration";
 import type { Song, Tag } from "@/types";
 
 const ALL_TAGS: Tag[] = [
@@ -79,6 +80,12 @@ export function UploadModal({
     song?.chordpro ?? "{estrofa 1}\n[G]Nueva canción del minis[D]terio",
   );
   const [tags, setTags] = useState<Tag[]>(song?.tags ?? []);
+  // true = la duración actual se leyó del archivo de audio (cambia el texto de ayuda)
+  const [durationFromAudio, setDurationFromAudio] = useState(false);
+  // si el usuario ya tocó la duración a mano, la lectura del audio existente no la pisa
+  const durationTouchedRef = useRef(false);
+  // descarta lecturas viejas si se elige otro archivo antes de que termine la anterior
+  const durationRequestRef = useRef(0);
 
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [uploadPct, setUploadPct] = useState<number | null>(null);
@@ -98,6 +105,35 @@ export function UploadModal({
     return () => abortRef.current?.abort();
   }, []);
 
+  const applyAudioDuration = (seconds: number | null, requestId: number) => {
+    if (seconds === null || requestId !== durationRequestRef.current) return;
+    setDurationMinutes(Math.floor(seconds / 60));
+    setDurationSeconds(seconds % 60);
+    setDurationFromAudio(true);
+  };
+
+  // Canción que ya tiene audio: completa la duración con la real del archivo
+  useEffect(() => {
+    if (!song?.audioKey) return;
+    const requestId = ++durationRequestRef.current;
+    StorageClient.getDownloadUrl(song.audioKey)
+      .then(({ url }) => readAudioDuration(url))
+      .then((seconds) => {
+        if (!durationTouchedRef.current) applyAudioDuration(seconds, requestId);
+      })
+      .catch(() => {
+        // sin duración automática: queda la cargada a mano
+      });
+    // solo al abrir el modal
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleDurationChange = (setter: (value: number) => void, value: string) => {
+    durationTouchedRef.current = true;
+    setDurationFromAudio(false);
+    setter(Number(value) || 0);
+  };
+
   const handleClose = () => {
     if (uploading) abortRef.current?.abort();
     onClose();
@@ -115,6 +151,8 @@ export function UploadModal({
       return;
     }
     setAudioFile(file);
+    const requestId = ++durationRequestRef.current;
+    void readFileDuration(file).then((seconds) => applyAudioDuration(seconds, requestId));
   };
 
   const canSave = title.trim() !== "" && artist.trim() !== "" && chordpro.trim() !== "" && !saving;
@@ -287,7 +325,11 @@ export function UploadModal({
 
           <Field
             label="Duración"
-            help="Duración total de la canción, en minutos y segundos (se usa para la barra de progreso del reproductor)."
+            help={
+              durationFromAudio
+                ? "Tomada automáticamente del archivo de audio — podés corregirla a mano."
+                : "Duración total de la canción, en minutos y segundos (se usa para la barra de progreso del reproductor). Se completa sola al elegir un audio."
+            }
           >
             <div className="flex items-center gap-2">
               <input
@@ -295,7 +337,7 @@ export function UploadModal({
                 min={0}
                 className={inputCls}
                 value={durationMinutes}
-                onChange={(e) => setDurationMinutes(Number(e.target.value) || 0)}
+                onChange={(e) => handleDurationChange(setDurationMinutes, e.target.value)}
               />
               <span className="text-sm text-muted-foreground">min</span>
               <input
@@ -304,7 +346,7 @@ export function UploadModal({
                 max={59}
                 className={inputCls}
                 value={durationSeconds}
-                onChange={(e) => setDurationSeconds(Number(e.target.value) || 0)}
+                onChange={(e) => handleDurationChange(setDurationSeconds, e.target.value)}
               />
               <span className="text-sm text-muted-foreground">seg</span>
             </div>

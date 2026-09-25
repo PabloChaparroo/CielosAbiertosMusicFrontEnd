@@ -55,12 +55,15 @@ function chordChartSegments(pairs: ChordPair[]): ChartSegment[] {
   return segments;
 }
 
+/** Tamaño de las notas "(…)" respecto de la letra de la hoja */
+const NOTE_SCALE = 0.7;
+
 /** Anotación "(…)": flecha + texto chico, del color de los acordes, donde se escribió */
 function NoteMark({ note, fontSize }: { note: string; fontSize: number }) {
   return (
     <span
       className="mx-2 inline-block font-normal tracking-normal whitespace-pre text-primary"
-      style={{ fontSize: fontSize * 0.55, lineHeight: `${fontSize}px` }}
+      style={{ fontSize: fontSize * NOTE_SCALE, lineHeight: `${fontSize}px` }}
     >
       ↱ {note}
     </span>
@@ -70,8 +73,8 @@ function NoteMark({ note, fontSize }: { note: string; fontSize: number }) {
 /** Texto de letra tal como se muestra en "Letra + acordes" */
 const displayText = (text: string) => text.replace(/\s-\s/g, " ").replace(/\s:\]/g, "");
 
-/** Ancho (en caracteres de la fuente de acordes) que ocupa una nota dibujada al 55%, más margen */
-const noteWidthCh = (note: string) => Math.ceil((note.length + 2) * 0.55) + 2;
+/** Ancho (en caracteres de la fuente de acordes) que ocupa una nota dibujada a NOTE_SCALE, más margen */
+const noteWidthCh = (note: string) => Math.ceil((note.length + 2) * NOTE_SCALE) + 2;
 
 /**
  * Las notas se dibujan encima de la fila de acordes sin ocupar lugar: la letra nunca se mueve.
@@ -176,13 +179,13 @@ export function ChordSheet({
           return (
             <div key={i} style={{ marginBottom: `${fontSize * 0.18}px` }}>
               {notesAbove && notes.length ? (
-                <div className="relative" style={{ height: fontSize * 0.7 }}>
+                <div className="relative" style={{ height: fontSize * 0.85 }}>
                   {notes.map((note, j) => (
                     // el left en ch se mide con la letra de la hoja; la nota chica va adentro
                     <span key={j} className="absolute bottom-0" style={{ left: `${note.col}ch` }}>
                       <span
                         className="font-normal tracking-normal whitespace-pre text-primary"
-                        style={{ fontSize: fontSize * 0.55, lineHeight: 1 }}
+                        style={{ fontSize: fontSize * NOTE_SCALE, lineHeight: 1 }}
                       >
                         ↱ {note.value}
                       </span>

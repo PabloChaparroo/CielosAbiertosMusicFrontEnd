@@ -57,6 +57,9 @@ export function exportLyricsPdf(song: Song) {
   doc.save(`${song.title} - letra.pdf`);
 }
 
+/** Tamaño de las notas "(…)" respecto de la letra de los acordes */
+const NOTE_SCALE_PDF = 0.8;
+
 /**
  * Anotación "(…)" más chica y del color de los acordes en (x, y); "->" porque las fuentes estándar de jsPDF no
  * tienen "↱". Restaura fuente, tamaño y color que había.
@@ -65,7 +68,7 @@ function drawNoteAt(doc: jsPDF, label: string, x: number, y: number, size: numbe
   const font = doc.getFont();
   const color = doc.getTextColor();
   doc.setFont("courier", "normal");
-  doc.setFontSize(size * 0.65);
+  doc.setFontSize(size * NOTE_SCALE_PDF);
   doc.setTextColor(190, 130, 30);
   doc.text(label, x, y);
   doc.setFont(font.fontName, font.fontStyle);
@@ -78,7 +81,7 @@ function drawNotes(doc: jsPDF, notes: string[], x: number, y: number, size: numb
   notes.forEach((note, index) => {
     const label = `-> ${note}`;
     const offset = notes.slice(0, index).reduce((w, n) => w + doc.getTextWidth(`-> ${n}   `), 0);
-    drawNoteAt(doc, label, x + 6 + offset * 0.65, y, size);
+    drawNoteAt(doc, label, x + 6 + offset * NOTE_SCALE_PDF, y, size);
   });
 }
 
@@ -144,7 +147,7 @@ export function exportChordsPdf(
         occupiedUntil = item.col + item.text.length + 1;
         return;
       }
-      const width = Math.ceil(item.text.length * 0.65) + 1;
+      const width = Math.ceil(item.text.length * NOTE_SCALE_PDF) + 1;
       const next = items.slice(index + 1).find((i) => i.kind === "chord");
       let start = Math.max(item.col, occupiedUntil);
       if (next && start + width > next.col) start = Math.max(occupiedUntil, next.col - width);

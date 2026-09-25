@@ -1,18 +1,18 @@
 import { apiRequest } from "@/lib/api-client";
 import type { Song, Tag } from "@/types";
 
-interface RawTag {
+export interface RawTag {
   id: string;
   valor: string;
 }
 
-interface RawPlayStat {
+export interface RawPlayStat {
   month: string;
   plays: number;
 }
 
 /** Espejo exacto de la entidad Song real (GET /canciones). */
-interface RawSong {
+export interface RawSong {
   id: string;
   title: string;
   artist: string;
@@ -65,7 +65,7 @@ export type UpdateSongInput = Partial<CreateSongInput>;
  * Canciones estaba fuera de alcance en ese ticket; acá alcanza con no
  * asumir que siempre viene.
  */
-function mapSong(raw: RawSong): Song {
+export function mapSong(raw: RawSong): Song {
   return {
     id: raw.id,
     title: raw.title,

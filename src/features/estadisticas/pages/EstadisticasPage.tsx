@@ -17,6 +17,13 @@ import {
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Skeletons } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
+import {
+  historicRanking,
+  monthlyTrend,
+  playsByTag,
+  playsByYear,
+  topSongsForMonth,
+} from "../lib/stats";
 
 const COLORS = [
   "oklch(0.82 0.15 80)",
@@ -28,6 +35,9 @@ const COLORS = [
   "oklch(0.7 0.12 200)",
   "oklch(0.78 0.14 120)",
 ];
+
+// Años de la comparativa (fijos, igual que antes de pasar los cálculos a lib/stats.ts)
+const YEARS = ["2025", "2026"] as const;
 
 const MONTHS = [
   "2025-09",
@@ -67,58 +77,12 @@ export function EstadisticasPage() {
   const [range, setRange] = useState<"mes" | "anio">("mes");
   const [month, setMonth] = useState("2026-09");
 
-  const total = (s: (typeof songs)[number], filter: (m: string) => boolean) =>
-    Object.entries(s.playsByMonth)
-      .filter(([m]) => filter(m))
-      .reduce((acc, [, v]) => acc + v, 0);
-
-  const topMonth = useMemo(
-    () =>
-      [...songs]
-        .map((s) => ({ name: s.title, plays: s.playsByMonth[month] ?? 0 }))
-        .sort((a, b) => b.plays - a.plays)
-        .slice(0, 8),
-    [songs, month],
-  );
-
-  const byYear = useMemo(() => {
-    const years = ["2025", "2026"];
-    return [...songs]
-      .map((s) => ({
-        name: s.title,
-        "2025": total(s, (m) => m.startsWith(years[0]!)),
-        "2026": total(s, (m) => m.startsWith(years[1]!)),
-      }))
-      .sort((a, b) => b["2026"] - a["2026"])
-      .slice(0, 8);
-  }, [songs]);
-
-  const byTag = useMemo(() => {
-    const map = new Map<string, number>();
-    songs.forEach((s) => {
-      const plays = total(s, () => true);
-      s.tags.forEach((t) => map.set(t, (map.get(t) ?? 0) + plays));
-    });
-    return [...map.entries()].map(([name, value]) => ({ name, value }));
-  }, [songs]);
-
-  const trend = useMemo(
-    () =>
-      MONTHS.map((m) => ({
-        month: m.slice(5) + "/" + m.slice(2, 4),
-        total: songs.reduce((acc, s) => acc + (s.playsByMonth[m] ?? 0), 0),
-      })),
-    [songs],
-  );
-
-  const ranking = useMemo(
-    () =>
-      [...songs]
-        .map((s) => ({ song: s, plays: total(s, () => true) }))
-        .sort((a, b) => b.plays - a.plays)
-        .slice(0, 10),
-    [songs],
-  );
+  // Los cálculos viven en ../lib/stats.ts (funciones puras, con tests); acá solo se memorizan
+  const topMonth = useMemo(() => topSongsForMonth(songs, month), [songs, month]);
+  const byYear = useMemo(() => playsByYear(songs, YEARS), [songs]);
+  const byTag = useMemo(() => playsByTag(songs), [songs]);
+  const trend = useMemo(() => monthlyTrend(songs, MONTHS), [songs]);
+  const ranking = useMemo(() => historicRanking(songs), [songs]);
 
   // Mismo patrón que Inicio/Acordes/Setlists: los hooks de arriba se llaman
   // siempre (regla de hooks) sobre `songs` vacío mientras carga sin

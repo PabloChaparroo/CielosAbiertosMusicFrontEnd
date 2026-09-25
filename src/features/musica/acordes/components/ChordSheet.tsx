@@ -3,10 +3,44 @@ import { isChartMarker, type ChordPair, type ParsedLine } from "@/lib/chords";
 type ChartSegment = { kind: "chart"; value: string } | { kind: "note"; value: string };
 
 /**
+ * Si la línea es el mismo grupo de compases repetido, lo escribe una sola vez con el signo de
+ * repetición: "| F | C - G | F | C - G |" → "| F | C - G |:]" (2 veces), "|x3]", "|x4]"…
+ * Solo en líneas "simples": si ya tiene ":]", marcas ("x3", "Sube Tono") o notas "(…)", se
+ * respeta tal cual la escribió el usuario. null si no hay repetición.
+ */
+function compressRepeats(pairs: ChordPair[]): string | null {
+  if (pairs.some((p) => p.note || (p.chord && isChartMarker(p.chord)) || p.text.includes(":]"))) {
+    return null;
+  }
+  // compases: acordes unidos por "-" van en el mismo compás (mismo criterio que abajo)
+  const bars: string[][] = [];
+  let joinsNext = false;
+  pairs.forEach((pair) => {
+    if (pair.chord) {
+      if (joinsNext && bars.length) bars[bars.length - 1]!.push(pair.chord);
+      else bars.push([pair.chord]);
+      joinsNext = false;
+    }
+    if (pair.text.includes("-")) joinsNext = true;
+  });
+  const keys = bars.map((bar) => bar.join(" - "));
+  for (let period = 1; period <= keys.length / 2; period += 1) {
+    if (keys.length % period !== 0) continue;
+    if (keys.every((key, i) => key === keys[i % period])) {
+      const times = keys.length / period;
+      return `| ${keys.slice(0, period).join(" | ")} |${times === 2 ? ":]" : `x${times}]`}`;
+    }
+  }
+  return null;
+}
+
+/**
  * Línea en "Solo acordes" como compases: "| F - C | Am |:]". Las notas "(…)" cortan el texto
  * en el lugar donde se escribieron; las marcas ("x3", "Sube Tono") no abren un compás nuevo.
  */
 function chordChartSegments(pairs: ChordPair[]): ChartSegment[] {
+  const compressed = compressRepeats(pairs);
+  if (compressed) return [{ kind: "chart", value: compressed }];
   const segments: ChartSegment[] = [];
   let buffer = "";
   let started = false;

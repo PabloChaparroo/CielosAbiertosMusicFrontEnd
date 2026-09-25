@@ -4,6 +4,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, FavButton, formatDuration, Skeletons, TagChip } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import { useAuth } from "@/core/auth/useAuth";
+import { currentMonthKey } from "@/lib/month";
 
 export function InicioPage() {
   const { currentUser, songs, songsLoadState, setlists, setlistsLoadState, favorites, play } =
@@ -32,7 +33,8 @@ export function InicioPage() {
   const upcoming =
     sortedLists.find((s) => new Date(s.date).getTime() >= Date.now() - 86400000) ??
     sortedLists[sortedLists.length - 1];
-  const month = "2026-09";
+  // antes fijo en "2026-09": desde octubre mostraba datos viejos o vacíos
+  const month = currentMonthKey();
   const top = [...songs]
     .sort((a, b) => (b.playsByMonth[month] ?? 0) - (a.playsByMonth[month] ?? 0))
     .slice(0, 8);

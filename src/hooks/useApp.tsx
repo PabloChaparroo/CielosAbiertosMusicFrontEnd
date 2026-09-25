@@ -60,7 +60,11 @@ const Ctx = createContext<AppState | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   // Identidad real (login contra el backend) — ver core/auth/.
-  const { user: authUser, can: canReal } = useAuth();
+  const { user: authUser, can: canReal, hasAnyPermission, isGuest } = useAuth();
+  // Solo se carga lo que el usuario puede ver: sin estos permisos (ej. un invitado) el backend
+  // responde 403, y las pantallas trabajan con la lista vacía en vez de quedar en error.
+  const canSeeTeam = hasAnyPermission(["equipo:read"]);
+  const canSeeSetlists = hasAnyPermission(["setlist:read"]);
 
   const [users, setUsers] = useState<User[]>([]);
   const [usersLoadState, setUsersLoadState] = useState<LoadState>("loading");
@@ -76,12 +80,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const loadUsers = useCallback(() => {
+    if (!canSeeTeam) {
+      setUsers([]);
+      setUsersLoadState("ready");
+      return;
+    }
     setUsersLoadState("loading");
     EquipoService.listMembers(true)
       .then((fetched) => setUsers(fetched))
       .then(() => setUsersLoadState("ready"))
       .catch(() => setUsersLoadState("error"));
-  }, []);
+  }, [canSeeTeam]);
 
   useEffect(() => {
     loadUsers();
@@ -98,6 +107,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!canSeeSetlists) {
+      setSetlists([]);
+      setSetlistsLoadState("ready");
+      return;
+    }
     setSetlistsLoadState("loading");
     SetlistsService.listAll()
       .then((fetched) => {
@@ -105,13 +119,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setSetlistsLoadState("ready");
       })
       .catch(() => setSetlistsLoadState("error"));
-  }, []);
+  }, [canSeeSetlists]);
 
+  // los favoritos son de un usuario: un invitado no tiene
   useEffect(() => {
+    if (isGuest) {
+      setFavorites([]);
+      return;
+    }
     FavoritesService.listMine()
       .then(setFavorites)
       .catch(() => setFavorites([]));
-  }, []);
+  }, [isGuest]);
 
   const loadAnnotationsForSong = useCallback((songId: string) => {
     setAnnotationsLoadState("loading");
@@ -189,6 +208,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       favorites,
       toggleFavorite: (id) => {
+        if (isGuest) return;
         setFavorites((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]));
         FavoritesService.toggle(id).catch(() => {
           // revierte el optimista si el toggle real falló

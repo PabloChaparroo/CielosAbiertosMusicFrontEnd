@@ -18,10 +18,25 @@ export const MODULE_READ_PERMISSION: Record<string, string | null> = {
   "/roles-permisos": "rol:read",
 };
 
-/** Permiso que necesita la ruta actual (por prefijo: "/acordes?songId=…" usa el de "/acordes") */
-export function requiredPermissionFor(pathname: string): string | null {
-  const match = Object.keys(MODULE_READ_PERMISSION)
-    .filter((path) => path !== "/" && (pathname === path || pathname.startsWith(`${path}/`)))
-    .sort((a, b) => b.length - a.length)[0];
-  return match ? MODULE_READ_PERMISSION[match]! : null;
+/** Módulos que necesitan una cuenta real: un invitado no los ve aunque su rol tenga el permiso */
+const USER_ONLY_MODULES = ["/favoritos"];
+
+/** true si el usuario puede abrir el módulo (Sidebar y AuthGate usan esto mismo) */
+export function canOpenModule(
+  path: string,
+  hasPermission: (permission: string) => boolean,
+  isGuest: boolean,
+): boolean {
+  if (isGuest && USER_ONLY_MODULES.includes(path)) return false;
+  const permission = MODULE_READ_PERMISSION[path];
+  return !permission || hasPermission(permission);
+}
+
+/** Módulo del menú al que pertenece la ruta ("/acordes?songId=…" → "/acordes"); "/" si ninguno */
+export function moduleFor(pathname: string): string {
+  return (
+    Object.keys(MODULE_READ_PERMISSION)
+      .filter((path) => path !== "/" && (pathname === path || pathname.startsWith(`${path}/`)))
+      .sort((a, b) => b.length - a.length)[0] ?? "/"
+  );
 }

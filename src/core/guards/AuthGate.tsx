@@ -3,7 +3,7 @@ import { Outlet, useRouter, useRouterState } from "@tanstack/react-router";
 import { AppProvider } from "@/hooks/useApp";
 import { authStore } from "../auth/auth-store";
 import { useAuth } from "../auth/useAuth";
-import { requiredPermissionFor } from "../auth/module-access";
+import { canOpenModule, moduleFor } from "../auth/module-access";
 import { RestrictedSection } from "./RestrictedSection";
 
 /**
@@ -22,7 +22,7 @@ import { RestrictedSection } from "./RestrictedSection";
  * spinner en vez del layout ya armado.
  */
 export function AuthGate() {
-  const { status, hasAnyPermission } = useAuth();
+  const { status, hasAnyPermission, isGuest } = useAuth();
   const router = useRouter();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -47,12 +47,12 @@ export function AuthGate() {
   if (pathname === "/login") return <Outlet />;
   if (status !== "authenticated") return <LoadingScreen />;
 
-  const required = requiredPermissionFor(pathname);
-  return (
-    <AppProvider>
-      {required && !hasAnyPermission([required]) ? <RestrictedSection /> : <Outlet />}
-    </AppProvider>
+  const allowed = canOpenModule(
+    moduleFor(pathname),
+    (permission) => hasAnyPermission([permission]),
+    isGuest,
   );
+  return <AppProvider>{allowed ? <Outlet /> : <RestrictedSection />}</AppProvider>;
 }
 
 function LoadingScreen() {

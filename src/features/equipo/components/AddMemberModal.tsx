@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { useAuth } from "@/core/auth/useAuth";
+import { GUEST_ROLE_NAME } from "@/core/auth/guest";
 import type { Role } from "@/features/roles-permisos/types/role";
 import { RolesService } from "@/features/roles-permisos/services/roles.service";
 import { EquipoService } from "../services/equipo.service";
@@ -38,7 +39,10 @@ export function AddMemberModal({
     if (!canAssignRole) return;
     RolesService.listRoles()
       .then((list) => {
-        const sorted = [...list].sort((a, b) => a.name.localeCompare(b.name));
+        // el rol Invitado es para el acceso sin cuenta: no se asigna a integrantes
+        const sorted = list
+          .filter((r) => r.name !== GUEST_ROLE_NAME)
+          .sort((a, b) => a.name.localeCompare(b.name));
         setRoles(sorted);
         setRoleId(sorted.find((r) => r.name === "Músico")?.id ?? "");
         setRolesLoadState("ready");

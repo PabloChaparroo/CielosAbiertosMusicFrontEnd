@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, Save } from "lucide-react";
 import { actionLabel, resourceLabel } from "@/lib/permissions";
+import { GUEST_ROLE_NAME } from "@/core/auth/guest";
 import { RolesService } from "../services/roles.service";
 import type { PermissionGroup, Role } from "../types/role";
 
@@ -91,6 +92,13 @@ export function RoleCard({
             </p>
           ) : (
             <>
+              {role.name === GUEST_ROLE_NAME ? (
+                <p className="mb-4 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary">
+                  Rol del acceso sin cuenta ("Entrar como invitado"). Solo se aplican los permisos
+                  de <b>Ver</b>: un invitado nunca puede crear, editar ni eliminar, ni usar
+                  favoritos. Si borrás este rol, el acceso de invitados se deshabilita.
+                </p>
+              ) : null}
               <div className="grid gap-4 sm:grid-cols-2">
                 {catalog.map((group) => (
                   <div key={group.resource} className="rounded-xl bg-elevated/50 p-3">

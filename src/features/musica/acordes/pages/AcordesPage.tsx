@@ -21,6 +21,7 @@ import { SongsService } from "@/features/canciones/services/songs.service";
 import { Annotations } from "../components/Annotations";
 import { ChordSheet } from "../components/ChordSheet";
 import { useFitFontSize } from "../hooks/useFitFontSize";
+import { useAuth } from "@/core/auth/useAuth";
 import { ChordProEditor } from "../../components/ChordProEditor";
 
 export function AcordesPage() {
@@ -28,6 +29,8 @@ export function AcordesPage() {
   const { songId: requestedSongId, songIds, editar } = useSearch({ from: "/acordes" });
   // "Editar" desde Letras abre el editor acá una sola vez, cuando la canción pedida ya cargó
   const autoEditDoneRef = useRef(false);
+  const { hasAnyPermission } = useAuth();
+  const canSeeAnnotations = hasAnyPermission(["anotacion:read"]);
   const [songId, setSongId] = useState<string | null>(null);
   const [semitones, setSemitones] = useState(0);
   // null = tamaño automático (useFitFontSize); con +/− queda el elegido hasta cambiar de canción
@@ -518,7 +521,7 @@ export function AcordesPage() {
             </div>
           )}
 
-          <Annotations songId={song.id} />
+          {canSeeAnnotations ? <Annotations songId={song.id} /> : null}
         </div>
       </div>
     </AppLayout>

@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { AlertCircle, Cloud, Eye, EyeOff, LogIn } from "lucide-react";
+import { AlertCircle, Cloud, Eye, EyeOff, LogIn, UserRound } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
 import { useAuth } from "@/core/auth/useAuth";
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, loginAsGuest } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,6 +28,20 @@ export function LoginPage() {
       await navigate({ to: "/" });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo iniciar sesión");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Sin usuario ni contraseña: solo lectura (canciones, letras, acordes e inicio)
+  const handleGuest = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      await loginAsGuest();
+      await navigate({ to: "/" });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "No se pudo entrar como invitado");
     } finally {
       setLoading(false);
     }
@@ -121,8 +135,18 @@ export function LoginPage() {
           </button>
         </form>
 
+        <button
+          type="button"
+          onClick={() => void handleGuest()}
+          disabled={loading}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-full border border-border px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-60"
+        >
+          <UserRound className="h-4 w-4" /> Entrar como invitado
+        </button>
+
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          Acceso exclusivo para el equipo de adoración.
+          El equipo de adoración ingresa con su cuenta. Como invitado podés ver las canciones,
+          letras y acordes.
         </p>
       </div>
     </div>

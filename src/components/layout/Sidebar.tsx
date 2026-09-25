@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { useApp } from "@/hooks/useApp";
 import { useAuth } from "@/core/auth/useAuth";
 import { Avatar, RoleBadge } from "@/components/common/ui-bits";
-import { MODULE_READ_PERMISSION } from "@/core/auth/module-access";
+import { canOpenModule } from "@/core/auth/module-access";
 
 const groups = [
   {
@@ -52,16 +52,15 @@ export function SidebarContent({
   onOpenPerfil: () => void;
 }) {
   const { currentUser } = useApp();
-  const { logout, hasAnyPermission } = useAuth();
+  const { logout, hasAnyPermission, isGuest } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   // Solo los módulos cuyo permiso "Ver" tiene el usuario (mismo mapa que usa AuthGate para las URLs)
   const visibleGroups = groups
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => {
-        const permission = MODULE_READ_PERMISSION[item.to];
-        return !permission || hasAnyPermission([permission]);
-      }),
+      items: group.items.filter((item) =>
+        canOpenModule(item.to, (permission) => hasAnyPermission([permission]), isGuest),
+      ),
     }))
     .filter((group) => group.items.length > 0);
 
@@ -114,9 +113,11 @@ export function SidebarContent({
       </nav>
 
       <div className="border-t border-sidebar-border p-4">
+        {/* un invitado no tiene perfil que editar */}
         <button
-          onClick={onOpenPerfil}
-          className="flex w-full items-center gap-3 rounded-xl p-1.5 text-left transition-colors hover:bg-sidebar-accent/60"
+          onClick={isGuest ? undefined : onOpenPerfil}
+          disabled={isGuest}
+          className="flex w-full items-center gap-3 rounded-xl p-1.5 text-left transition-colors enabled:hover:bg-sidebar-accent/60"
         >
           <Avatar
             user={currentUser}
@@ -131,7 +132,7 @@ export function SidebarContent({
           onClick={() => void logout()}
           className="mt-3 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
         >
-          <LogOut className="h-3.5 w-3.5" /> Cerrar sesión
+          <LogOut className="h-3.5 w-3.5" /> {isGuest ? "Salir (iniciar sesión)" : "Cerrar sesión"}
         </button>
       </div>
     </div>

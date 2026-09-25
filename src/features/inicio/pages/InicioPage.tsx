@@ -3,22 +3,24 @@ import { CalendarDays, Flame, Heart, Play, Sparkles, TrendingUp } from "lucide-r
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, FavButton, formatDuration, Skeletons, TagChip } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
+import { useAuth } from "@/core/auth/useAuth";
 
 export function InicioPage() {
-  const { currentUser, songs, songsLoadState, setlists, favorites, play } = useApp();
+  const { currentUser, songs, songsLoadState, setlists, setlistsLoadState, favorites, play } =
+    useApp();
+  const { hasAnyPermission, isGuest } = useAuth();
+  // Cada bloque se muestra solo si el usuario puede verlo (un invitado ve canciones y nada más)
+  const canSeeSetlists = hasAnyPermission(["setlist:read"]);
+  const canSeeStats = hasAnyPermission(["estadisticas:read"]);
+  const subtitle = isGuest
+    ? "Bienvenido/a"
+    : `Bienvenido/a de nuevo, ${currentUser.name.split(" ")[0]}`;
 
-  // Las canciones ahora se cargan del backend real (antes el mock siempre
-  // tenía datos sincrónicamente); mientras se resuelve el fetch, `songs` está
-  // vacío y varias métricas de esta página (canción del mes, últimas subidas)
-  // asumen al menos un elemento. `setlists` (mock) recién se completa con el
-  // alias de IDs una vez que songs/users ya cargaron, así que hay una
-  // ventana extra en la que sigue vacío aunque songsLoadState ya diga "ready".
-  if (songsLoadState !== "ready" || setlists.length === 0) {
+  // Antes esperaba a que hubiera al menos un setlist: sin setlists visibles (un invitado, o
+  // todavía ninguno cargado) se quedaba cargando para siempre. Ahora espera a que terminen de cargar.
+  if (songsLoadState !== "ready" || (canSeeSetlists && setlistsLoadState === "loading")) {
     return (
-      <AppLayout
-        title="Inicio"
-        subtitle={`Bienvenido/a de nuevo, ${currentUser.name.split(" ")[0]}`}
-      >
+      <AppLayout title="Inicio" subtitle={subtitle}>
         <Skeletons rows={5} />
       </AppLayout>
     );
@@ -29,21 +31,17 @@ export function InicioPage() {
   );
   const upcoming =
     sortedLists.find((s) => new Date(s.date).getTime() >= Date.now() - 86400000) ??
-    sortedLists[sortedLists.length - 1]!;
+    sortedLists[sortedLists.length - 1];
   const month = "2026-09";
   const top = [...songs]
     .sort((a, b) => (b.playsByMonth[month] ?? 0) - (a.playsByMonth[month] ?? 0))
     .slice(0, 8);
   const latest = [...songs].slice(0, 5);
-  const songOfMonth = top[0]!;
+  const songOfMonth = top[0];
   const favSongs = songs.filter((s) => favorites.includes(s.id));
 
   return (
-    <AppLayout
-      title="Inicio"
-      subtitle={`Bienvenido/a de nuevo, ${currentUser.name.split(" ")[0]}`}
-      bleed
-    >
+    <AppLayout title="Inicio" subtitle={subtitle} bleed>
       <section className="relative overflow-hidden">
         <div className="gradient-sky absolute inset-0" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
@@ -68,50 +66,56 @@ export function InicioPage() {
             >
               Ir a Acordes
             </Link>
-            <Link
-              to="/setlists"
-              className="rounded-full border border-border bg-background/50 px-6 py-3 text-sm font-semibold backdrop-blur transition-colors hover:bg-secondary"
-            >
-              Ver setlists
-            </Link>
+            {canSeeSetlists ? (
+              <Link
+                to="/setlists"
+                className="rounded-full border border-border bg-background/50 px-6 py-3 text-sm font-semibold backdrop-blur transition-colors hover:bg-secondary"
+              >
+                Ver setlists
+              </Link>
+            ) : null}
           </div>
         </div>
       </section>
 
       <div className="space-y-10 px-4 py-8 sm:px-8">
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Link
-            to="/setlists"
-            className="surface-card group p-5 hover:-translate-y-1 hover:border-primary/40"
-          >
-            <CalendarDays className="mb-3 h-5 w-5 text-primary" />
-            <p className="text-xs tracking-widest text-muted-foreground uppercase">
-              Próximo setlist
-            </p>
-            <p className="mt-1 font-display text-lg font-semibold">{upcoming.title}</p>
-            <p className="text-sm text-muted-foreground">
-              {new Date(upcoming.date).toLocaleDateString("es-AR", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-              })}{" "}
-              · {upcoming.items.length} canciones
-            </p>
-          </Link>
+          {upcoming ? (
+            <Link
+              to="/setlists"
+              className="surface-card group p-5 hover:-translate-y-1 hover:border-primary/40"
+            >
+              <CalendarDays className="mb-3 h-5 w-5 text-primary" />
+              <p className="text-xs tracking-widest text-muted-foreground uppercase">
+                Próximo setlist
+              </p>
+              <p className="mt-1 font-display text-lg font-semibold">{upcoming.title}</p>
+              <p className="text-sm text-muted-foreground">
+                {new Date(upcoming.date).toLocaleDateString("es-AR", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                })}{" "}
+                · {upcoming.items.length} canciones
+              </p>
+            </Link>
+          ) : null}
 
-          <div className="surface-card p-5">
-            <Flame className="mb-3 h-5 w-5 text-primary" />
-            <p className="text-xs tracking-widest text-muted-foreground uppercase">
-              Canción del mes
-            </p>
-            <div className="mt-2 flex items-center gap-3">
-              <Cover song={songOfMonth} size="sm" />
-              <div className="min-w-0">
-                <p className="truncate font-semibold">{songOfMonth.title}</p>
-                <p className="truncate text-sm text-muted-foreground">{songOfMonth.artist}</p>
+          {songOfMonth ? (
+            <div className="surface-card p-5">
+              <Flame className="mb-3 h-5 w-5 text-primary" />
+              <p className="text-xs tracking-widest text-muted-foreground uppercase">
+                Canción del mes
+              </p>
+              <div className="mt-2 flex items-center gap-3">
+                <Cover song={songOfMonth} size="sm" />
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{songOfMonth.title}</p>
+                  <p className="truncate text-sm text-muted-foreground">{songOfMonth.artist}</p>
+                </div>
               </div>
             </div>
-          </div>
+          ) : null}
 
           <Link
             to="/escuchar"
@@ -127,25 +131,33 @@ export function InicioPage() {
             </p>
           </Link>
 
-          <Link
-            to="/favoritos"
-            className="surface-card p-5 hover:-translate-y-1 hover:border-primary/40"
-          >
-            <Heart className="mb-3 h-5 w-5 text-primary" />
-            <p className="text-xs tracking-widest text-muted-foreground uppercase">Tus favoritos</p>
-            <p className="mt-1 font-display text-3xl font-semibold">{favSongs.length}</p>
-            <p className="truncate text-sm text-muted-foreground">
-              {favSongs.length ? favSongs.map((s) => s.title).join(" · ") : "Todavía sin favoritos"}
-            </p>
-          </Link>
+          {isGuest ? null : (
+            <Link
+              to="/favoritos"
+              className="surface-card p-5 hover:-translate-y-1 hover:border-primary/40"
+            >
+              <Heart className="mb-3 h-5 w-5 text-primary" />
+              <p className="text-xs tracking-widest text-muted-foreground uppercase">
+                Tus favoritos
+              </p>
+              <p className="mt-1 font-display text-3xl font-semibold">{favSongs.length}</p>
+              <p className="truncate text-sm text-muted-foreground">
+                {favSongs.length
+                  ? favSongs.map((s) => s.title).join(" · ")
+                  : "Todavía sin favoritos"}
+              </p>
+            </Link>
+          )}
         </section>
 
         <section>
           <div className="mb-4 flex items-end justify-between">
             <h3 className="font-display text-2xl font-semibold">Más tocadas este mes</h3>
-            <Link to="/estadisticas" className="text-sm text-primary hover:underline">
-              Ver estadísticas
-            </Link>
+            {canSeeStats ? (
+              <Link to="/estadisticas" className="text-sm text-primary hover:underline">
+                Ver estadísticas
+              </Link>
+            ) : null}
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6">
             {top.map((song) => (

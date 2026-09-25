@@ -2,6 +2,7 @@ import { Heart } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useApp } from "@/hooks/useApp";
+import { useAuth } from "@/core/auth/useAuth";
 import { StorageClient } from "@/lib/storage-client";
 import type { Song, UserRole } from "@/types";
 
@@ -119,6 +120,9 @@ export function TagChip({ tag, active }: { tag: string; active?: boolean }) {
 
 export function FavButton({ songId, className }: { songId: string; className?: string }) {
   const { favorites, toggleFavorite } = useApp();
+  const { isGuest } = useAuth();
+  // un invitado no tiene cuenta donde guardar favoritos
+  if (isGuest) return null;
   const active = favorites.includes(songId);
   return (
     <button

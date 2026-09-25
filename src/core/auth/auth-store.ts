@@ -12,6 +12,8 @@ export interface AuthenticatedUser {
   initials: string;
   avatarKey: string | null;
   permissions: string[];
+  /** Sesión de invitado (sin cuenta): solo lectura, sin favoritos ni perfil. Ver module-access.ts */
+  isGuest?: boolean;
 }
 
 /**
@@ -139,6 +141,14 @@ export const authStore = {
       method: "POST",
       body: { email, password },
     });
+    setToken(result.accessToken);
+    const user = await fetchMe();
+    setSnapshot({ status: "authenticated", user });
+  },
+
+  /** Entrar como invitado, sin usuario ni contraseña: el backend da una sesión de solo lectura. */
+  async loginAsGuest(): Promise<void> {
+    const result = await apiRequest<{ accessToken: string }>("/auth/invitado", { method: "POST" });
     setToken(result.accessToken);
     const user = await fetchMe();
     setSnapshot({ status: "authenticated", user });

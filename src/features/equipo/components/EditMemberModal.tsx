@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, KeyRound, X } from "lucide-react";
 import { useAuth } from "@/core/auth/useAuth";
+import { GUEST_ROLE_NAME } from "@/core/auth/guest";
 import type { User } from "@/types";
 import type { Role } from "@/features/roles-permisos/types/role";
 import { RolesService } from "@/features/roles-permisos/services/roles.service";
@@ -47,7 +48,8 @@ export function EditMemberModal({
     if (!canManageRoles) return;
     RolesService.listRoles()
       .then((roles) => {
-        setAllRoles(roles);
+        // el rol Invitado es para el acceso sin cuenta: no se asigna a integrantes
+        setAllRoles(roles.filter((r) => r.name !== GUEST_ROLE_NAME));
         setRolesLoadState("ready");
       })
       .catch(() => setRolesLoadState("error"));

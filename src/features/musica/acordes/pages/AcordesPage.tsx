@@ -20,6 +20,7 @@ import { exportChordsPdf } from "@/lib/pdf";
 import { SongsService } from "@/features/canciones/services/songs.service";
 import { Annotations } from "../components/Annotations";
 import { ChordSheet } from "../components/ChordSheet";
+import { useFitFontSize } from "../hooks/useFitFontSize";
 import { ChordProEditor } from "../../components/ChordProEditor";
 
 export function AcordesPage() {
@@ -29,7 +30,8 @@ export function AcordesPage() {
   const autoEditDoneRef = useRef(false);
   const [songId, setSongId] = useState<string | null>(null);
   const [semitones, setSemitones] = useState(0);
-  const [fontSize, setFontSize] = useState(25);
+  // null = tamaño automático (useFitFontSize); con +/− queda el elegido hasta cambiar de canción
+  const [manualFontSize, setManualFontSize] = useState<number | null>(null);
   const [mode, setMode] = useState<"both" | "chords">("both");
   const [query, setQuery] = useState("");
   const [live, setLive] = useState(false);
@@ -92,6 +94,21 @@ export function AcordesPage() {
     const parsed = parseChordPro(draft, semitones, targetKey);
     return mode === "chords" ? chordsOnly(parsed) : parsed;
   }, [editing, draft, semitones, targetKey, mode]);
+
+  // Tamaño que entra en el ancho de la pantalla (25px en computadora, menos en celular)
+  const { boxRef: sheetBoxRef, fitted: fittedFontSize } = useFitFontSize(
+    25,
+    12,
+    manualFontSize === null,
+    [song?.id, mode, semitones, editing, live],
+  );
+  const fontSize = manualFontSize ?? fittedFontSize;
+  const changeFontSize = (delta: number, max: number) =>
+    setManualFontSize(Math.max(12, Math.min(max, fontSize + delta)));
+
+  useEffect(() => {
+    setManualFontSize(null);
+  }, [song?.id]);
 
   const filtered = availableSongs.filter((s) =>
     (s.title + s.artist).toLowerCase().includes(query.toLowerCase()),
@@ -180,11 +197,11 @@ export function AcordesPage() {
           <X className="h-5 w-5" />
         </button>
         <div className="fixed bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 backdrop-blur">
-          <IconBtn onClick={() => setFontSize((f) => Math.max(12, f - 2))} label="Achicar">
+          <IconBtn onClick={() => changeFontSize(-2, 48)} label="Achicar">
             <Minus className="h-4 w-4" />
           </IconBtn>
           <span className="w-9 text-center text-xs text-white/70">{fontSize}px</span>
-          <IconBtn onClick={() => setFontSize((f) => Math.min(48, f + 2))} label="Agrandar">
+          <IconBtn onClick={() => changeFontSize(2, 48)} label="Agrandar">
             <Plus className="h-4 w-4" />
           </IconBtn>
           <span className="mx-2 h-4 w-px bg-white/20" />
@@ -197,7 +214,9 @@ export function AcordesPage() {
           </IconBtn>
         </div>
         <h2 className="mb-8 font-display text-2xl text-white">{song.title}</h2>
-        <ChordSheet lines={lines} fontSize={fontSize} mode={mode} dark />
+        <div ref={sheetBoxRef}>
+          <ChordSheet lines={lines} fontSize={fontSize} mode={mode} dark />
+        </div>
       </div>
     );
   }
@@ -215,7 +234,10 @@ export function AcordesPage() {
             <Maximize2 className="h-4 w-4" /> <span className="hidden sm:inline">En vivo</span>
           </button>
           <button
-            onClick={() => exportChordsPdf(song, { semitones, targetKey, mode, fontSize })}
+            // el PDF no depende del ancho de la pantalla: tamaño de siempre, salvo que se haya elegido a mano
+            onClick={() =>
+              exportChordsPdf(song, { semitones, targetKey, mode, fontSize: manualFontSize ?? 25 })
+            }
             className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
           >
             <FileDown className="h-4 w-4" /> <span className="hidden sm:inline">PDF</span>
@@ -295,7 +317,8 @@ export function AcordesPage() {
           </div>
         </aside>
 
-        <div className="order-1 space-y-5 lg:order-2">
+        {/* min-w-0: sin esto, una hoja más ancha que la pantalla estiraba la columna y cortaba la tarjeta de arriba */}
+        <div className="order-1 min-w-0 space-y-5 lg:order-2">
           <div className="surface-card flex flex-wrap items-center gap-3 p-4">
             <div className="mr-auto min-w-0">
               <div className="flex items-center gap-2">
@@ -333,17 +356,11 @@ export function AcordesPage() {
             </div>
 
             <div className="flex items-center gap-1 rounded-full border border-border p-1">
-              <IconBtn
-                onClick={() => setFontSize((f) => Math.max(12, f - 2))}
-                label="Achicar letra"
-              >
+              <IconBtn onClick={() => changeFontSize(-2, 40)} label="Achicar letra">
                 <Minus className="h-4 w-4" />
               </IconBtn>
               <span className="w-10 text-center text-xs text-muted-foreground">{fontSize}px</span>
-              <IconBtn
-                onClick={() => setFontSize((f) => Math.min(40, f + 2))}
-                label="Agrandar letra"
-              >
+              <IconBtn onClick={() => changeFontSize(2, 40)} label="Agrandar letra">
                 <Plus className="h-4 w-4" />
               </IconBtn>
             </div>
@@ -479,7 +496,10 @@ export function AcordesPage() {
                   onChange={setDraft}
                   className="min-h-[420px] w-full rounded-2xl border border-border bg-card p-6 font-mono text-lg leading-relaxed whitespace-pre-wrap outline-none focus:border-primary/50"
                 />
-                <div className="surface-card overflow-auto p-5 sm:p-6 xl:sticky xl:top-24 xl:max-h-[calc(100vh-8rem)]">
+                <div
+                  ref={sheetBoxRef}
+                  className="surface-card overflow-auto p-5 sm:p-6 xl:sticky xl:top-24 xl:max-h-[calc(100vh-8rem)]"
+                >
                   <p className="mb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                     Vista previa
                   </p>
@@ -488,7 +508,7 @@ export function AcordesPage() {
               </div>
             </div>
           ) : (
-            <div className="surface-card overflow-x-auto p-5 sm:p-8">
+            <div ref={sheetBoxRef} className="surface-card overflow-x-auto p-5 sm:p-8">
               <ChordSheet lines={lines} fontSize={fontSize} mode={mode} />
             </div>
           )}

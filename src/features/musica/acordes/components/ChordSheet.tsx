@@ -125,7 +125,11 @@ export function ChordSheet({
   dark?: boolean;
 }) {
   return (
-    <div className={`font-mono leading-none ${dark ? "text-white" : ""}`} style={{ fontSize }}>
+    <div
+      data-chord-sheet
+      className={`font-mono leading-none ${dark ? "text-white" : ""}`}
+      style={{ fontSize }}
+    >
       {lines.map((line, i) => {
         if (line.kind === "blank") return <div key={i} style={{ height: fontSize }} />;
         if (line.kind === "section")

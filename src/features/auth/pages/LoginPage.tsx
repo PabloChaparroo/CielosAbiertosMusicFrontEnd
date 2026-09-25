@@ -143,11 +143,6 @@ export function LoginPage() {
         >
           <UserRound className="h-4 w-4" /> Entrar como invitado
         </button>
-
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          El equipo de adoración ingresa con su cuenta. Como invitado podés ver las canciones,
-          letras y acordes.
-        </p>
       </div>
     </div>
   );

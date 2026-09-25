@@ -3,6 +3,8 @@ import { Outlet, useRouter, useRouterState } from "@tanstack/react-router";
 import { AppProvider } from "@/hooks/useApp";
 import { authStore } from "../auth/auth-store";
 import { useAuth } from "../auth/useAuth";
+import { requiredPermissionFor } from "../auth/module-access";
+import { RestrictedSection } from "./RestrictedSection";
 
 /**
  * Guard centralizado, montado una sola vez en __root.tsx: gatea TODA la app
@@ -20,7 +22,7 @@ import { useAuth } from "../auth/useAuth";
  * spinner en vez del layout ya armado.
  */
 export function AuthGate() {
-  const { status } = useAuth();
+  const { status, hasAnyPermission } = useAuth();
   const router = useRouter();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -34,12 +36,21 @@ export function AuthGate() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Si un admin cambia los permisos de tu rol, se reflejan al volver a la pestaña (sin re-loguear).
+  // El backend ya los aplica en el momento: esto es para que el menú y las pantallas coincidan.
+  useEffect(() => {
+    const onFocus = () => void authStore.refresh().catch(() => undefined);
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
+
   if (pathname === "/login") return <Outlet />;
   if (status !== "authenticated") return <LoadingScreen />;
 
+  const required = requiredPermissionFor(pathname);
   return (
     <AppProvider>
-      <Outlet />
+      {required && !hasAnyPermission([required]) ? <RestrictedSection /> : <Outlet />}
     </AppProvider>
   );
 }

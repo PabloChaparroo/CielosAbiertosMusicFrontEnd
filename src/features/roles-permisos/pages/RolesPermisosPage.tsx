@@ -11,13 +11,15 @@ import type { PermissionGroup, Role } from "../types/role";
 type LoadState = "loading" | "ready" | "error";
 
 export function RolesPermisosPage() {
-  const { can } = useAuth();
+  const { can, hasAnyPermission } = useAuth();
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [roles, setRoles] = useState<Role[]>([]);
   const [catalog, setCatalog] = useState<PermissionGroup[]>([]);
   const [modal, setModal] = useState(false);
 
-  const allowed = can("manageRoles");
+  const allowed = hasAnyPermission(["rol:read"]);
+  const canCreate = can("manageRoles");
+  const canEditPermissions = hasAnyPermission(["rol:update"]);
 
   useEffect(() => {
     if (!allowed) return;
@@ -37,7 +39,7 @@ export function RolesPermisosPage() {
         <EmptyState
           icon={<ShieldCheck className="h-6 w-6" />}
           title="Sección restringida"
-          description="Solo un administrador puede gestionar roles y permisos."
+          description="Tu rol no tiene permiso para ver los roles y permisos."
         />
       </AppLayout>
     );
@@ -59,12 +61,14 @@ export function RolesPermisosPage() {
         loadState === "ready" ? `${roles.length} roles definidos` : "Administración de accesos"
       }
       actions={
-        <button
-          onClick={() => setModal(true)}
-          className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
-        >
-          <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Nuevo rol</span>
-        </button>
+        canCreate ? (
+          <button
+            onClick={() => setModal(true)}
+            className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
+          >
+            <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Nuevo rol</span>
+          </button>
+        ) : null
       }
     >
       {loadState === "loading" ? (
@@ -82,7 +86,13 @@ export function RolesPermisosPage() {
       ) : (
         <div className="space-y-4">
           {roles.map((role) => (
-            <RoleCard key={role.id} role={role} catalog={catalog} onSaved={handleRoleSaved} />
+            <RoleCard
+              key={role.id}
+              role={role}
+              catalog={catalog}
+              readOnly={!canEditPermissions}
+              onSaved={handleRoleSaved}
+            />
           ))}
         </div>
       )}

@@ -9,10 +9,13 @@ type LoadState = "idle" | "loading" | "ready" | "error";
 export function RoleCard({
   role,
   catalog,
+  readOnly = false,
   onSaved,
 }: {
   role: Role;
   catalog: PermissionGroup[];
+  /** Sin rol:update se ven los permisos pero no se pueden cambiar */
+  readOnly?: boolean;
   onSaved: (roleId: string, permissionsCount: number) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -106,6 +109,7 @@ export function RoleCard({
                               type="checkbox"
                               checked={draft.has(permission)}
                               onChange={() => toggle(permission)}
+                              disabled={readOnly}
                               className="h-4 w-4 rounded border-border accent-primary"
                             />
                             {actionLabel(action)}
@@ -119,15 +123,17 @@ export function RoleCard({
 
               {saveError ? <p className="mt-3 text-sm text-destructive">{saveError}</p> : null}
 
-              <div className="mt-5 flex justify-end">
-                <button
-                  disabled={!dirty || saving}
-                  onClick={handleSave}
-                  className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"
-                >
-                  <Save className="h-4 w-4" /> {saving ? "Guardando…" : "Guardar"}
-                </button>
-              </div>
+              {readOnly ? null : (
+                <div className="mt-5 flex justify-end">
+                  <button
+                    disabled={!dirty || saving}
+                    onClick={handleSave}
+                    className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"
+                  >
+                    <Save className="h-4 w-4" /> {saving ? "Guardando…" : "Guardar"}
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>

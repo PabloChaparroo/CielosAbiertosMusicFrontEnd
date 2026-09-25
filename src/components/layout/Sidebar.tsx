@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { useApp } from "@/hooks/useApp";
 import { useAuth } from "@/core/auth/useAuth";
 import { Avatar, RoleBadge } from "@/components/common/ui-bits";
+import { MODULE_READ_PERMISSION } from "@/core/auth/module-access";
 
 const groups = [
   {
@@ -51,8 +52,18 @@ export function SidebarContent({
   onOpenPerfil: () => void;
 }) {
   const { currentUser } = useApp();
-  const { logout } = useAuth();
+  const { logout, hasAnyPermission } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // Solo los módulos cuyo permiso "Ver" tiene el usuario (mismo mapa que usa AuthGate para las URLs)
+  const visibleGroups = groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        const permission = MODULE_READ_PERMISSION[item.to];
+        return !permission || hasAnyPermission([permission]);
+      }),
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <div className="flex h-full flex-col bg-sidebar">
@@ -67,7 +78,7 @@ export function SidebarContent({
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 pb-6">
-        {groups.map((group) => (
+        {visibleGroups.map((group) => (
           <div key={group.label}>
             <p className="px-3 pb-2 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
               {group.label}

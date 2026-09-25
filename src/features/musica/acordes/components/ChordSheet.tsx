@@ -26,6 +26,19 @@ function chordChartText(pairs: { chord: string; text: string }[]): string {
   return `${result}${result.endsWith(":]") ? "" : " |"}`;
 }
 
+/** Anotaciones "(…)" de la línea: flecha + texto chico en color, al final de la línea */
+function LineNotes({ notes, fontSize }: { notes: string[]; fontSize: number }) {
+  if (!notes.length) return null;
+  return (
+    <span
+      className="ml-6 self-start font-normal tracking-normal whitespace-pre text-sky"
+      style={{ fontSize: fontSize * 0.55, lineHeight: `${fontSize}px` }}
+    >
+      {notes.map((note) => `↱ ${note}`).join("    ")}
+    </span>
+  );
+}
+
 export function ChordSheet({
   lines,
   fontSize,
@@ -50,6 +63,7 @@ export function ChordSheet({
             >
               {line.label}
               {mode === "chords" ? ":" : ""}
+              <LineNotes notes={line.notes} fontSize={fontSize} />
             </p>
           );
         if (mode === "chords") {
@@ -65,6 +79,7 @@ export function ChordSheet({
               ) : (
                 <span>{line.pairs.map((pair) => pair.text).join("")}</span>
               )}
+              <LineNotes notes={line.notes} fontSize={fontSize} />
             </div>
           );
         }
@@ -96,6 +111,7 @@ export function ChordSheet({
                 )}
               </span>
             ))}
+            <LineNotes notes={line.notes} fontSize={fontSize} />
           </div>
         );
       })}

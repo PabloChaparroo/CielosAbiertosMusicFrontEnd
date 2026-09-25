@@ -1,9 +1,16 @@
 import { useRef, type RefObject, type UIEvent } from "react";
 
-const tokenPattern = /(\{[^}\n]+\}|\[[^\]\n]+\]|:\]|%|(?<!\w)-(?!\w))/g;
+const tokenPattern = /(\([^()\n]+\)|\{[^}\n]+\}|\[[^\]\n]+\]|:\]|%|(?<!\w)-(?!\w))/g;
 
 function highlightedParts(value: string) {
   return value.split(tokenPattern).map((part, index) => {
+    if (/^\([^()\n]+\)$/.test(part)) {
+      return (
+        <span key={index} className="text-sky italic">
+          {part}
+        </span>
+      );
+    }
     if (/^\{[^}\n]+\}$/.test(part)) {
       return (
         <span key={index} className="font-semibold text-primary">

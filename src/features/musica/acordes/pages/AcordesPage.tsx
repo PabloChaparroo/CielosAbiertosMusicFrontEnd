@@ -91,7 +91,8 @@ export function AcordesPage() {
   ];
   const chordShortcuts = song ? diatonicChords(targetKey) : [];
 
-  const insertAtCursor = (value: string, lineBreaks: boolean) => {
+  /** `cursorBack`: cuántos caracteres antes del final de lo insertado queda el cursor */
+  const insertAtCursor = (value: string, lineBreaks: boolean, cursorBack = 0) => {
     const input = chordInputRef.current;
     const scrollTop = input?.scrollTop ?? 0;
     const start = input?.selectionStart ?? draft.length;
@@ -106,7 +107,7 @@ export function AcordesPage() {
 
     requestAnimationFrame(() => {
       if (!input) return;
-      const cursor = before.length + inserted.length;
+      const cursor = before.length + inserted.length - cursorBack;
       input.focus();
       input.setSelectionRange(cursor, cursor);
       input.scrollTop = scrollTop;
@@ -399,6 +400,14 @@ export function AcordesPage() {
                   className="rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-white/60 hover:bg-white/10"
                 >
                   :]
+                </button>
+                <button
+                  type="button"
+                  title="Anotación al costado de la línea, ej. (coro 2)"
+                  onClick={() => insertAtCursor(" ()", false, 1)}
+                  className="rounded-full border border-sky/50 px-3 py-1.5 text-xs font-semibold text-sky transition-colors hover:bg-sky/10"
+                >
+                  ↱ nota
                 </button>
                 <button
                   type="button"

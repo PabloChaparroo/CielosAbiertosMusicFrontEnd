@@ -57,6 +57,19 @@ export function exportLyricsPdf(song: Song) {
   doc.save(`${song.title} - letra.pdf`);
 }
 
+/** Anotaciones "(…)" al costado de la línea; "->" porque las fuentes estándar de jsPDF no tienen "↱" */
+function drawNotes(doc: jsPDF, notes: string[], x: number, y: number, size: number) {
+  if (!notes.length) return;
+  const font = doc.getFont();
+  doc.setFont("courier", "normal");
+  doc.setFontSize(size * 0.65);
+  doc.setTextColor(70, 110, 200);
+  doc.text(notes.map((note) => `-> ${note}`).join("   "), x + 6, y);
+  doc.setFont(font.fontName, font.fontStyle);
+  doc.setFontSize(size);
+  doc.setTextColor(190, 130, 30);
+}
+
 export function exportChordsPdf(
   song: Song,
   opts: { semitones: number; targetKey: string; mode: "both" | "chords"; fontSize: number },
@@ -81,6 +94,7 @@ export function exportChordsPdf(
       doc.setFontSize(size);
       doc.setTextColor(190, 130, 30);
       doc.text(line.label, 14, y);
+      drawNotes(doc, line.notes, 14 + doc.getTextWidth(line.label), y, size);
       doc.setTextColor(20, 20, 20);
       y += size * 0.8;
       return;
@@ -98,6 +112,7 @@ export function exportChordsPdf(
     });
     doc.setTextColor(190, 130, 30);
     doc.text(chordLine, 14, y);
+    drawNotes(doc, line.notes, 14 + doc.getTextWidth(chordLine), y, size);
     y += size * 0.75;
     y = ensure(doc, y);
     if (opts.mode === "both") {

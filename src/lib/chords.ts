@@ -86,8 +86,20 @@ export interface ChordPair {
   chord: string;
   text: string;
 }
+/** `notes`: anotaciones escritas entre paréntesis, ej. "(coro 2 | E |)" — se muestran al final de la línea */
 export type ParsedLine =
-  { kind: "section"; label: string } | { kind: "blank" } | { kind: "line"; pairs: ChordPair[] };
+  | { kind: "section"; label: string; notes: string[] }
+  | { kind: "blank" }
+  | { kind: "line"; pairs: ChordPair[]; notes: string[] };
+
+const NOTE_PATTERN = /\(([^()\n]+)\)/g;
+
+/** Separa las anotaciones "(…)" del resto de la línea */
+function extractNotes(line: string): { text: string; notes: string[] } {
+  const notes = [...line.matchAll(NOTE_PATTERN)].map((match) => match[1]!.trim()).filter(Boolean);
+  const text = notes.length ? line.replace(NOTE_PATTERN, "").replace(/\s+$/, "") : line;
+  return { text, notes };
+}
 
 export function isSectionLabel(value: string): boolean {
   return !/^[A-G](?:#|b)?(?:m|min|maj|sus|add|dim|aug)?\d*(?:\/[A-G](?:#|b)?)?$/.test(value.trim());
@@ -110,32 +122,34 @@ export function lyricsLines(body: string): Array<{ kind: "section" | "text"; val
 }
 
 export function parseChordPro(body: string, semitones: number, targetKey: string): ParsedLine[] {
-  const sourceLines = body.split("\n");
-  const normalizedLines: string[] = [];
+  const sourceLines = body.split("\n").map((raw) => extractNotes(raw.replace(/\r/g, "")));
+  const normalizedLines: Array<{ text: string; notes: string[] }> = [];
 
   for (let index = 0; index < sourceLines.length; index += 1) {
     const current = sourceLines[index]!;
-    const chordOnly = current.trim() && /^(?:\[[^\]]+\]\s*)+$/.test(current.trim());
+    const chordOnly = current.text.trim() && /^(?:\[[^\]]+\]\s*)+$/.test(current.text.trim());
     const next = sourceLines[index + 1];
-    const nextText = next?.trim() ?? "";
+    const nextText = next?.text.trim() ?? "";
     const nextIsLyrics = nextText && !nextText.startsWith("[") && !nextText.startsWith("{");
 
-    if (chordOnly && nextIsLyrics) {
-      normalizedLines.push(`${current}${next}`);
+    if (chordOnly && next && nextIsLyrics) {
+      normalizedLines.push({
+        text: `${current.text}${next.text}`,
+        notes: [...current.notes, ...next.notes],
+      });
       index += 1;
     } else {
       normalizedLines.push(current);
     }
   }
 
-  return normalizedLines.map((raw) => {
-    const line = raw.replace(/\r/g, "");
-    if (!line.trim()) return { kind: "blank" as const };
+  return normalizedLines.map(({ text: line, notes }) => {
+    if (!line.trim() && !notes.length) return { kind: "blank" as const };
     const section = line.trim().match(/^\{(.+)\}$/);
-    if (section) return { kind: "section" as const, label: section[1]!.toUpperCase() };
+    if (section) return { kind: "section" as const, label: section[1]!.toUpperCase(), notes };
     const bracketSection = line.trim().match(/^\[([^\]]+)\]$/);
     if (bracketSection && bracketSection[1]!.trim() !== "%" && isSectionLabel(bracketSection[1]!)) {
-      return { kind: "section" as const, label: bracketSection[1]!.toUpperCase() };
+      return { kind: "section" as const, label: bracketSection[1]!.toUpperCase(), notes };
     }
 
     const pairs: ChordPair[] = [];
@@ -152,8 +166,8 @@ export function parseChordPro(body: string, semitones: number, targetKey: string
       last = next + (nextMatch === -1 ? line.length : nextMatch);
       regex.lastIndex = last;
     }
-    if (pairs.length === 0) pairs.push({ chord: "", text: line });
-    return { kind: "line" as const, pairs };
+    if (pairs.length === 0 && line.trim()) pairs.push({ chord: "", text: line });
+    return { kind: "line" as const, pairs, notes };
   });
 }
 

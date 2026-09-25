@@ -118,25 +118,16 @@ export function exportChordsPdf(
     doc.setFontSize(size);
     let chordLine = "";
     let lyricLine = "";
-    // Notas "(…)" en su posición: se reserva el lugar con espacios (courier es monoespaciada)
-    // y después se dibujan encima, en azul y más chicas. Van en la fila de la letra si se imprime
-    // y la línea tiene letra; si no, en la de acordes.
-    const lyricsPrinted =
-      opts.mode === "both" &&
-      line.pairs.some((p) => !p.note && p.text.replace(/:\]/g, "").replace(/-/g, "").trim());
-    const notes: Array<{ row: "chord" | "lyric"; col: number; label: string }> = [];
+    // Notas "(…)" en la fila de los acordes, en su posición: se reserva el lugar con espacios
+    // (courier es monoespaciada) y después se dibujan encima, en azul y más chicas.
+    const notes: Array<{ col: number; label: string }> = [];
     line.pairs.forEach((p) => {
       if (p.note) {
         const label = `-> ${p.note}`;
-        if (lyricsPrinted) {
-          notes.push({ row: "lyric", col: lyricLine.length + 1, label });
-          lyricLine += " ".repeat(noteWidth(label));
-        } else {
-          chordLine = chordLine.padEnd(Math.max(chordLine.length, lyricLine.length), " ");
-          notes.push({ row: "chord", col: chordLine.length + 1, label });
-          chordLine += " ".repeat(noteWidth(label));
-          lyricLine = lyricLine.padEnd(chordLine.length, " ");
-        }
+        chordLine = chordLine.padEnd(Math.max(chordLine.length, lyricLine.length), " ");
+        notes.push({ col: chordLine.length + 1, label });
+        chordLine += " ".repeat(noteWidth(label));
+        lyricLine = lyricLine.padEnd(chordLine.length, " ");
         return;
       }
       const text = p.text;
@@ -147,22 +138,17 @@ export function exportChordsPdf(
       if (chord && chord.length >= text.length)
         lyricLine = lyricLine.padEnd(chordLine.length + 1, " ");
     });
-    const drawRowNotes = (row: "chord" | "lyric", rowText: string) =>
-      notes
-        .filter((n) => n.row === row)
-        .forEach((n) =>
-          drawNoteAt(doc, n.label, 14 + doc.getTextWidth(rowText.slice(0, n.col)), y, size),
-        );
     doc.setTextColor(190, 130, 30);
     doc.text(chordLine, 14, y);
-    drawRowNotes("chord", chordLine);
+    notes.forEach((n) =>
+      drawNoteAt(doc, n.label, 14 + doc.getTextWidth(chordLine.slice(0, n.col)), y, size),
+    );
     y += size * 0.75;
     y = ensure(doc, y);
     if (opts.mode === "both") {
       doc.setFont("courier", "normal");
       doc.setTextColor(20, 20, 20);
       doc.text(lyricLine, 14, y);
-      drawRowNotes("lyric", lyricLine);
       y += size * 0.75;
     }
   });

@@ -67,11 +67,6 @@ function NoteMark({ note, fontSize }: { note: string; fontSize: number }) {
   );
 }
 
-/** true si la línea tiene letra (no solo acordes, "-", ":]" o notas) */
-function hasLyrics(pairs: ChordPair[]): boolean {
-  return pairs.some((p) => !p.note && p.text.replace(/:\]/g, "").replace(/-/g, "").trim());
-}
-
 export function ChordSheet({
   lines,
   fontSize,
@@ -133,8 +128,6 @@ export function ChordSheet({
             </div>
           );
         }
-        // Notas: en la fila de la letra si la línea tiene letra; si es de solo acordes, en la de acordes
-        const notesOnLyricRow = hasLyrics(line.pairs);
         return (
           <div
             key={i}
@@ -142,14 +135,13 @@ export function ChordSheet({
             style={{ marginBottom: `${fontSize * 0.18}px` }}
           >
             {line.pairs.map((p, j) =>
+              // la nota va siempre en la fila de los acordes, en la posición donde se escribió
               p.note ? (
                 <span key={j} className="inline-flex flex-col">
                   <span style={{ minHeight: fontSize, lineHeight: `${fontSize}px` }}>
-                    {notesOnLyricRow ? null : <NoteMark note={p.note} fontSize={fontSize} />}
+                    <NoteMark note={p.note} fontSize={fontSize} />
                   </span>
-                  <span style={{ minHeight: fontSize, lineHeight: `${fontSize}px` }}>
-                    {notesOnLyricRow ? <NoteMark note={p.note} fontSize={fontSize} /> : null}
-                  </span>
+                  <span style={{ minHeight: fontSize, lineHeight: `${fontSize}px` }} />
                 </span>
               ) : (
                 <span key={j} className="inline-flex flex-col">

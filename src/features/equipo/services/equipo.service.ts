@@ -5,7 +5,6 @@ export interface CreateMemberDto {
   email: string;
   password: string;
   name: string;
-  ministryRole: string;
   avatarColor: string;
   initials: string;
 }

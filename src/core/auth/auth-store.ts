@@ -8,7 +8,6 @@ export interface AuthenticatedUser {
   email: string;
   name: string;
   roles: string[];
-  ministryRole: string;
   avatarColor: string;
   initials: string;
   avatarKey: string | null;

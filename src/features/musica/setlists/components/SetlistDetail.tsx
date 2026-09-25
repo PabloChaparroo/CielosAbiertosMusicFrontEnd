@@ -13,6 +13,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Avatar, Cover } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
+import { roleNames } from "@/lib/user-roles";
 import { KEYS } from "@/lib/chords";
 import { exportSetlistPdf } from "@/lib/pdf";
 import type { Setlist, SetlistItem } from "@/types";
@@ -232,7 +233,7 @@ export function SetlistDetail({
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{u.name}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {u.fechaHoraBaja ? "Dado de baja" : u.ministryRole}
+                      {u.fechaHoraBaja ? "Dado de baja" : roleNames(u.roles)}
                     </p>
                   </div>
                 </li>

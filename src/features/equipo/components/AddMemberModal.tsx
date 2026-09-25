@@ -1,6 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
-import { useApp } from "@/hooks/useApp";
+import { useAuth } from "@/core/auth/useAuth";
+import type { Role } from "@/features/roles-permisos/types/role";
+import { RolesService } from "@/features/roles-permisos/services/roles.service";
 import { EquipoService } from "../services/equipo.service";
 import { avatarColorFor, generatePassword, initialsFor } from "../lib/generate-password";
 import type { User } from "@/types";
@@ -8,33 +10,41 @@ import type { User } from "@/types";
 const inputCls =
   "w-full rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary/60";
 
+type RolesLoadState = "loading" | "ready" | "error";
+
 export function AddMemberModal({
   onClose,
   onCreated,
 }: {
   onClose: () => void;
-  onCreated: (user: User, password: string) => void;
+  /** `roleWarning`: el integrante se creó pero no se le pudo asignar el rol elegido */
+  onCreated: (user: User, password: string, roleWarning?: string) => void;
 }) {
-  const { users } = useApp();
-  // Desplegable con los roles de ministerio que ya existen en el equipo —
-  // no un catálogo fijo, se arma de lo que ya está cargado. Solo de
-  // integrantes activos (mismo criterio que el filtro por rol de
-  // EquipoPage) para no arrastrar valores de cuentas dadas de baja.
-  const ministryRoleOptions = useMemo(
-    () =>
-      [...new Set(users.filter((u) => !u.fechaHoraBaja).map((u) => u.ministryRole))].sort((a, b) =>
-        a.localeCompare(b),
-      ),
-    [users],
-  );
+  const { can } = useAuth();
+  // Asignar un rol se gobierna con rol:write (no equipo:write), igual que en Editar:
+  // sin ese permiso no se muestra el desplegable y el integrante nace sin rol.
+  const canAssignRole = can("assignRole");
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [ministryRole, setMinistryRole] = useState(
-    ministryRoleOptions.includes("Vocalista") ? "Vocalista" : (ministryRoleOptions[0] ?? ""),
-  );
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [rolesLoadState, setRolesLoadState] = useState<RolesLoadState>("loading");
+  // "" = sin rol
+  const [roleId, setRoleId] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!canAssignRole) return;
+    RolesService.listRoles()
+      .then((list) => {
+        const sorted = [...list].sort((a, b) => a.name.localeCompare(b.name));
+        setRoles(sorted);
+        setRoleId(sorted.find((r) => r.name === "Músico")?.id ?? "");
+        setRolesLoadState("ready");
+      })
+      .catch(() => setRolesLoadState("error"));
+  }, [canAssignRole]);
 
   const canSave = name.trim() !== "" && email.trim() !== "" && !saving;
 
@@ -42,19 +52,37 @@ export function AddMemberModal({
     setSaving(true);
     setError(null);
     const password = generatePassword();
+    let created: User;
     try {
-      const created = await EquipoService.createMember({
+      created = await EquipoService.createMember({
         email: email.trim(),
         password,
         name: name.trim(),
-        ministryRole,
         avatarColor: avatarColorFor(name.trim()),
         initials: initialsFor(name.trim()),
       });
-      onCreated(created, password);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo crear el integrante");
       setSaving(false);
+      return;
+    }
+
+    // El integrante ya existe: aunque falle la asignación del rol, hay que mostrar la
+    // contraseña generada (es la única vez que se ve) y avisar que el rol quedó pendiente.
+    if (!roleId) {
+      onCreated(created, password);
+      return;
+    }
+    try {
+      await EquipoService.assignRole(created.id, roleId);
+      const role = roles.find((r) => r.id === roleId);
+      onCreated({ ...created, roles: role ? [{ id: role.id, name: role.name }] : [] }, password);
+    } catch {
+      onCreated(
+        created,
+        password,
+        "No se pudo asignar el rol elegido — asignáselo desde Editar integrante.",
+      );
     }
   };
 
@@ -85,20 +113,33 @@ export function AddMemberModal({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <select
-            className={inputCls}
-            value={ministryRole}
-            onChange={(e) => setMinistryRole(e.target.value)}
-          >
-            {ministryRoleOptions.map((role) => (
-              <option key={role} value={role}>
-                {role}
-              </option>
-            ))}
-          </select>
+          {canAssignRole ? (
+            rolesLoadState === "error" ? (
+              <p className="text-xs text-destructive">
+                No se pudieron cargar los roles — el integrante se crea sin rol.
+              </p>
+            ) : (
+              <select
+                aria-label="Rol"
+                className={inputCls}
+                value={roleId}
+                onChange={(e) => setRoleId(e.target.value)}
+                disabled={rolesLoadState === "loading"}
+              >
+                <option value="">
+                  {rolesLoadState === "loading" ? "Cargando roles…" : "Sin rol"}
+                </option>
+                {roles.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.name}
+                  </option>
+                ))}
+              </select>
+            )
+          ) : null}
           <p className="text-xs text-muted-foreground">
             La contraseña inicial se genera automáticamente y se muestra una única vez al crear el
-            integrante. Los roles del sistema se asignan después, desde su perfil.
+            integrante. El rol se puede cambiar o quitar después, desde Editar integrante.
           </p>
           {error ? (
             <p role="alert" className="text-sm text-destructive">

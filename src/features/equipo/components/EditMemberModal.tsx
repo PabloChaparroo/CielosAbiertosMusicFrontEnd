@@ -28,7 +28,6 @@ export function EditMemberModal({
   const canRemove = can("removeTeamMember");
 
   const [name, setName] = useState(member.name);
-  const [ministryRole, setMinistryRole] = useState(member.ministryRole);
   const [selectedRoleIds, setSelectedRoleIds] = useState<Set<string>>(
     new Set(member.roles.map((r) => r.id)),
   );
@@ -66,7 +65,6 @@ export function EditMemberModal({
       if (canEditProfile) {
         saved = await EquipoService.updateMember(member.id, {
           name: name.trim(),
-          ministryRole,
         });
       }
       if (canManageRoles) {
@@ -121,13 +119,6 @@ export function EditMemberModal({
             placeholder="Nombre completo"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            disabled={!canEditProfile}
-          />
-          <input
-            className={inputCls}
-            placeholder="Rol en el ministerio"
-            value={ministryRole}
-            onChange={(e) => setMinistryRole(e.target.value)}
             disabled={!canEditProfile}
           />
 

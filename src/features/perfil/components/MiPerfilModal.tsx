@@ -15,7 +15,6 @@ export function MiPerfilModal({ onClose }: { onClose: () => void }) {
   const { refresh, logout } = useAuth();
 
   const [name, setName] = useState(currentUser.name);
-  const [ministryRole, setMinistryRole] = useState(currentUser.ministryRole);
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -82,7 +81,6 @@ export function MiPerfilModal({ onClose }: { onClose: () => void }) {
 
       await PerfilService.updateMyProfile({
         name: name.trim(),
-        ministryRole,
         ...(avatarKey ? { avatarKey } : {}),
       });
 
@@ -205,12 +203,6 @@ export function MiPerfilModal({ onClose }: { onClose: () => void }) {
             placeholder="Nombre completo"
             value={name}
             onChange={(e) => setName(e.target.value)}
-          />
-          <input
-            className={inputCls}
-            placeholder="Rol en el ministerio"
-            value={ministryRole}
-            onChange={(e) => setMinistryRole(e.target.value)}
           />
 
           {saveError ? (

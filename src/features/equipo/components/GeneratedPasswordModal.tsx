@@ -4,10 +4,13 @@ import { Check, Copy, KeyRound } from "lucide-react";
 export function GeneratedPasswordModal({
   email,
   password,
+  warning,
   onClose,
 }: {
   email: string;
   password: string;
+  /** Aviso extra, ej. el rol no se pudo asignar */
+  warning?: string;
   onClose: () => void;
 }) {
   const [copied, setCopied] = useState(false);
@@ -31,6 +34,12 @@ export function GeneratedPasswordModal({
           </div>
           <h2 className="font-display text-xl font-semibold">Integrante creado</h2>
         </div>
+
+        {warning ? (
+          <p role="alert" className="mb-3 text-sm text-destructive">
+            {warning}
+          </p>
+        ) : null}
 
         <p className="text-sm text-muted-foreground">
           Contraseña generada para <span className="font-medium text-foreground">{email}</span>:

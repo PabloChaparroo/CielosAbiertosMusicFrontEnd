@@ -9,7 +9,6 @@ export interface User {
   id: string;
   name: string;
   roles: UserRole[];
-  ministryRole: string;
   avatarColor: string;
   initials: string;
   /** Key del objeto en S3/MinIO de la foto de perfil real, mismo criterio que Song.audioKey. null si el usuario no subió ninguna (se muestra avatarColor/initials). */

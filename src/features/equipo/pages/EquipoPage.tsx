@@ -6,6 +6,7 @@ import { useApp } from "@/hooks/useApp";
 import { AddMemberModal } from "../components/AddMemberModal";
 import { EditMemberModal } from "../components/EditMemberModal";
 import { GeneratedPasswordModal } from "../components/GeneratedPasswordModal";
+import { roleNames } from "@/lib/user-roles";
 
 export function EquipoPage() {
   const { users, usersLoadState, reloadUsers, can, setlists, songs } = useApp();
@@ -14,19 +15,28 @@ export function EquipoPage() {
   const [showBajas, setShowBajas] = useState(false);
   const [addModal, setAddModal] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
-  const [generated, setGenerated] = useState<{ email: string; password: string } | null>(null);
+  const [generated, setGenerated] = useState<{
+    email: string;
+    password: string;
+    roleWarning?: string;
+  } | null>(null);
 
   const activeUsers = useMemo(() => users.filter((u) => !u.fechaHoraBaja), [users]);
   const visibleUsers = showBajas ? users : activeUsers;
 
-  const ministryRoles = useMemo(
-    () => [
-      "Todos",
-      ...[...new Set(activeUsers.map((u) => u.ministryRole))].sort((a, b) => a.localeCompare(b)),
-    ],
-    [activeUsers],
+  // filtros por rol del sistema; "Sin rol" solo aparece si hay integrantes activos sin ninguno
+  const roleFilters = useMemo(() => {
+    const names = [...new Set(activeUsers.flatMap((u) => u.roles.map((r) => r.name)))].sort(
+      (a, b) => a.localeCompare(b),
+    );
+    const hasWithoutRole = activeUsers.some((u) => u.roles.length === 0);
+    return ["Todos", ...names, ...(hasWithoutRole ? ["Sin rol"] : [])];
+  }, [activeUsers]);
+  const list = visibleUsers.filter(
+    (u) =>
+      filter === "Todos" ||
+      (filter === "Sin rol" ? u.roles.length === 0 : u.roles.some((r) => r.name === filter)),
   );
-  const list = visibleUsers.filter((u) => filter === "Todos" || u.ministryRole === filter);
   const member = users.find((u) => u.id === selected);
   const editingUser = users.find((u) => u.id === editing);
 
@@ -61,7 +71,7 @@ export function EquipoPage() {
   if (member) {
     const participations = setlists.filter((s) => s.teamIds.includes(member.id));
     return (
-      <AppLayout title={member.name} subtitle={member.ministryRole}>
+      <AppLayout title={member.name} subtitle={roleNames(member.roles)}>
         <button
           onClick={() => setSelected(null)}
           className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
@@ -76,7 +86,6 @@ export function EquipoPage() {
               className="mx-auto flex h-24 w-24 items-center justify-center rounded-full text-2xl font-bold text-background"
             />
             <h3 className="mt-4 font-display text-xl font-semibold">{member.name}</h3>
-            <p className="text-sm text-muted-foreground">{member.ministryRole}</p>
             <div className="mt-3 flex justify-center">
               <RoleBadge roles={member.roles} />
             </div>
@@ -158,7 +167,7 @@ export function EquipoPage() {
       }
     >
       <div className="mb-6 flex flex-wrap items-center gap-2">
-        {ministryRoles.map((i) => (
+        {roleFilters.map((i) => (
           <button
             key={i}
             onClick={() => setFilter(i)}
@@ -205,7 +214,6 @@ export function EquipoPage() {
               />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold">{u.name}</p>
-                <p className="truncate text-sm text-muted-foreground">{u.ministryRole}</p>
                 {u.fechaHoraBaja ? (
                   <p className="mt-1 text-[11px] font-semibold text-destructive">Dado de baja</p>
                 ) : null}
@@ -219,10 +227,10 @@ export function EquipoPage() {
       {addModal ? (
         <AddMemberModal
           onClose={() => setAddModal(false)}
-          onCreated={(user, password) => {
+          onCreated={(user, password, roleWarning) => {
             setAddModal(false);
             reloadUsers();
-            setGenerated({ email: user.email, password });
+            setGenerated({ email: user.email, password, ...(roleWarning ? { roleWarning } : {}) });
           }}
         />
       ) : null}
@@ -231,6 +239,7 @@ export function EquipoPage() {
         <GeneratedPasswordModal
           email={generated.email}
           password={generated.password}
+          {...(generated.roleWarning ? { warning: generated.roleWarning } : {})}
           onClose={() => setGenerated(null)}
         />
       ) : null}

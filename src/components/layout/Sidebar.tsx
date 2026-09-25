@@ -113,7 +113,6 @@ export function SidebarContent({
           />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">{currentUser.name}</p>
-            <p className="truncate text-xs text-muted-foreground">{currentUser.ministryRole}</p>
           </div>
           <RoleBadge roles={currentUser.roles} />
         </button>

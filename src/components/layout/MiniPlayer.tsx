@@ -11,6 +11,9 @@ import {
   Volume2,
 } from "lucide-react";
 import { AudioTracksService } from "@/features/canciones/services/audio-tracks.service";
+import { SongLinksService } from "@/features/canciones/services/song-links.service";
+import { YoutubeEmbed, YoutubeIcon } from "@/components/common/YoutubeEmbed";
+import { parseYoutubeVideoId } from "@/lib/youtube";
 import type { AudioTrack } from "@/features/canciones/types/audio-track";
 import { useApp } from "@/hooks/useApp";
 import { Cover, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
@@ -27,6 +30,9 @@ export function MiniPlayer() {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const [tracks, setTracks] = useState<AudioTrack[]>([]);
   const [tracksOpen, setTracksOpen] = useState(false);
+  // videos de YouTube: los links relacionados de la canción cuya URL es de YouTube
+  const [videos, setVideos] = useState<Array<{ id: string; label: string; videoId: string }>>([]);
+  const [openVideo, setOpenVideo] = useState<{ videoId: string; label: string } | null>(null);
   const [mainAudioKey, setMainAudioKey] = useState<string | null>(null);
   const currentSongId = current?.id;
   const currentRef = useRef(current);
@@ -44,13 +50,30 @@ export function MiniPlayer() {
   // nunca se usan).
   useEffect(() => {
     setTracks([]);
+    setVideos([]);
     setTracksOpen(false);
     setMainAudioKey(currentRef.current?.audioKey ?? null);
     if (!currentSongId) return;
     AudioTracksService.listBySong(currentSongId)
       .then(setTracks)
       .catch(() => setTracks([]));
+    SongLinksService.listBySong(currentSongId)
+      .then((links) =>
+        setVideos(
+          links.flatMap((link) => {
+            const videoId = parseYoutubeVideoId(link.url);
+            return videoId ? [{ id: link.id, label: link.label, videoId }] : [];
+          }),
+        ),
+      )
+      .catch(() => setVideos([]));
   }, [currentSongId]);
+
+  const hasRelated = tracks.length > 0 || videos.length > 0;
+  const openYoutube = (video: { videoId: string; label: string }) => {
+    setTracksOpen(false);
+    setOpenVideo(video);
+  };
 
   useEffect(() => {
     setResolvedUrl(null);
@@ -190,6 +213,8 @@ export function MiniPlayer() {
       ? [{ key: mainAudioKey, label: `Original — ${current.title}` }]
       : []),
     ...tracks.map((track) => ({ key: track.audioKey, label: track.label })),
+    // los videos van con prefijo: elegirlos abre el embed en vez de cambiar el audio
+    ...videos.map((video) => ({ key: `yt:${video.id}`, label: `▶ YouTube — ${video.label}` })),
   ];
 
   if (!current) return null;
@@ -207,7 +232,7 @@ export function MiniPlayer() {
           if (el.duration) setProgress((el.currentTime / el.duration) * 100);
         }}
       />
-      {tracksOpen && tracks.length > 0 ? (
+      {tracksOpen && hasRelated ? (
         <div className="absolute right-4 bottom-full mb-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-card p-3 shadow-2xl">
           <p className="mb-2 flex items-center gap-2 px-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
             <ListMusic className="h-3.5 w-3.5" /> Pistas relacionadas
@@ -249,6 +274,20 @@ export function MiniPlayer() {
                 </button>
               );
             })}
+            {videos.map((video) => (
+              <button
+                key={video.id}
+                type="button"
+                onClick={() => openYoutube(video)}
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-secondary"
+              >
+                <YoutubeIcon />
+                <span className="min-w-0 flex-1 truncate">{video.label}</span>
+                <span className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  YouTube
+                </span>
+              </button>
+            ))}
           </div>
         </div>
       ) : null}
@@ -275,7 +314,7 @@ export function MiniPlayer() {
           </p>
         </button>
         <FavButton songId={current.id} />
-        {tracks.length > 0 ? (
+        {hasRelated ? (
           <button
             type="button"
             onClick={() => setTracksOpen((open) => !open)}
@@ -455,7 +494,12 @@ export function MiniPlayer() {
                         </span>
                         <select
                           value={current.audioKey ?? ""}
-                          onChange={(e) => play({ ...current, audioKey: e.target.value })}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            const video = videos.find((v) => `yt:${v.id}` === value);
+                            if (video) openYoutube(video);
+                            else play({ ...current, audioKey: value });
+                          }}
                           aria-label="Elegir audio del tema"
                           className="w-full rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none focus:border-primary/60"
                         >
@@ -519,6 +563,13 @@ export function MiniPlayer() {
             document.body,
           )
         : null}
+      {openVideo ? (
+        <YoutubeEmbed
+          videoId={openVideo.videoId}
+          title={openVideo.label}
+          onClose={() => setOpenVideo(null)}
+        />
+      ) : null}
     </div>
   );
 }

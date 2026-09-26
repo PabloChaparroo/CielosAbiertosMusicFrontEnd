@@ -3,6 +3,7 @@ import {
   chartBars,
   chordsOnly,
   diatonicChords,
+  joinShortChartLines,
   mergeRepeatedChartLines,
   parseChordPro,
   semitonesBetween,
@@ -187,5 +188,40 @@ describe("mergeRepeatedChartLines — Solo acordes: líneas seguidas con los mis
     expect(chart("[D] [A] :]\n[D] [A] :]")).toHaveLength(2);
     expect(chart("[D] [A] [x3]\n[D] [A] [x3]")).toHaveLength(2);
     expect(chart("[D] (suave) [A]\n[D] (suave) [A]")).toHaveLength(2);
+  });
+});
+
+describe("joinShortChartLines — Solo acordes: dos líneas de 2 compases en un renglón", () => {
+  const chart = (...rows: string[]) =>
+    joinShortChartLines(
+      mergeRepeatedChartLines(chordsOnly(parseChordPro(rows.join("\n"), 0, "D"))),
+    );
+  const barsOf = (line: ParsedLine) => (line.kind === "line" ? chartBars(line.pairs) : []);
+
+  it("| Em | % | + | G | A | → | Em | % | G | A |", () => {
+    expect(chart("[Em]Solo Tú tienes pa[%]labras", "[G]de vida [A]eterna").map(barsOf)).toEqual([
+      ["Em", "%", "G", "A"],
+    ]);
+  });
+
+  it("se juntan de a dos: cuatro líneas cortas → dos renglones", () => {
+    expect(chart("[D] [A]", "[G] [A]", "[Bm] [G]", "[Em] [A]").map(barsOf)).toEqual([
+      ["D", "A", "G", "A"],
+      ["Bm", "G", "Em", "A"],
+    ]);
+  });
+
+  it("una línea de 2 junto a una de otra cantidad no se junta", () => {
+    expect(chart("[D] [A]", "[G] [A] [D]")).toHaveLength(2);
+  });
+
+  it("dos líneas iguales siguen siendo una repetición, no un renglón de 4", () => {
+    const lines = chart("[D] [A]", "[D] [A]");
+    expect(lines).toHaveLength(1);
+    expect(barsOf(lines[0]!)).toEqual(["D", "A", "D", "A"]);
+  });
+
+  it("una línea con notas o marcas no se junta", () => {
+    expect(chart("[D] (suave) [A]", "[G] [A]")).toHaveLength(2);
   });
 });

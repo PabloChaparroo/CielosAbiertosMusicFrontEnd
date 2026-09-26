@@ -2,6 +2,7 @@ import {
   chartBars,
   isChartMarker,
   isSimpleChartLine,
+  joinShortChartLines,
   mergeRepeatedChartLines,
   type ChordPair,
   type ParsedLine,
@@ -161,124 +162,129 @@ export function ChordSheet({
       className={`font-mono leading-none ${dark ? "text-white" : ""}`}
       style={{ fontSize }}
     >
-      {/* en Solo acordes, las líneas seguidas que repiten los mismos compases se juntan en una */}
-      {(mode === "chords" ? mergeRepeatedChartLines(lines) : lines).map((line, i) => {
-        if (line.kind === "blank") return <div key={i} style={{ height: fontSize }} />;
-        if (line.kind === "section")
-          return (
-            <p
-              key={i}
-              className="mt-6 mb-3 font-semibold tracking-widest text-primary"
-              style={{ fontSize: fontSize * 1.15 }}
-            >
-              {line.label}
-              {mode === "chords" ? ":" : ""}
-              {line.notes.map((note, j) => (
-                <NoteMark key={j} note={note} fontSize={fontSize} />
-              ))}
-            </p>
-          );
-        if (mode === "chords") {
-          const pairs = line.pairs.filter((pair) => pair.chord || pair.note || pair.text.trim());
-          const hasChords = pairs.some((pair) => pair.chord);
-          const segments: ChartSegment[] = hasChords
-            ? chordChartSegments(pairs)
-            : pairs.map((pair) =>
-                pair.note
-                  ? { kind: "note", value: pair.note }
-                  : { kind: "chart", value: pair.text },
-              );
-          // Las notas van en un renglón chico ARRIBA de los compases, en la columna donde se
-          // escribieron (como en una hoja a mano: "_2doVers" sobre "| G |"); la línea de compases
-          // queda limpia. Si dos notas se pisarían, la segunda se corre.
-          let base = "";
-          let noteEnd = 0;
-          const notes: Array<{ col: number; value: string }> = [];
-          segments.forEach((segment) => {
-            if (segment.kind === "chart") {
-              base += segment.value;
-              return;
-            }
-            const col = Math.max(base.length + 1, noteEnd);
-            notes.push({ col, value: segment.value });
-            noteEnd = col + noteWidthCh(segment.value);
-          });
-          // una línea que es solo una nota ("(repetir intro)") se muestra como línea normal
-          const notesAbove = base.trim() !== "";
-          return (
-            <div key={i} style={{ marginBottom: `${fontSize * 0.18}px` }}>
-              {notesAbove && notes.length ? (
-                <div className="relative" style={{ height: fontSize * 0.85 }}>
-                  {notes.map((note, j) => (
-                    // el left en ch se mide con la letra de la hoja; la nota chica va adentro
-                    <span key={j} className="absolute bottom-0" style={{ left: `${note.col}ch` }}>
-                      <span
-                        className="font-normal tracking-normal whitespace-pre text-primary"
-                        style={{ fontSize: fontSize * NOTE_SCALE, lineHeight: 1 }}
-                      >
-                        ↱ {note.value}
-                      </span>
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-              <div
-                className="flex flex-nowrap whitespace-pre"
-                style={{ lineHeight: `${fontSize}px` }}
+      {/* en Solo acordes, las líneas seguidas que repiten los mismos compases se juntan en una,
+          y dos líneas seguidas de 2 compases van en un mismo renglón */}
+      {(mode === "chords" ? joinShortChartLines(mergeRepeatedChartLines(lines)) : lines).map(
+        (line, i) => {
+          if (line.kind === "blank") return <div key={i} style={{ height: fontSize }} />;
+          if (line.kind === "section")
+            return (
+              <p
+                key={i}
+                className="mt-6 mb-3 font-semibold tracking-widest text-primary"
+                style={{ fontSize: fontSize * 1.15 }}
               >
-                {notesAbove ? (
-                  <span className={hasChords ? "font-semibold text-primary" : undefined}>
-                    {base}
+                {line.label}
+                {mode === "chords" ? ":" : ""}
+                {line.notes.map((note, j) => (
+                  <NoteMark key={j} note={note} fontSize={fontSize} />
+                ))}
+              </p>
+            );
+          if (mode === "chords") {
+            const pairs = line.pairs.filter((pair) => pair.chord || pair.note || pair.text.trim());
+            const hasChords = pairs.some((pair) => pair.chord);
+            const segments: ChartSegment[] = hasChords
+              ? chordChartSegments(pairs)
+              : pairs.map((pair) =>
+                  pair.note
+                    ? { kind: "note", value: pair.note }
+                    : { kind: "chart", value: pair.text },
+                );
+            // Las notas van en un renglón chico ARRIBA de los compases, en la columna donde se
+            // escribieron (como en una hoja a mano: "_2doVers" sobre "| G |"); la línea de compases
+            // queda limpia. Si dos notas se pisarían, la segunda se corre.
+            let base = "";
+            let noteEnd = 0;
+            const notes: Array<{ col: number; value: string }> = [];
+            segments.forEach((segment) => {
+              if (segment.kind === "chart") {
+                base += segment.value;
+                return;
+              }
+              const col = Math.max(base.length + 1, noteEnd);
+              notes.push({ col, value: segment.value });
+              noteEnd = col + noteWidthCh(segment.value);
+            });
+            // una línea que es solo una nota ("(repetir intro)") se muestra como línea normal
+            const notesAbove = base.trim() !== "";
+            return (
+              <div key={i} style={{ marginBottom: `${fontSize * 0.18}px` }}>
+                {notesAbove && notes.length ? (
+                  <div className="relative" style={{ height: fontSize * 0.85 }}>
+                    {notes.map((note, j) => (
+                      // el left en ch se mide con la letra de la hoja; la nota chica va adentro
+                      <span key={j} className="absolute bottom-0" style={{ left: `${note.col}ch` }}>
+                        <span
+                          className="font-normal tracking-normal whitespace-pre text-primary"
+                          style={{ fontSize: fontSize * NOTE_SCALE, lineHeight: 1 }}
+                        >
+                          ↱ {note.value}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+                <div
+                  className="flex flex-nowrap whitespace-pre"
+                  style={{ lineHeight: `${fontSize}px` }}
+                >
+                  {notesAbove ? (
+                    <span className={hasChords ? "font-semibold text-primary" : undefined}>
+                      {base}
+                    </span>
+                  ) : (
+                    notes.map((note, j) => (
+                      <NoteMark key={j} note={note.value} fontSize={fontSize} />
+                    ))
+                  )}
+                </div>
+              </div>
+            );
+          }
+          const { noteOffset, chordNudge } = placeNotes(line.pairs);
+          return (
+            <div
+              key={i}
+              className="flex flex-nowrap whitespace-nowrap"
+              style={{ marginBottom: `${fontSize * 0.18}px` }}
+            >
+              {line.pairs.map((p, j) =>
+                // la nota va en la fila de los acordes sin ocupar lugar (ver placeNotes)
+                p.note ? (
+                  <span key={j} className="relative w-0">
+                    <span
+                      className="absolute top-0"
+                      style={{ left: `${noteOffset[j]}ch`, lineHeight: `${fontSize}px` }}
+                    >
+                      <NoteMark note={p.note} fontSize={fontSize} />
+                    </span>
                   </span>
                 ) : (
-                  notes.map((note, j) => <NoteMark key={j} note={note.value} fontSize={fontSize} />)
-                )}
-              </div>
+                  <span key={j} className="inline-flex flex-col">
+                    <span
+                      className="relative font-semibold whitespace-pre text-primary"
+                      style={{
+                        minHeight: p.chord ? undefined : 1,
+                        lineHeight: `${fontSize}px`,
+                        // separa acordes consecutivos cuando la letra de abajo es más corta que el acorde
+                        paddingRight: p.chord ? "1ch" : undefined,
+                        // corrido solo si una nota no entraba antes (la letra no se mueve)
+                        left: chordNudge[j] ? `${chordNudge[j]}ch` : undefined,
+                      }}
+                    >
+                      {p.chord || " "}
+                    </span>
+                    <span className="whitespace-pre" style={{ lineHeight: `${fontSize}px` }}>
+                      {displayText(p.text) || " "}
+                    </span>
+                  </span>
+                ),
+              )}
             </div>
           );
-        }
-        const { noteOffset, chordNudge } = placeNotes(line.pairs);
-        return (
-          <div
-            key={i}
-            className="flex flex-nowrap whitespace-nowrap"
-            style={{ marginBottom: `${fontSize * 0.18}px` }}
-          >
-            {line.pairs.map((p, j) =>
-              // la nota va en la fila de los acordes sin ocupar lugar (ver placeNotes)
-              p.note ? (
-                <span key={j} className="relative w-0">
-                  <span
-                    className="absolute top-0"
-                    style={{ left: `${noteOffset[j]}ch`, lineHeight: `${fontSize}px` }}
-                  >
-                    <NoteMark note={p.note} fontSize={fontSize} />
-                  </span>
-                </span>
-              ) : (
-                <span key={j} className="inline-flex flex-col">
-                  <span
-                    className="relative font-semibold whitespace-pre text-primary"
-                    style={{
-                      minHeight: p.chord ? undefined : 1,
-                      lineHeight: `${fontSize}px`,
-                      // separa acordes consecutivos cuando la letra de abajo es más corta que el acorde
-                      paddingRight: p.chord ? "1ch" : undefined,
-                      // corrido solo si una nota no entraba antes (la letra no se mueve)
-                      left: chordNudge[j] ? `${chordNudge[j]}ch` : undefined,
-                    }}
-                  >
-                    {p.chord || " "}
-                  </span>
-                  <span className="whitespace-pre" style={{ lineHeight: `${fontSize}px` }}>
-                    {displayText(p.text) || " "}
-                  </span>
-                </span>
-              ),
-            )}
-          </div>
-        );
-      })}
+        },
+      )}
     </div>
   );
 }

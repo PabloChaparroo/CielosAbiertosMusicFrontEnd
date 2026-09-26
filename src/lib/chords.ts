@@ -324,6 +324,35 @@ export function mergeRepeatedChartLines(lines: ParsedLine[]): ParsedLine[] {
   return out;
 }
 
+/**
+ * "Solo acordes": dos líneas seguidas de 2 compases cada una van en un mismo renglón:
+ * "| Em | % |" + "| G | A |" → "| Em | % | G | A |". Solo líneas "simples" que no sean una
+ * repetición (esas ya se escriben con ":]"); se juntan de a dos.
+ */
+export function joinShortChartLines(lines: ParsedLine[]): ParsedLine[] {
+  const isShort = (line: ParsedLine | undefined): line is Extract<ParsedLine, { kind: "line" }> =>
+    !!line &&
+    line.kind === "line" &&
+    isSimpleChartLine(line.pairs) &&
+    chartBars(line.pairs).length === 2 &&
+    !isRepeated(chartBars(line.pairs));
+  const out: ParsedLine[] = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]!;
+    const next = lines[i + 1];
+    if (isShort(line) && isShort(next)) {
+      const pairs = line.pairs.map((p, j) =>
+        j === line.pairs.length - 1 && p.text.trim() === "-" ? { ...p, text: "" } : p,
+      );
+      out.push({ kind: "line", pairs: [...pairs, ...next.pairs] });
+      i += 1;
+    } else {
+      out.push(line);
+    }
+  }
+  return out;
+}
+
 export function chordsOnly(lines: ParsedLine[]): ParsedLine[] {
   return lines.map((l) =>
     l.kind === "line"

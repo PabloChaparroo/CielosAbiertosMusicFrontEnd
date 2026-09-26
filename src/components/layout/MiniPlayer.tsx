@@ -159,11 +159,18 @@ export function MiniPlayer() {
     if (el?.duration) el.currentTime = (value / 100) * el.duration;
   };
 
-  // En celular, tocar el tema abre el reproductor a pantalla completa; en compu sigue como antes
-  const openTitle = () => {
-    if (window.matchMedia("(max-width: 639px)").matches) setExpanded(true);
-    else if (!isPlaying) toggle();
-  };
+  // Tocar el tema (portada o nombre) abre el reproductor a pantalla completa
+  const openTitle = () => setExpanded(true);
+
+  // Escape cierra la pantalla completa
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setExpanded(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [expanded]);
 
   if (!current) return null;
 
@@ -238,7 +245,7 @@ export function MiniPlayer() {
           type="button"
           onClick={openTitle}
           className="min-w-0 w-40 cursor-pointer text-left sm:w-56"
-          aria-label="Reproducir canción actual"
+          aria-label="Abrir reproductor a pantalla completa"
         >
           <p className="truncate text-sm font-semibold">{activeAudioLabel ?? current.title}</p>
           <p className="truncate text-xs text-muted-foreground">
@@ -341,82 +348,87 @@ export function MiniPlayer() {
               role="dialog"
               aria-modal="true"
               aria-label="Reproductor"
-              className="fixed inset-0 z-50 flex flex-col bg-background px-6 pt-4 pb-10 sm:hidden"
+              className="fixed inset-0 z-50 bg-background"
             >
-              <div className="flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setExpanded(false)}
-                  aria-label="Cerrar reproductor"
-                  className="-ml-2 rounded-full p-2 text-muted-foreground hover:text-foreground"
-                >
-                  <ChevronDown className="h-6 w-6" />
-                </button>
-                <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                  Reproduciendo
-                </span>
-                <span className="w-10" />
-              </div>
-
-              <div className="flex flex-1 items-center justify-center py-6">
-                <Cover
-                  song={current}
-                  size="lg"
-                  className="h-auto w-full max-w-[340px] rounded-2xl"
-                />
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-2xl font-bold">{activeAudioLabel ?? current.title}</p>
-                  <p className="truncate text-base text-muted-foreground">
-                    {activeAudioLabel && !isMainAudio
-                      ? `${current.title} · ${current.artist}`
-                      : current.artist}
-                  </p>
+              {/* en compu el contenido va centrado y con ancho acotado */}
+              <div className="mx-auto flex h-full w-full max-w-md flex-col px-6 pt-4 pb-10 sm:max-w-lg sm:py-8">
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setExpanded(false)}
+                    aria-label="Cerrar reproductor"
+                    className="-ml-2 rounded-full p-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <ChevronDown className="h-6 w-6" />
+                  </button>
+                  <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                    Reproduciendo
+                  </span>
+                  <span className="w-10" />
                 </div>
-                <FavButton songId={current.id} />
-              </div>
 
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={progress}
-                aria-label="Progreso"
-                onChange={(e) => seekTo(Number(e.target.value))}
-                className="mt-6 h-1 w-full cursor-pointer appearance-none rounded-full bg-secondary accent-primary"
-              />
-              <div className="mt-2 flex justify-between text-xs text-muted-foreground">
-                <span>{formatDuration(seconds)}</span>
-                <span>{formatDuration(duration)}</span>
-              </div>
+                <div className="flex flex-1 items-center justify-center py-6">
+                  <Cover
+                    song={current}
+                    size="lg"
+                    className="h-auto w-full max-w-[340px] rounded-2xl sm:max-w-[min(420px,55vh)]"
+                  />
+                </div>
 
-              <div className="mt-6 flex items-center justify-center gap-10">
-                <button
-                  type="button"
-                  onClick={back}
-                  aria-label="Volver al principio (dos toques: canción anterior)"
-                  className="rounded-full p-2 text-foreground"
-                >
-                  <SkipBack className="h-9 w-9 fill-current" />
-                </button>
-                <button
-                  type="button"
-                  onClick={toggle}
-                  aria-label={isPlaying ? "Pausar" : "Reproducir"}
-                  className="flex h-18 w-18 items-center justify-center rounded-full gradient-gold text-primary-foreground"
-                >
-                  {isPlaying ? <Pause className="h-8 w-8" /> : <Play className="ml-1 h-8 w-8" />}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => playAt(1)}
-                  aria-label="Siguiente canción"
-                  className="rounded-full p-2 text-foreground"
-                >
-                  <SkipForward className="h-9 w-9 fill-current" />
-                </button>
+                <div className="flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-2xl font-bold">
+                      {activeAudioLabel ?? current.title}
+                    </p>
+                    <p className="truncate text-base text-muted-foreground">
+                      {activeAudioLabel && !isMainAudio
+                        ? `${current.title} · ${current.artist}`
+                        : current.artist}
+                    </p>
+                  </div>
+                  <FavButton songId={current.id} />
+                </div>
+
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={progress}
+                  aria-label="Progreso"
+                  onChange={(e) => seekTo(Number(e.target.value))}
+                  className="mt-6 h-1 w-full cursor-pointer appearance-none rounded-full bg-secondary accent-primary"
+                />
+                <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+                  <span>{formatDuration(seconds)}</span>
+                  <span>{formatDuration(duration)}</span>
+                </div>
+
+                <div className="mt-6 flex items-center justify-center gap-10">
+                  <button
+                    type="button"
+                    onClick={back}
+                    aria-label="Volver al principio (dos toques: canción anterior)"
+                    className="rounded-full p-2 text-foreground"
+                  >
+                    <SkipBack className="h-9 w-9 fill-current" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggle}
+                    aria-label={isPlaying ? "Pausar" : "Reproducir"}
+                    className="flex h-18 w-18 items-center justify-center rounded-full gradient-gold text-primary-foreground"
+                  >
+                    {isPlaying ? <Pause className="h-8 w-8" /> : <Play className="ml-1 h-8 w-8" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => playAt(1)}
+                    aria-label="Siguiente canción"
+                    className="rounded-full p-2 text-foreground"
+                  >
+                    <SkipForward className="h-9 w-9 fill-current" />
+                  </button>
+                </div>
               </div>
             </div>,
             document.body,

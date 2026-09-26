@@ -150,6 +150,7 @@ export function AcordesPage() {
 
   const sectionShortcuts = [
     "INTRO",
+    "VERSO",
     "ESTROFA 1",
     "ESTROFA 2",
     "CORO",

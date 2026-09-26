@@ -104,6 +104,12 @@ export interface TipoCancion {
 }
 
 export const SongsService = {
+  /** Catálogo de temas (GET /tags), ordenado alfabéticamente por el backend */
+  async listTags(): Promise<string[]> {
+    const tags = await apiRequest<RawTag[]>("/tags");
+    return tags.map((t) => t.valor);
+  },
+
   /** Tipos de canción (Alabanza / Adoración) para el formulario y el filtro */
   listTipos(): Promise<TipoCancion[]> {
     return apiRequest<TipoCancion[]>("/tipos-cancion");

@@ -1,5 +1,8 @@
-export type Tag =
-  "Adoración" | "Júbilo" | "Navidad" | "Sanidad" | "Bautismo" | "Comunión" | "Entrega" | "Gratitud";
+/**
+ * Tema de una canción. El catálogo vive en el backend (GET /tags) y crece con migraciones —
+ * ya no es una lista fija en el frontend.
+ */
+export type Tag = string;
 
 export interface Song {
   id: string;

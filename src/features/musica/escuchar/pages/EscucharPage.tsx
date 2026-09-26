@@ -9,17 +9,6 @@ import { AudioTracksModal } from "../components/AudioTracksModal";
 import { SongLinksModal } from "../components/SongLinksModal";
 import { UploadModal } from "../components/UploadModal";
 
-const ALL_TAGS: Tag[] = [
-  "Adoración",
-  "Júbilo",
-  "Navidad",
-  "Sanidad",
-  "Bautismo",
-  "Comunión",
-  "Entrega",
-  "Gratitud",
-];
-
 export function EscucharPage() {
   const { songs, play, current, can, addSong, updateSong } = useApp();
   const [query, setQuery] = useState("");
@@ -30,6 +19,13 @@ export function EscucharPage() {
   // tipos para el filtro (Alabanza / Adoración), desde el backend: aparecen aunque ninguna
   // canción tenga todavía ese tipo
   const [tipos, setTipos] = useState<string[]>([]);
+  // temas para el filtro: el catálogo del backend (crece con migraciones)
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  useEffect(() => {
+    SongsService.listTags()
+      .then(setAllTags)
+      .catch(() => setAllTags([]));
+  }, []);
   useEffect(() => {
     SongsService.listTipos()
       .then((list) => setTipos(list.map((t) => t.nombre)))
@@ -127,7 +123,7 @@ export function EscucharPage() {
           <button onClick={() => setTag(null)}>
             <TagChip tag="Todas" active={tag === null} />
           </button>
-          {ALL_TAGS.map((t) => (
+          {allTags.map((t) => (
             <button key={t} onClick={() => setTag(t === tag ? null : t)}>
               <TagChip tag={t} active={tag === t} />
             </button>

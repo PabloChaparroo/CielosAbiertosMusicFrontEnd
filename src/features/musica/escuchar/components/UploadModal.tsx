@@ -13,17 +13,6 @@ import {
 import { readAudioDuration, readFileDuration } from "@/features/canciones/lib/audio-duration";
 import type { Song, Tag } from "@/types";
 
-const ALL_TAGS: Tag[] = [
-  "Adoración",
-  "Júbilo",
-  "Navidad",
-  "Sanidad",
-  "Bautismo",
-  "Comunión",
-  "Entrega",
-  "Gratitud",
-];
-
 const COVER_PALETTE = [
   "linear-gradient(135deg,#1e3a8a,#7c3aed)",
   "linear-gradient(135deg,#b45309,#f59e0b)",
@@ -88,6 +77,12 @@ export function UploadModal({
   // tipo obligatorio: en alta arranca sin elegir, para que se decida a propósito
   const [tipoId, setTipoId] = useState(song?.tipoId ?? "");
   const [tipos, setTipos] = useState<TipoCancion[]>([]);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  useEffect(() => {
+    SongsService.listTags()
+      .then(setAllTags)
+      .catch(() => setAllTags([]));
+  }, []);
   useEffect(() => {
     SongsService.listTipos()
       .then(setTipos)
@@ -521,7 +516,7 @@ export function UploadModal({
 
           <Field label="Temas">
             <div className="flex flex-wrap gap-2">
-              {ALL_TAGS.map((t) => (
+              {allTags.map((t) => (
                 <button
                   key={t}
                   type="button"

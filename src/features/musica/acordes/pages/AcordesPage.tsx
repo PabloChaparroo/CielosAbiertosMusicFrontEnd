@@ -151,9 +151,11 @@ export function AcordesPage() {
   const sectionShortcuts = [
     "INTRO",
     "VERSO",
+    "VERSO 2",
     "ESTROFA 1",
     "ESTROFA 2",
     "CORO",
+    "CORO 2",
     "PRE-CORO",
     "PUENTE",
     "INTERLUDIO",

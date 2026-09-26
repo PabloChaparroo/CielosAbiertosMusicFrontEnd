@@ -97,6 +97,15 @@ describe("diatonicChords — atajos de acordes del editor", () => {
     expect(diatonicChords("F")).toEqual(["F", "Gm", "Am", "Bb", "C", "Dm", "Edim"]);
   });
 
+  it("en Dm (menor): Dm Edim F Gm Am Bb C — no los de D mayor", () => {
+    expect(diatonicChords("Dm")).toEqual(["Dm", "Edim", "F", "Gm", "Am", "Bb", "C"]);
+  });
+
+  it("en Em y Bm (menores con sostenidos)", () => {
+    expect(diatonicChords("Em")).toEqual(["Em", "F#dim", "G", "Am", "Bm", "C", "D"]);
+    expect(diatonicChords("Bm")).toEqual(["Bm", "C#dim", "D", "Em", "F#m", "G", "A"]);
+  });
+
   it("una tonalidad desconocida no da atajos", () => {
     expect(diatonicChords("X")).toEqual([]);
   });

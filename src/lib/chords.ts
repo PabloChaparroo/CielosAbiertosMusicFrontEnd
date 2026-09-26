@@ -70,12 +70,14 @@ export function transposeKey(key: string, semitones: number): string {
 }
 
 export function diatonicChords(key: string): string[] {
+  const minor = key.endsWith("m");
   const root = key.replace(/m$/, "");
   const idx = rootIndex(root);
   if (idx < 0) return [];
   const scale = shouldUseFlats(key) ? FLAT : SHARP;
-  const intervals = [0, 2, 4, 5, 7, 9, 11];
-  const qualities = ["", "m", "m", "", "", "m", "dim"];
+  // tono menor: escala menor natural (Dm → Dm Edim F Gm Am Bb C); mayor: D → D Em F#m G A Bm C#dim
+  const intervals = minor ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7, 9, 11];
+  const qualities = minor ? ["m", "dim", "", "m", "m", "", ""] : ["", "m", "m", "", "", "m", "dim"];
   return intervals.map((interval, index) => {
     const note = scale[(idx + interval) % 12]!;
     return `${note}${qualities[index]}`;

@@ -61,16 +61,19 @@ export function ChordProEditor({
       <pre
         ref={highlightRef}
         aria-hidden="true"
-        className={`${className} pointer-events-none absolute inset-0 m-0 overflow-hidden whitespace-pre-wrap break-words`}
+        className={`${className} pointer-events-none absolute inset-0 m-0 overflow-hidden [scrollbar-gutter:stable] whitespace-pre-wrap break-words`}
       >
         {highlightedParts(value)}
+        {/* un salto de línea al final el <pre> no lo dibuja (el textarea sí): sin este espacio la
+            capa de colores queda más corta y, abajo de todo, desalineada con lo que se escribe */}
+        {value.endsWith("\n") ? " " : null}
       </pre>
       <textarea
         ref={textareaRef}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         onScroll={syncScroll}
-        className={`${className} relative z-10 bg-transparent text-transparent caret-foreground selection:bg-primary/30 selection:text-transparent`}
+        className={`${className} relative z-10 block [scrollbar-gutter:stable] bg-transparent text-transparent caret-foreground selection:bg-primary/30 selection:text-transparent`}
       />
     </div>
   );

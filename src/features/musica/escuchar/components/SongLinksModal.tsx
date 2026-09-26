@@ -1,4 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { youtubeVideoIdOf } from "@/features/canciones/services/songs.service";
+import { looksLikeYoutube, parseYoutubeVideoId } from "@/lib/youtube";
+import { YoutubeIcon } from "@/components/common/YoutubeEmbed";
 import { ExternalLink, Link2, Plus, Trash2, X } from "lucide-react";
 import { useApp } from "@/hooks/useApp";
 import {
@@ -12,7 +15,9 @@ const inputCls =
   "w-full rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary/60";
 
 export function SongLinksModal({ song, onClose }: { song: Song; onClose: () => void }) {
-  const { can } = useApp();
+  const { can, songs, updateSong } = useApp();
+  const songsRef = useRef(songs);
+  songsRef.current = songs;
   const [links, setLinks] = useState<SongLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [label, setLabel] = useState("");
@@ -30,8 +35,22 @@ export function SongLinksModal({ song, onClose }: { song: Song; onClose: () => v
       .finally(() => setLoading(false));
   }, [song.id]);
 
+  // la portada de la canción es la miniatura de su primer link de YouTube
+  const syncCover = (next: SongLink[]) => {
+    // por ref: después de un await, la lista de canciones de este render puede estar vieja
+    const latest = songsRef.current.find((s) => s.id === song.id) ?? song;
+    updateSong({ ...latest, youtubeVideoId: youtubeVideoIdOf(next) });
+  };
+
   const handleCreate = async () => {
     if (!label.trim() || !url.trim()) return;
+    // un link de YouTube que no lleva a un video no se guarda: no se podría reproducir en la app
+    if (looksLikeYoutube(url) && !parseYoutubeVideoId(url)) {
+      setError(
+        "No reconocemos ese link de YouTube — pegá el link del video (youtube.com/watch?v=… o youtu.be/…).",
+      );
+      return;
+    }
     setSaving(true);
     setError(null);
     const input: CreateSongLinkInput = {
@@ -42,7 +61,9 @@ export function SongLinksModal({ song, onClose }: { song: Song; onClose: () => v
     };
     try {
       const created = await SongLinksService.create(song.id, input);
-      setLinks((current) => [...current, created]);
+      const next = [...links, created];
+      setLinks(next);
+      syncCover(next);
       setLabel("");
       setUrl("");
       setType("");
@@ -56,7 +77,9 @@ export function SongLinksModal({ song, onClose }: { song: Song; onClose: () => v
   const handleRemove = async (id: string) => {
     try {
       await SongLinksService.remove(id);
-      setLinks((current) => current.filter((link) => link.id !== id));
+      const next = links.filter((link) => link.id !== id);
+      setLinks(next);
+      syncCover(next);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo borrar el link");
     }
@@ -95,7 +118,11 @@ export function SongLinksModal({ song, onClose }: { song: Song; onClose: () => v
                 key={link.id}
                 className="flex items-center gap-3 rounded-xl border border-border bg-secondary/60 px-3 py-2.5"
               >
-                <Link2 className="h-4 w-4 shrink-0 text-primary" />
+                {parseYoutubeVideoId(link.url) ? (
+                  <YoutubeIcon className="h-4 w-4 shrink-0" />
+                ) : (
+                  <Link2 className="h-4 w-4 shrink-0 text-primary" />
+                )}
                 <a
                   href={link.url}
                   target="_blank"

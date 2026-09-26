@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
-import { Layers, Link2, Music4, Pencil, Play, Plus, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { SongsService } from "@/features/canciones/services/songs.service";
+import { Check, Layers, Link2, Music4, Pencil, Play, Plus, Search } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, EmptyState, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
@@ -8,21 +9,28 @@ import { AudioTracksModal } from "../components/AudioTracksModal";
 import { SongLinksModal } from "../components/SongLinksModal";
 import { UploadModal } from "../components/UploadModal";
 
-const ALL_TAGS: Tag[] = [
-  "Adoración",
-  "Júbilo",
-  "Navidad",
-  "Sanidad",
-  "Bautismo",
-  "Comunión",
-  "Entrega",
-  "Gratitud",
-];
-
 export function EscucharPage() {
   const { songs, play, current, can, addSong, updateSong } = useApp();
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState<Tag | null>(null);
+  const [tipo, setTipo] = useState<string | null>(null);
+  // secuencia (multitracks): todas / con / sin
+  const [secuencia, setSecuencia] = useState<"con" | "sin" | null>(null);
+  // tipos para el filtro (Alabanza / Adoración), desde el backend: aparecen aunque ninguna
+  // canción tenga todavía ese tipo
+  const [tipos, setTipos] = useState<string[]>([]);
+  // temas para el filtro: el catálogo del backend (crece con migraciones)
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  useEffect(() => {
+    SongsService.listTags()
+      .then(setAllTags)
+      .catch(() => setAllTags([]));
+  }, []);
+  useEffect(() => {
+    SongsService.listTipos()
+      .then((list) => setTipos(list.map((t) => t.nombre)))
+      .catch(() => setTipos([]));
+  }, []);
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<Song | null>(null);
   const [managingTracks, setManagingTracks] = useState<Song | null>(null);
@@ -33,10 +41,12 @@ export function EscucharPage() {
       songs.filter(
         (s) =>
           (!tag || s.tags.includes(tag)) &&
+          (!tipo || s.tipo === tipo) &&
+          (!secuencia || (secuencia === "con") === s.trackCount > 0) &&
           (s.title.toLowerCase().includes(query.toLowerCase()) ||
             s.artist.toLowerCase().includes(query.toLowerCase())),
       ),
-    [songs, query, tag],
+    [songs, query, tag, tipo, secuencia],
   );
 
   return (
@@ -64,15 +74,70 @@ export function EscucharPage() {
             className="w-full rounded-full border border-border bg-card py-2.5 pr-4 pl-10 text-sm outline-none transition-colors focus:border-primary/60"
           />
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={() => setTag(null)}>
-            <TagChip tag="Todas" active={tag === null} />
-          </button>
-          {ALL_TAGS.map((t) => (
-            <button key={t} onClick={() => setTag(t === tag ? null : t)}>
-              <TagChip tag={t} active={tag === t} />
-            </button>
-          ))}
+        {/* tipo (rápida / lenta): botones más marcados que los temas, para no confundir el
+            tipo "Adoración" con el tema "Adoración" */}
+        {tipos.length ? (
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por tipo">
+            {[null, ...tipos].map((t) => (
+              <button
+                key={t ?? "todos"}
+                type="button"
+                onClick={() => setTipo(t)}
+                aria-pressed={tipo === t}
+                className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
+                  tipo === t
+                    ? "gradient-gold text-primary-foreground"
+                    : "border border-border bg-card text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t ?? "Todos los tipos"}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por secuencia">
+            {(
+              [
+                [null, "Con y sin secuencia"],
+                ["con", "Con secuencia"],
+                ["sin", "Sin secuencia"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => setSecuencia(value)}
+                aria-pressed={secuencia === value}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                  secuencia === value
+                    ? "bg-primary/15 text-primary ring-1 ring-primary/50"
+                    : "border border-border bg-card text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {value === "con" ? <Check className="h-3.5 w-3.5" /> : null}
+                {label}
+              </button>
+            ))}
+          </div>
+          {/* temas: son muchos (catálogo del backend), van en un desplegable */}
+          <select
+            value={tag ?? ""}
+            onChange={(e) => setTag(e.target.value || null)}
+            aria-label="Filtrar por tema"
+            className={`rounded-full border px-3 py-1 text-xs font-semibold outline-none transition-colors focus:border-primary/60 ${
+              tag
+                ? "border-primary/50 bg-primary/15 text-primary"
+                : "border-border bg-card text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <option value="">Todos los temas</option>
+            {allTags.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -84,10 +149,12 @@ export function EscucharPage() {
         />
       ) : (
         <div className="surface-card overflow-x-auto">
-          <div className="hidden min-w-[1050px] grid-cols-[40px_minmax(260px,1fr)_180px_180px_220px] gap-4 border-b border-border/60 px-4 py-3 text-[11px] tracking-widest text-muted-foreground uppercase md:grid">
+          <div className="hidden grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_210px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_210px] gap-4 border-b border-border/60 px-4 py-3 text-[11px] tracking-widest text-muted-foreground uppercase md:grid">
             <span>#</span>
             <span>Título</span>
-            <span>Temas</span>
+            <span className="hidden 2xl:block">Temas</span>
+            <span>Tipo</span>
+            <span className="text-center">Secuencia</span>
             <span>Tono / Compás / BPM</span>
             <span className="text-right">Duración</span>
           </div>
@@ -95,7 +162,7 @@ export function EscucharPage() {
             <div
               key={song.id}
               onClick={() => play(song)}
-              className={`group grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-2.5 transition-colors hover:bg-elevated/70 md:min-w-[1050px] md:grid-cols-[40px_minmax(260px,1fr)_180px_180px_220px] ${
+              className={`group grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-2.5 transition-colors hover:bg-elevated/70 md:grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_210px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_210px] ${
                 current?.id === song.id ? "bg-elevated/60" : ""
               }`}
             >
@@ -118,11 +185,28 @@ export function EscucharPage() {
                   <p className="truncate text-sm text-muted-foreground">{song.artist}</p>
                 </div>
               </div>
-              <div className="hidden flex-wrap gap-1.5 md:flex">
+              <div className="hidden flex-wrap gap-1.5 2xl:flex">
                 {song.tags.map((t) => (
                   <TagChip key={t} tag={t} />
                 ))}
               </div>
+              <span className="hidden truncate text-sm text-muted-foreground md:block">
+                {song.tipo}
+              </span>
+              {/* secuencia: check amarillo si tiene pistas (multitracks), "-" si no */}
+              <span className="hidden justify-center md:flex">
+                {song.trackCount > 0 ? (
+                  <Check
+                    className="h-5 w-5 text-primary"
+                    strokeWidth={3}
+                    aria-label={`Con secuencia (${song.trackCount} pistas)`}
+                  />
+                ) : (
+                  <span className="text-base text-foreground" aria-label="Sin secuencia">
+                    -
+                  </span>
+                )}
+              </span>
               <span className="hidden whitespace-nowrap text-sm text-muted-foreground md:block">
                 {song.key} · {song.compas} · {song.bpm} BPM
               </span>

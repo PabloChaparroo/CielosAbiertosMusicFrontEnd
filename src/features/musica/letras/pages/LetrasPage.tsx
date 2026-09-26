@@ -21,12 +21,28 @@ import { StorageClient } from "@/lib/storage-client";
 import { validateImageFile } from "@/features/canciones/lib/image-validation";
 import { SongsService } from "@/features/canciones/services/songs.service";
 import type { Song } from "@/types";
+import {
+  enterBrowserFullscreen,
+  exitBrowserFullscreen,
+  isBrowserFullscreen,
+} from "@/lib/browser-fullscreen";
 
 export function LetrasPage() {
   const { songs, can, updateSong, current, isPlaying, play, toggle } = useApp();
   const { songId: requestedSongId, songIds } = useSearch({ from: "/letras" });
   const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  const searchPanelRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const closeOnOutsideTap = (event: PointerEvent) => {
+      if (searchPanelRef.current && !searchPanelRef.current.contains(event.target as Node)) {
+        setSearchOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", closeOnOutsideTap);
+    return () => document.removeEventListener("pointerdown", closeOnOutsideTap);
+  }, []);
   const scopedSongIds = useMemo(() => (songIds ? new Set(songIds.split(",")) : null), [songIds]);
   const availableSongs = useMemo(
     () => (scopedSongIds ? songs.filter((item) => scopedSongIds.has(item.id)) : songs),
@@ -47,81 +63,104 @@ export function LetrasPage() {
       ),
     [availableSongs, query],
   );
+  const visibleSongs = useMemo(
+    () =>
+      query
+        ? filtered
+        : [...filtered].sort((a, b) => Number(b.id === selected) - Number(a.id === selected)),
+    [filtered, query, selected],
+  );
 
   const song = availableSongs.find((s) => s.id === selected) ?? null;
 
   return (
     <AppLayout title="Letras" subtitle="Buscá por nombre o tema">
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <aside className="surface-card order-2 flex max-h-[70vh] flex-col overflow-hidden lg:order-1 lg:sticky lg:top-24">
+        <aside
+          ref={searchPanelRef}
+          className="surface-card order-1 flex max-h-[55vh] flex-col overflow-hidden lg:order-1 lg:sticky lg:top-24 lg:max-h-[70vh]"
+        >
           <div className="relative border-b border-border/60 p-3">
             <Search className="absolute top-1/2 left-6 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => setSearchOpen(true)}
               placeholder="Saltar a canción…"
               className="w-full rounded-full border border-border bg-secondary py-2 pr-3 pl-10 text-sm outline-none focus:border-primary/60"
             />
           </div>
-          <div className="flex-1 overflow-y-auto p-2">
-            {filtered.length === 0 ? (
-              <p className="p-4 text-center text-sm text-muted-foreground">Sin resultados</p>
-            ) : (
-              filtered.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => {
-                    setSelected(item.id);
-                    play(item);
-                  }}
-                  className={`flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left transition-colors ${
-                    item.id === song?.id ? "bg-primary/15 text-primary" : "hover:bg-elevated/70"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
+          <div
+            className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out lg:flex-1 lg:grid-rows-[1fr] lg:opacity-100 ${searchOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+          >
+            <div className="min-h-0 overflow-y-auto p-2 lg:max-h-[65vh]">
+              {!query && (
+                <p className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Recientes
+                </p>
+              )}
+              {filtered.length === 0 ? (
+                <p className="p-4 text-center text-sm text-muted-foreground">Sin resultados</p>
+              ) : (
+                visibleSongs.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => {
                       setSelected(item.id);
+                      setSearchOpen(false);
+                      play(item);
                     }}
-                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    className={`flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left transition-colors ${
+                      item.id === song?.id ? "bg-primary/15 text-primary" : "hover:bg-elevated/70"
+                    }`}
                   >
-                    <Cover song={item} size="sm" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">{item.title}</span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {item.artist}
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSelected(item.id);
+                        setSearchOpen(false);
+                      }}
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    >
+                      <Cover song={item} size="sm" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{item.title}</span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {item.artist}
+                        </span>
                       </span>
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      if (current?.id === item.id && isPlaying) toggle();
-                      else play(item);
-                    }}
-                    aria-label={
-                      current?.id === item.id && isPlaying
-                        ? `Pausar ${item.title}`
-                        : `Reproducir ${item.title}`
-                    }
-                    title={current?.id === item.id && isPlaying ? "Pausar" : "Reproducir"}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-primary"
-                  >
-                    {current?.id === item.id && isPlaying ? (
-                      <Pause className="h-3.5 w-3.5" />
-                    ) : (
-                      <Play className="ml-0.5 h-3.5 w-3.5" />
-                    )}
-                  </button>
-                </div>
-              ))
-            )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSearchOpen(false);
+                        if (current?.id === item.id && isPlaying) toggle();
+                        else play(item);
+                      }}
+                      aria-label={
+                        current?.id === item.id && isPlaying
+                          ? `Pausar ${item.title}`
+                          : `Reproducir ${item.title}`
+                      }
+                      title={current?.id === item.id && isPlaying ? "Pausar" : "Reproducir"}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-primary"
+                    >
+                      {current?.id === item.id && isPlaying ? (
+                        <Pause className="h-3.5 w-3.5" />
+                      ) : (
+                        <Play className="ml-0.5 h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </aside>
 
-        <div className="order-1 min-w-0 lg:order-2">
+        <div className="order-2 min-w-0 lg:order-2">
           {song ? (
             <SongLyricsDetail song={song} canEdit={can("editSongs")} onSave={updateSong} />
           ) : (
@@ -185,6 +224,17 @@ function SongLyricsDetail({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
+  useEffect(() => {
+    const syncFullscreen = () => {
+      if (!isBrowserFullscreen()) setFullscreen(false);
+    };
+    document.addEventListener("fullscreenchange", syncFullscreen);
+    document.addEventListener("webkitfullscreenchange", syncFullscreen);
+    return () => {
+      document.removeEventListener("fullscreenchange", syncFullscreen);
+      document.removeEventListener("webkitfullscreenchange", syncFullscreen);
+    };
+  }, []);
   const abortRef = useRef<AbortController | null>(null);
   const navigate = useNavigate();
 
@@ -281,7 +331,10 @@ function SongLyricsDetail({
       <div className="fixed inset-0 z-50 overflow-y-auto bg-background px-5 py-8 sm:px-10 sm:py-10">
         <button
           type="button"
-          onClick={() => setFullscreen(false)}
+          onClick={() => {
+            setFullscreen(false);
+            void exitBrowserFullscreen();
+          }}
           aria-label="Salir de pantalla completa"
           className="fixed top-4 right-4 rounded-full border border-border bg-card p-2 text-muted-foreground transition-colors hover:text-foreground"
         >
@@ -359,7 +412,10 @@ function SongLyricsDetail({
           </ModeBtn>
           <button
             type="button"
-            onClick={() => setFullscreen(true)}
+            onClick={() => {
+              void enterBrowserFullscreen();
+              setFullscreen(true);
+            }}
             className="flex items-center gap-2 rounded-full border border-border px-4 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
           >
             <Maximize2 className="h-3.5 w-3.5" />

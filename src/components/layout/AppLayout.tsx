@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Menu } from "lucide-react";
 import { MobileSidebar, SidebarContent } from "./Sidebar";
-import { MiniPlayer } from "./MiniPlayer";
 import { useApp } from "@/hooks/useApp";
 import { MiPerfilModal } from "@/features/perfil/components/MiPerfilModal";
 
@@ -59,8 +58,6 @@ export function AppLayout({
           {children}
         </div>
       </main>
-
-      <MiniPlayer />
 
       {showPerfil ? <MiPerfilModal onClose={() => setShowPerfil(false)} /> : null}
     </div>

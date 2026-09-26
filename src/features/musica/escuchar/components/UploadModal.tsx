@@ -1,23 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Music, Upload, X } from "lucide-react";
+import { CheckCircle2, Music, Trash2, Upload, X } from "lucide-react";
+import { useApp } from "@/hooks/useApp";
+import { DeleteSongModal } from "./DeleteSongModal";
 import { TagChip } from "@/components/common/ui-bits";
 import { KEYS } from "@/lib/chords";
 import { StorageClient } from "@/lib/storage-client";
-import { SongsService } from "@/features/canciones/services/songs.service";
+import { SongsService, type TipoCancion } from "@/features/canciones/services/songs.service";
 import { validateAudioFile } from "@/features/canciones/lib/audio-validation";
 import { readAudioDuration, readFileDuration } from "@/features/canciones/lib/audio-duration";
 import type { Song, Tag } from "@/types";
-
-const ALL_TAGS: Tag[] = [
-  "Adoración",
-  "Júbilo",
-  "Navidad",
-  "Sanidad",
-  "Bautismo",
-  "Comunión",
-  "Entrega",
-  "Gratitud",
-];
 
 const COVER_PALETTE = [
   "linear-gradient(135deg,#1e3a8a,#7c3aed)",
@@ -69,6 +60,8 @@ export function UploadModal({
   onSave: (s: Song) => void;
 }) {
   const isEdit = song !== undefined;
+  const { can } = useApp();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [title, setTitle] = useState(song?.title ?? "");
   const [artist, setArtist] = useState(song?.artist ?? "");
   const [key, setKey] = useState(song?.key ?? "G");
@@ -80,6 +73,20 @@ export function UploadModal({
     song?.chordpro ?? "{estrofa 1}\n[G]Nueva canción del minis[D]terio",
   );
   const [tags, setTags] = useState<Tag[]>(song?.tags ?? []);
+  // tipo obligatorio: en alta arranca sin elegir, para que se decida a propósito
+  const [tipoId, setTipoId] = useState(song?.tipoId ?? "");
+  const [tipos, setTipos] = useState<TipoCancion[]>([]);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  useEffect(() => {
+    SongsService.listTags()
+      .then(setAllTags)
+      .catch(() => setAllTags([]));
+  }, []);
+  useEffect(() => {
+    SongsService.listTipos()
+      .then(setTipos)
+      .catch(() => setTipos([]));
+  }, []);
   // true = la duración actual se leyó del archivo de audio (cambia el texto de ayuda)
   const [durationFromAudio, setDurationFromAudio] = useState(false);
   // si el usuario ya tocó la duración a mano, la lectura del audio existente no la pisa
@@ -155,7 +162,12 @@ export function UploadModal({
     void readFileDuration(file).then((seconds) => applyAudioDuration(seconds, requestId));
   };
 
-  const canSave = title.trim() !== "" && artist.trim() !== "" && chordpro.trim() !== "" && !saving;
+  const canSave =
+    title.trim() !== "" &&
+    artist.trim() !== "" &&
+    chordpro.trim() !== "" &&
+    tipoId !== "" &&
+    !saving;
 
   const handleSave = async () => {
     setSaving(true);
@@ -192,6 +204,7 @@ export function UploadModal({
         cover: isEdit ? (song?.cover ?? coverFor(title.trim())) : coverFor(title.trim()),
         chordpro,
         tags: tags.length ? tags : (["Adoración"] as Tag[]),
+        tipoId,
         ...(audioKey ? { audioKey } : {}),
       };
 
@@ -243,6 +256,29 @@ export function UploadModal({
               value={artist}
               onChange={(e) => setArtist(e.target.value)}
             />
+          </Field>
+
+          <Field
+            label="Tipo"
+            help="Obligatorio. Alabanza = canción rápida; Adoración = canción lenta."
+          >
+            <div className="flex gap-2">
+              {tipos.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTipoId(t.id)}
+                  aria-pressed={tipoId === t.id}
+                  className={`flex-1 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors ${
+                    tipoId === t.id
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t.nombre}
+                </button>
+              ))}
+            </div>
           </Field>
 
           <Field label="Archivo de audio" help="mp3, wav, ogg, m4a o aac — hasta 100MB.">
@@ -365,7 +401,7 @@ export function UploadModal({
 
           <Field label="Temas">
             <div className="flex flex-wrap gap-2">
-              {ALL_TAGS.map((t) => (
+              {allTags.map((t) => (
                 <button
                   key={t}
                   type="button"
@@ -388,7 +424,17 @@ export function UploadModal({
           ) : null}
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
+        <div className="mt-6 flex items-center justify-end gap-2">
+          {isEdit && can("deleteSongForever") ? (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              disabled={saving}
+              className="mr-auto flex items-center gap-1.5 rounded-full px-3 py-2 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-40"
+            >
+              <Trash2 className="h-4 w-4" /> Eliminar canción
+            </button>
+          ) : null}
           <button
             onClick={handleClose}
             disabled={saving && !uploading}
@@ -405,6 +451,9 @@ export function UploadModal({
           </button>
         </div>
       </div>
+      {confirmDelete && song ? (
+        <DeleteSongModal song={song} onClose={() => setConfirmDelete(false)} onDeleted={onClose} />
+      ) : null}
     </div>
   );
 }

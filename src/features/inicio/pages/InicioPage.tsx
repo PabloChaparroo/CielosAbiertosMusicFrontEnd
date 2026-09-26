@@ -167,10 +167,7 @@ export function InicioPage() {
                 key={song.id}
                 className="surface-card group relative p-2.5 hover:-translate-y-1 hover:border-primary/40"
               >
-                <div
-                  className="mb-2 aspect-square w-full rounded-lg"
-                  style={{ backgroundImage: song.cover }}
-                />
+                <Cover song={song} size="none" className="mb-2 aspect-square w-full shadow-none" />
                 <p className="truncate text-sm font-semibold">{song.title}</p>
                 <p className="truncate text-xs text-muted-foreground">{song.artist}</p>
                 <div className="mt-1.5 flex items-center justify-between">

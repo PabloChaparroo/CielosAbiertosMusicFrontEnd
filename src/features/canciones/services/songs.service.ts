@@ -1,18 +1,19 @@
 import { apiRequest } from "@/lib/api-client";
+import { parseYoutubeVideoId } from "@/lib/youtube";
 import type { Song, Tag } from "@/types";
 
-interface RawTag {
+export interface RawTag {
   id: string;
   valor: string;
 }
 
-interface RawPlayStat {
+export interface RawPlayStat {
   month: string;
   plays: number;
 }
 
 /** Espejo exacto de la entidad Song real (GET /canciones). */
-interface RawSong {
+export interface RawSong {
   id: string;
   title: string;
   artist: string;
@@ -21,10 +22,19 @@ interface RawSong {
   compas: string;
   duration: number;
   cover: string;
+  /** Ausente en respuestas de un backend anterior a la migración AddSongCoverKey */
+  coverKey?: string | null;
   audioKey: string | null;
   chordpro: string;
   lyricsImageKey: string | null;
   tags: RawTag[];
+  /** Ausentes en respuestas de un backend anterior a la migración AddTipoCancion */
+  tipoId?: string;
+  tipo?: { id: string; nombre: string };
+  /** Links relacionados (ausentes en un backend anterior): de acá sale la portada de YouTube */
+  links?: Array<{ url: string; order?: number }>;
+  /** Cantidad de pistas (ausente en un backend anterior) */
+  trackCount?: number;
   /** Ausente en la respuesta de POST /canciones (bug de backend, ver mapSong). Presente en GET. */
   playStats?: RawPlayStat[];
   fechaHoraAlta: string;
@@ -47,8 +57,11 @@ export interface CreateSongInput {
   cover: string;
   chordpro: string;
   tags: string[];
+  tipoId: string;
   audioKey?: string;
   lyricsImageKey?: string;
+  /** null quita la portada */
+  coverKey?: string | null;
 }
 
 export type UpdateSongInput = Partial<CreateSongInput>;
@@ -65,7 +78,17 @@ export type UpdateSongInput = Partial<CreateSongInput>;
  * Canciones estaba fuera de alcance en ese ticket; acá alcanza con no
  * asumir que siempre viene.
  */
-function mapSong(raw: RawSong): Song {
+/** Video del primer link de YouTube (en el orden de los links); null si no hay */
+export function youtubeVideoIdOf(links: Array<{ url: string; order?: number }>): string | null {
+  const ordered = [...links].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  for (const link of ordered) {
+    const id = parseYoutubeVideoId(link.url);
+    if (id) return id;
+  }
+  return null;
+}
+
+export function mapSong(raw: RawSong): Song {
   return {
     id: raw.id,
     title: raw.title,
@@ -75,7 +98,12 @@ function mapSong(raw: RawSong): Song {
     compas: raw.compas ?? "4/4",
     duration: raw.duration,
     tags: raw.tags.map((t) => t.valor) as Tag[],
+    tipoId: raw.tipoId ?? raw.tipo?.id ?? "",
+    tipo: raw.tipo?.nombre ?? "",
+    trackCount: raw.trackCount ?? 0,
     cover: raw.cover,
+    coverKey: raw.coverKey ?? null,
+    youtubeVideoId: youtubeVideoIdOf(raw.links ?? []),
     audioKey: raw.audioKey,
     chordpro: raw.chordpro,
     lyricsImageKey: raw.lyricsImageKey,
@@ -84,7 +112,23 @@ function mapSong(raw: RawSong): Song {
   };
 }
 
+export interface TipoCancion {
+  id: string;
+  nombre: string;
+}
+
 export const SongsService = {
+  /** Catálogo de temas (GET /tags), ordenado alfabéticamente por el backend */
+  async listTags(): Promise<string[]> {
+    const tags = await apiRequest<RawTag[]>("/tags");
+    return tags.map((t) => t.valor);
+  },
+
+  /** Tipos de canción (Alabanza / Adoración) para el formulario y el filtro */
+  listTipos(): Promise<TipoCancion[]> {
+    return apiRequest<TipoCancion[]>("/tipos-cancion");
+  },
+
   /** Trae todas las canciones reales en una sola página (hoy son 21, muy por debajo del límite de 100 del backend). */
   async listAll(): Promise<Song[]> {
     const result = await apiRequest<PaginatedResult<RawSong>>("/canciones?limit=100");
@@ -94,6 +138,11 @@ export const SongsService = {
   async createSong(dto: CreateSongInput): Promise<Song> {
     const created = await apiRequest<RawSong>("/canciones", { method: "POST", body: dto });
     return mapSong(created);
+  },
+
+  /** Elimina la canción DEFINITIVAMENTE, con todo lo relacionado y sus archivos (solo Admin) */
+  deleteSongForever(id: string): Promise<{ deletedFiles: number; removedFromSetlists: number }> {
+    return apiRequest(`/canciones/${id}/definitivo`, { method: "DELETE" });
   },
 
   async updateSong(id: string, dto: UpdateSongInput): Promise<Song> {

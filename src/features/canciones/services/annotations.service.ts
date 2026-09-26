@@ -1,19 +1,19 @@
 import { apiRequest } from "@/lib/api-client";
 import type { Annotation } from "@/types";
 
-interface RawAuthor {
+export interface RawAuthor {
   id: string;
 }
 
 /** Espejo exacto de la entidad Annotation real. GET /anotaciones no carga la relación `song` (el caller ya sabe el songId que pidió). */
-interface RawAnnotation {
+export interface RawAnnotation {
   id: string;
   text: string;
   fechaHoraAlta: string;
   author: RawAuthor;
 }
 
-function mapAnnotation(raw: RawAnnotation, songId: string): Annotation {
+export function mapAnnotation(raw: RawAnnotation, songId: string): Annotation {
   return {
     id: raw.id,
     songId,

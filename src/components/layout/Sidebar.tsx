@@ -27,7 +27,7 @@ const groups = [
   {
     label: "Música",
     items: [
-      { to: "/escuchar", label: "Escuchar y Subir", icon: Music4 },
+      { to: "/escuchar", label: "Canciones", icon: Music4 },
       { to: "/letras", label: "Letras", icon: Type },
       { to: "/acordes", label: "Acordes", icon: Guitar },
       { to: "/setlists", label: "Setlists", icon: ListMusic },

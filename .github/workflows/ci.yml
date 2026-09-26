@@ -1,10 +1,12 @@
 # Verificación, no deploy: Vercel ya despliega solo en cada push a main.
-# Este workflow frena un cambio roto (tipos, lint o build) visible en el PR antes de mergear.
+# Este workflow frena un cambio roto (tipos, lint, tests o build) visible en el PR antes de mergear.
+# El nombre del job ("tsc + lint + build") no se cambia: la protección de main exige ese check por nombre.
 name: CI
 
 on:
   push:
-    branches: [main]
+    # develop también: cada commit se verifica al pushearlo, no recién al abrir el PR a main
+    branches: [main, develop]
   pull_request:
     branches: [main]
 
@@ -37,6 +39,9 @@ jobs:
 
       - name: Lint (eslint)
         run: npm run lint
+
+      - name: Tests (vitest)
+        run: npm test
 
       - name: Build (vite build)
         run: npm run build

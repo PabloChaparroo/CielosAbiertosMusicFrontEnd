@@ -1,8 +1,14 @@
-import { useState } from "react";
-import { AlertTriangle, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { AlertTriangle, Upload, X } from "lucide-react";
 import { Avatar } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import { useAuth } from "@/core/auth/useAuth";
+import { StorageClient } from "@/lib/storage-client";
+import {
+  ALLOWED_IMAGE_TYPES,
+  MAX_AVATAR_BYTES,
+  validateImageFile,
+} from "@/features/canciones/lib/image-validation";
 import { PerfilService } from "../services/perfil.service";
 
 const inputCls =
@@ -13,6 +19,11 @@ export function MiPerfilModal({ onClose }: { onClose: () => void }) {
   const { refresh, logout } = useAuth();
 
   const [name, setName] = useState(currentUser.name);
+
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [uploadPct, setUploadPct] = useState<number | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -25,14 +36,69 @@ export function MiPerfilModal({ onClose }: { onClose: () => void }) {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordChanged, setPasswordChanged] = useState(false);
 
+  const uploading = uploadPct !== null;
+
+  // vista previa local de la foto elegida (se sube recién al guardar)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  useEffect(() => {
+    if (!avatarFile) {
+      setAvatarPreview(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(avatarFile);
+    setAvatarPreview(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [avatarFile]);
+
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
+
+  const handleClose = () => {
+    if (uploading) abortRef.current?.abort();
+    onClose();
+  };
+
+  const handleFileChange = (file: File | null) => {
+    setFileError(null);
+    if (!file) {
+      setAvatarFile(null);
+      return;
+    }
+    const validationError = validateImageFile(file, MAX_AVATAR_BYTES);
+    if (validationError) {
+      setFileError(validationError);
+      return;
+    }
+    setAvatarFile(file);
+  };
+
   const handleSaveProfile = async () => {
     setSaving(true);
     setSaveError(null);
     setSaved(false);
     try {
-      // Foto de perfil: se sacó del formulario hasta implementarla (el backend sigue aceptando
-      // avatarKey; ver docs/estado-actual.md del backend).
-      await PerfilService.updateMyProfile({ name: name.trim() });
+      let avatarKey: string | undefined;
+      if (avatarFile) {
+        const { uploadUrl, key } = await StorageClient.getUploadUrl("avatares", avatarFile.type);
+        const controller = new AbortController();
+        abortRef.current = controller;
+        setUploadPct(0);
+        await StorageClient.uploadFileWithProgress(
+          uploadUrl,
+          avatarFile,
+          avatarFile.type,
+          setUploadPct,
+          controller.signal,
+        );
+        setUploadPct(null);
+        avatarKey = key;
+      }
+
+      await PerfilService.updateMyProfile({
+        name: name.trim(),
+        ...(avatarKey ? { avatarKey } : {}),
+      });
 
       // El Sidebar/etc. leen currentUser desde useApp (lista de Equipo), no
       // desde el authStore directo — hay que refrescar los dos para que se
@@ -40,9 +106,12 @@ export function MiPerfilModal({ onClose }: { onClose: () => void }) {
       await refresh();
       reloadUsers();
 
+      setAvatarFile(null);
       setSaved(true);
       setSaving(false);
     } catch (e) {
+      setUploadPct(null);
+      if (e instanceof DOMException && e.name === "AbortError") return;
       setSaveError(e instanceof Error ? e.message : "No se pudieron guardar los cambios");
       setSaving(false);
     }
@@ -82,7 +151,7 @@ export function MiPerfilModal({ onClose }: { onClose: () => void }) {
             <p className="text-sm text-muted-foreground">Editá tus propios datos</p>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Cerrar"
             className="rounded-full p-2 hover:bg-secondary"
           >
@@ -92,11 +161,52 @@ export function MiPerfilModal({ onClose }: { onClose: () => void }) {
 
         <div className="space-y-4">
           <div className="flex items-center gap-4">
-            <Avatar
-              user={currentUser}
-              className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-xl font-bold text-background"
-            />
-            <p className="min-w-0 truncate font-semibold">{currentUser.name}</p>
+            {avatarPreview ? (
+              <img
+                src={avatarPreview}
+                alt="Vista previa de la foto"
+                className="h-16 w-16 shrink-0 rounded-full object-cover"
+              />
+            ) : (
+              <Avatar
+                user={currentUser}
+                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-xl font-bold text-background"
+              />
+            )}
+            <div className="flex-1 space-y-1.5">
+              {uploading ? (
+                <div className="rounded-xl border border-border bg-secondary px-3 py-2">
+                  <div className="mb-1 flex items-center justify-between text-xs">
+                    <span>Subiendo…</span>
+                    <span className="font-semibold text-primary">{uploadPct}%</span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-elevated">
+                    <div
+                      className="h-full gradient-gold transition-all"
+                      style={{ width: `${uploadPct}%` }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border py-2.5 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground">
+                  <Upload className="h-3.5 w-3.5" />
+                  {avatarFile ? avatarFile.name : "Cambiar foto"}
+                  <input
+                    type="file"
+                    accept={ALLOWED_IMAGE_TYPES.join(",")}
+                    className="hidden"
+                    disabled={saving}
+                    onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+              )}
+              <p className="text-[11px] text-muted-foreground">jpg, png o webp — hasta 5MB.</p>
+              {fileError ? (
+                <p role="alert" className="text-xs text-destructive">
+                  {fileError}
+                </p>
+              ) : null}
+            </div>
           </div>
 
           <div>
@@ -132,7 +242,7 @@ export function MiPerfilModal({ onClose }: { onClose: () => void }) {
             onClick={() => void handleSaveProfile()}
             className="w-full rounded-full gradient-gold px-5 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-40"
           >
-            {saving ? "Guardando…" : "Guardar perfil"}
+            {uploading ? "Subiendo…" : saving ? "Guardando…" : "Guardar perfil"}
           </button>
         </div>
 

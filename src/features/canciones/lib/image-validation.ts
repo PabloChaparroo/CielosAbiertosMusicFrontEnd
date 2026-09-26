@@ -16,6 +16,9 @@ export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 // como la letra), así que el tope es más chico. Mismos formatos que la letra.
 export const MAX_COVER_BYTES = 5 * 1024 * 1024;
 
+// Foto de perfil: igual que la portada, un thumbnail que se ve en muchos lugares → 5MB.
+export const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
+
 /**
  * Misma regla para toda imagen (formatos permitidos); solo cambia el tope de tamaño según el
  * uso — por defecto el de la foto de letra (8MB). Parametrizado en vez de duplicar el archivo:

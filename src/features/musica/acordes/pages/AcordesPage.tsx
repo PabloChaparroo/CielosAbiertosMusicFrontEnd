@@ -23,6 +23,7 @@ import { ChordSheet } from "../components/ChordSheet";
 import { useFitFontSize } from "../hooks/useFitFontSize";
 import { useAuth } from "@/core/auth/useAuth";
 import { ChordProEditor } from "../../components/ChordProEditor";
+import { enterBrowserFullscreen, exitBrowserFullscreen, isBrowserFullscreen } from "@/lib/browser-fullscreen";
 
 export function AcordesPage() {
   const { songs, songsLoadState, current, isPlaying, play, toggle, can, updateSong } = useApp();
@@ -37,12 +38,34 @@ export function AcordesPage() {
   const [manualFontSize, setManualFontSize] = useState<number | null>(null);
   const [mode, setMode] = useState<"both" | "chords">("both");
   const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchPanelRef = useRef<HTMLElement | null>(null);
   const [live, setLive] = useState(false);
+  useEffect(() => {
+    const syncLiveMode = () => {
+      if (!isBrowserFullscreen()) setLive(false);
+    };
+    document.addEventListener("fullscreenchange", syncLiveMode);
+    document.addEventListener("webkitfullscreenchange", syncLiveMode);
+    return () => {
+      document.removeEventListener("fullscreenchange", syncLiveMode);
+      document.removeEventListener("webkitfullscreenchange", syncLiveMode);
+    };
+  }, []);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const chordInputRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    const closeOnOutsideTap = (event: PointerEvent) => {
+      if (searchPanelRef.current && !searchPanelRef.current.contains(event.target as Node)) {
+        setSearchOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", closeOnOutsideTap);
+    return () => document.removeEventListener("pointerdown", closeOnOutsideTap);
+  }, []);
   const scopedSongIds = useMemo(() => (songIds ? new Set(songIds.split(",")) : null), [songIds]);
   const availableSongs = useMemo(
     () => (scopedSongIds ? songs.filter((item) => scopedSongIds.has(item.id)) : songs),
@@ -116,6 +139,7 @@ export function AcordesPage() {
   const filtered = availableSongs.filter((s) =>
     (s.title + s.artist).toLowerCase().includes(query.toLowerCase()),
   );
+  const visibleSongs = query ? filtered : [...filtered].sort((a, b) => Number(b.id === song.id) - Number(a.id === song.id));
 
   const sectionShortcuts = [
     "INTRO",
@@ -193,7 +217,10 @@ export function AcordesPage() {
     return (
       <div className="fixed inset-0 z-50 overflow-y-auto bg-black px-5 py-10 sm:px-10">
         <button
-          onClick={() => setLive(false)}
+          onClick={() => {
+            setLive(false);
+            void exitBrowserFullscreen();
+          }}
           aria-label="Salir del modo presentación"
           className="fixed top-4 right-4 rounded-full border border-white/20 p-2 text-white/70 hover:text-white"
         >
@@ -236,7 +263,10 @@ export function AcordesPage() {
       actions={
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setLive(true)}
+            onClick={() => {
+              void enterBrowserFullscreen();
+              setLive(true);
+            }}
             className="flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm hover:bg-secondary"
           >
             <Maximize2 className="h-4 w-4" /> <span className="hidden sm:inline">En vivo</span>
@@ -254,25 +284,31 @@ export function AcordesPage() {
       }
     >
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <aside className="surface-card order-2 flex max-h-[70vh] flex-col overflow-hidden lg:order-1 lg:sticky lg:top-24">
+        <aside ref={searchPanelRef} className="surface-card order-1 flex max-h-[55vh] flex-col overflow-hidden lg:order-1 lg:sticky lg:top-24 lg:max-h-[70vh]">
           <div className="relative border-b border-border/60 p-3">
             <Search className="absolute top-1/2 left-6 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => setSearchOpen(true)}
               placeholder="Saltar a canción…"
               className="w-full rounded-full border border-border bg-secondary py-2 pr-3 pl-10 text-sm outline-none focus:border-primary/60"
             />
           </div>
-          <div className="flex-1 overflow-y-auto p-2">
+          <div
+            className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out lg:flex-1 lg:grid-rows-[1fr] lg:opacity-100 ${searchOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+          >
+            <div className="min-h-0 overflow-y-auto p-2 lg:max-h-[65vh]">
+            {!query && <p className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Recientes</p>}
             {filtered.length === 0 ? (
               <p className="p-4 text-center text-sm text-muted-foreground">Sin resultados</p>
             ) : (
-              filtered.map((s) => (
+              visibleSongs.map((s) => (
                 <div
                   key={s.id}
                   onClick={() => {
                     setSongId(s.id);
+                    setSearchOpen(false);
                     play(s);
                   }}
                   className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors ${
@@ -284,6 +320,7 @@ export function AcordesPage() {
                     onClick={(event) => {
                       event.stopPropagation();
                       setSongId(s.id);
+                      setSearchOpen(false);
                     }}
                     className="flex min-w-0 flex-1 items-center gap-3 text-left"
                     aria-label={`Ver acordes de ${s.title}`}
@@ -302,6 +339,7 @@ export function AcordesPage() {
                     type="button"
                     onClick={(event) => {
                       event.stopPropagation();
+                      setSearchOpen(false);
                       if (current?.id === s.id && isPlaying) toggle();
                       else play(s);
                     }}
@@ -322,11 +360,12 @@ export function AcordesPage() {
                 </div>
               ))
             )}
+            </div>
           </div>
         </aside>
 
         {/* min-w-0: sin esto, una hoja más ancha que la pantalla estiraba la columna y cortaba la tarjeta de arriba */}
-        <div className="order-1 min-w-0 space-y-5 lg:order-2">
+        <div className="order-2 min-w-0 space-y-5 lg:order-2">
           <div className="surface-card flex flex-wrap items-center gap-3 p-4">
             <div className="mr-auto min-w-0">
               <div className="flex items-center gap-2">

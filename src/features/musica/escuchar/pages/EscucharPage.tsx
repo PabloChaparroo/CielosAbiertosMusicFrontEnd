@@ -139,10 +139,11 @@ export function EscucharPage() {
         />
       ) : (
         <div className="surface-card overflow-x-auto">
-          <div className="hidden grid-cols-[40px_minmax(0,1fr)_80px_150px_210px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_80px_150px_210px] gap-4 border-b border-border/60 px-4 py-3 text-[11px] tracking-widest text-muted-foreground uppercase md:grid">
+          <div className="hidden grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_210px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_210px] gap-4 border-b border-border/60 px-4 py-3 text-[11px] tracking-widest text-muted-foreground uppercase md:grid">
             <span>#</span>
             <span>Título</span>
             <span className="hidden 2xl:block">Temas</span>
+            <span>Tipo</span>
             <span className="text-center">Secuencia</span>
             <span>Tono / Compás / BPM</span>
             <span className="text-right">Duración</span>
@@ -151,7 +152,7 @@ export function EscucharPage() {
             <div
               key={song.id}
               onClick={() => play(song)}
-              className={`group grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-2.5 transition-colors hover:bg-elevated/70 md:grid-cols-[40px_minmax(0,1fr)_80px_150px_210px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_80px_150px_210px] ${
+              className={`group grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-2.5 transition-colors hover:bg-elevated/70 md:grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_210px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_210px] ${
                 current?.id === song.id ? "bg-elevated/60" : ""
               }`}
             >
@@ -171,14 +172,7 @@ export function EscucharPage() {
                   >
                     {song.title}
                   </p>
-                  <p className="truncate text-sm text-muted-foreground">
-                    {song.artist}
-                    {song.tipo ? (
-                      <span className="ml-2 rounded-md bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-primary uppercase">
-                        {song.tipo}
-                      </span>
-                    ) : null}
-                  </p>
+                  <p className="truncate text-sm text-muted-foreground">{song.artist}</p>
                 </div>
               </div>
               <div className="hidden flex-wrap gap-1.5 2xl:flex">
@@ -186,6 +180,9 @@ export function EscucharPage() {
                   <TagChip key={t} tag={t} />
                 ))}
               </div>
+              <span className="hidden truncate text-sm text-muted-foreground md:block">
+                {song.tipo}
+              </span>
               {/* secuencia: check amarillo si tiene pistas (multitracks), "-" si no */}
               <span className="hidden justify-center md:flex">
                 {song.trackCount > 0 ? (

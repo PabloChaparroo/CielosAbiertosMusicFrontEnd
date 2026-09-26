@@ -45,5 +45,5 @@ export function looksLikeYoutube(input: string): boolean {
 
 /** URL oficial del reproductor embebido (enablejsapi: para poder pausarlo desde la app) */
 export function youtubeEmbedUrl(videoId: string): string {
-  return `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&rel=0`;
+  return `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&rel=0&playsinline=1`;
 }

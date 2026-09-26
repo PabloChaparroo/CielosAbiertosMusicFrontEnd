@@ -7,7 +7,7 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
-import { Maximize2, X } from "lucide-react";
+import { FloatingVideoFrame } from "@/components/common/FloatingVideoFrame";
 import { loadYoutubeApi, YT_ENDED, YT_PAUSED, YT_PLAYING, type YTPlayer } from "@/lib/youtube-api";
 
 /**
@@ -31,6 +31,8 @@ export const YoutubeStage = forwardRef<
   YoutubeStageHandle,
   {
     videoId: string;
+    /** para la barra de la ventanita flotante */
+    title: string;
     playing: boolean;
     /** 0–1, igual que el volumen del audio */
     volume: number;
@@ -46,6 +48,7 @@ export const YoutubeStage = forwardRef<
 >(function YoutubeStage(
   {
     videoId,
+    title,
     playing,
     volume,
     expanded,
@@ -156,43 +159,23 @@ export const YoutubeStage = forwardRef<
 
   // flotante solo mientras suena (pausado no hace falta que se vea); en pantalla completa, siempre
   const visible = expanded ? rect !== null : playing;
-  const style: React.CSSProperties =
-    expanded && rect
-      ? { top: rect.top, left: rect.left, width: rect.width, height: rect.height }
-      : { right: 16, bottom: 96, width: "min(356px, calc(100vw - 32px))", aspectRatio: "16 / 9" };
 
   // flotante en z-35: arriba del contenido y del encabezado (z-30), pero debajo de la barra del
-  // reproductor y su panel de pistas (z-40), para no taparlo; en pantalla completa, arriba (z-55)
+  // reproductor y su panel de pistas (z-40), para no taparlo; en pantalla completa, arriba (z-55).
+  // Siempre el mismo FloatingVideoFrame (flotante arrastrable o clavado sobre la portada): el
+  // iframe no se vuelve a crear al abrir o cerrar la pantalla completa.
   return createPortal(
-    <div
-      className={`group fixed overflow-hidden rounded-2xl bg-black shadow-2xl ${
-        expanded ? "z-[55]" : "z-[35]"
-      } ${visible ? "" : "pointer-events-none invisible"}`}
-      style={style}
-      aria-label="Video de YouTube"
+    <FloatingVideoFrame
+      title={title}
+      closeLabel="Pausar y cerrar el video"
+      onClose={() => cb.current.onPlayingChange(false)}
+      onOpenPlayer={onOpenFull}
+      hidden={!visible}
+      pinnedRect={expanded ? rect : null}
+      className={expanded ? "z-[55] rounded-2xl border-0" : "z-[35]"}
     >
       <div ref={hostRef} className="h-full w-full [&>iframe]:h-full [&>iframe]:w-full" />
-      {!expanded ? (
-        <div className="absolute top-2 right-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 max-md:opacity-100">
-          <button
-            type="button"
-            onClick={onOpenFull}
-            aria-label="Abrir reproductor a pantalla completa"
-            className="rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80"
-          >
-            <Maximize2 className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => cb.current.onPlayingChange(false)}
-            aria-label="Pausar y ocultar el video"
-            className="rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      ) : null}
-    </div>,
+    </FloatingVideoFrame>,
     document.body,
   );
 });

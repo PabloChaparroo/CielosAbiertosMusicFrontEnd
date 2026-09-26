@@ -687,6 +687,7 @@ export function MiniPlayer() {
         <YoutubeStage
           ref={stageRef}
           videoId={ytId}
+          title={current.title}
           playing={isPlaying}
           volume={volume}
           expanded={expanded && !closing}

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Outlet, useRouter, useRouterState } from "@tanstack/react-router";
 import { AppProvider } from "@/hooks/useApp";
+import { MiniPlayer } from "@/components/layout/MiniPlayer";
 import { authStore } from "../auth/auth-store";
 import { useAuth } from "../auth/useAuth";
 import { canOpenModule, moduleFor } from "../auth/module-access";
@@ -52,7 +53,14 @@ export function AuthGate() {
     (permission) => hasAnyPermission([permission]),
     isGuest,
   );
-  return <AppProvider>{allowed ? <Outlet /> : <RestrictedSection />}</AppProvider>;
+  // El reproductor va acá, una sola vez, y no dentro de cada pantalla (AppLayout): así cambiar
+  // de módulo no lo desmonta y la canción sigue sonando sin cortarse.
+  return (
+    <AppProvider>
+      {allowed ? <Outlet /> : <RestrictedSection />}
+      <MiniPlayer />
+    </AppProvider>
+  );
 }
 
 function LoadingScreen() {

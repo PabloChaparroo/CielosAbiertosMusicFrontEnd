@@ -60,13 +60,22 @@ export function semitonesBetween(from: string, to: string): number {
   return (((b - a) % 12) + 12) % 12;
 }
 
+/**
+ * Tonos que se escriben con bemol (mismos nombres que KEYS): Eb, Ab, Bb mayores; Ebm, Bbm menores.
+ * Importa porque la hoja decide sostenidos o bemoles según el nombre del tono (shouldUseFlats):
+ * si "Eb" se llamara "D#", una canción en Eb mostraría D# y G# en vez de Eb y Ab.
+ */
+const FLAT_MAJOR_ROOTS = new Set([3, 8, 10]);
+const FLAT_MINOR_ROOTS = new Set([3, 10]);
+
 export function transposeKey(key: string, semitones: number): string {
   const minor = key.endsWith("m");
   const root = minor ? key.slice(0, -1) : key;
   const idx = rootIndex(root);
   if (idx < 0) return key;
   const next = (((idx + semitones) % 12) + 12) % 12;
-  return SHARP[next]! + (minor ? "m" : "");
+  const flat = (minor ? FLAT_MINOR_ROOTS : FLAT_MAJOR_ROOTS).has(next);
+  return (flat ? FLAT : SHARP)[next]! + (minor ? "m" : "");
 }
 
 export function diatonicChords(key: string): string[] {

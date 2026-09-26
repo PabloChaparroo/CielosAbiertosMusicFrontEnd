@@ -71,9 +71,22 @@ describe("transposeChord", () => {
 
 describe("transposeKey / semitonesBetween", () => {
   it("transpone tonalidades mayores y menores", () => {
-    expect(transposeKey("C", 3)).toBe("D#");
+    expect(transposeKey("C", 3)).toBe("Eb");
     expect(transposeKey("Am", 3)).toBe("Cm");
     expect(transposeKey("G", -7)).toBe("C");
+  });
+
+  it("los tonos con bemol conservan su nombre (Eb, Ab, Bb): si no, la hoja salía con sostenidos", () => {
+    expect(transposeKey("Eb", 0)).toBe("Eb");
+    expect(transposeKey("Bb", 0)).toBe("Bb");
+    expect(transposeKey("Ab", 0)).toBe("Ab");
+    expect(transposeKey("C#m", -3)).toBe("Bbm");
+    expect(transposeKey("F#", 0)).toBe("F#");
+    expect(transposeKey("C#", 0)).toBe("C#");
+    // la hoja de una canción en Eb, sin transponer, muestra Eb y Ab
+    const lines = parseChordPro("[Eb] [Ab] [Cm7] - [Bb]", 0, transposeKey("Eb", 0));
+    const chords = lines.flatMap((l) => (l.kind === "line" ? l.pairs.map((p) => p.chord) : []));
+    expect(chords.filter(Boolean)).toEqual(["Eb", "Ab", "Cm7", "Bb"]);
   });
 
   it("una tonalidad desconocida queda igual", () => {

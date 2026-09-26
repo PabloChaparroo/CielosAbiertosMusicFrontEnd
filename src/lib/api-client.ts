@@ -91,5 +91,7 @@ export async function apiRequest<T>(
   }
 
   if (response.status === 204) return undefined as T;
-  return (await response.json()) as T;
+  // algunos endpoints (ej. DELETE /links/:id) responden 200 sin cuerpo: no es un error
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }

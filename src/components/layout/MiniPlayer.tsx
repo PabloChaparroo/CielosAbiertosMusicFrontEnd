@@ -13,12 +13,14 @@ import {
 import { AudioTracksService } from "@/features/canciones/services/audio-tracks.service";
 import type { AudioTrack } from "@/features/canciones/types/audio-track";
 import { useApp } from "@/hooks/useApp";
-import { Cover, FavButton, formatDuration } from "@/components/common/ui-bits";
+import { Cover, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
 import { StorageClient } from "@/lib/storage-client";
 
 export function MiniPlayer() {
   const { current, isPlaying, play, toggle, audioRef, songs } = useApp();
   const [expanded, setExpanded] = useState(false);
+  // true mientras corre la animación de cierre (baja la pantalla y recién ahí se desmonta)
+  const [closing, setClosing] = useState(false);
   const lastBackRef = useRef(0);
   const [progress, setProgress] = useState(0);
   const [volume, setVolume] = useState(0.8);
@@ -159,18 +161,36 @@ export function MiniPlayer() {
     if (el?.duration) el.currentTime = (value / 100) * el.duration;
   };
 
-  // Tocar el tema (portada o nombre) abre el reproductor a pantalla completa
-  const openTitle = () => setExpanded(true);
+  // Tocar el tema (portada o nombre) abre el reproductor a pantalla completa (sube desde abajo)
+  const openTitle = () => {
+    setClosing(false);
+    setExpanded(true);
+  };
+  const closeExpanded = () => {
+    setClosing(true);
+    window.setTimeout(() => {
+      setExpanded(false);
+      setClosing(false);
+    }, 250);
+  };
 
   // Escape cierra la pantalla completa
   useEffect(() => {
     if (!expanded) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setExpanded(false);
+      if (event.key === "Escape") closeExpanded();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [expanded]);
+
+  // Audios del tema para el desplegable: el original y las pistas relacionadas
+  const audioOptions = [
+    ...(mainAudioKey && current
+      ? [{ key: mainAudioKey, label: `Original — ${current.title}` }]
+      : []),
+    ...tracks.map((track) => ({ key: track.audioKey, label: track.label })),
+  ];
 
   if (!current) return null;
 
@@ -348,14 +368,17 @@ export function MiniPlayer() {
               role="dialog"
               aria-modal="true"
               aria-label="Reproductor"
-              className="fixed inset-0 z-50 bg-background"
+              className={`fixed inset-0 z-50 overflow-y-auto bg-background ${
+                closing
+                  ? "animate-out fill-mode-forwards duration-250 ease-in slide-out-to-bottom"
+                  : "animate-in duration-300 ease-out slide-in-from-bottom"
+              }`}
             >
-              {/* en compu el contenido va centrado y con ancho acotado */}
-              <div className="mx-auto flex h-full w-full max-w-md flex-col px-6 pt-4 pb-10 sm:max-w-lg sm:py-8">
+              <div className="mx-auto flex min-h-full w-full max-w-md flex-col px-6 pt-4 pb-10 md:max-w-5xl md:px-10 md:py-8">
                 <div className="flex items-center justify-between">
                   <button
                     type="button"
-                    onClick={() => setExpanded(false)}
+                    onClick={closeExpanded}
                     aria-label="Cerrar reproductor"
                     className="-ml-2 rounded-full p-2 text-muted-foreground hover:text-foreground"
                   >
@@ -367,67 +390,124 @@ export function MiniPlayer() {
                   <span className="w-10" />
                 </div>
 
-                <div className="flex flex-1 items-center justify-center py-6">
-                  <Cover
-                    song={current}
-                    size="lg"
-                    className="h-auto w-full max-w-[340px] rounded-2xl sm:max-w-[min(420px,55vh)]"
-                  />
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-2xl font-bold">
-                      {activeAudioLabel ?? current.title}
-                    </p>
-                    <p className="truncate text-base text-muted-foreground">
-                      {activeAudioLabel && !isMainAudio
-                        ? `${current.title} · ${current.artist}`
-                        : current.artist}
-                    </p>
+                {/* celular: una columna; compu: portada a la izquierda, datos y controles a la derecha */}
+                <div className="flex flex-1 flex-col md:grid md:grid-cols-2 md:items-center md:gap-12">
+                  <div className="flex flex-1 items-center justify-center py-6">
+                    <Cover
+                      song={current}
+                      size="lg"
+                      className="h-auto w-full max-w-[340px] rounded-2xl md:max-w-[min(460px,70vh)]"
+                    />
                   </div>
-                  <FavButton songId={current.id} />
-                </div>
 
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={progress}
-                  aria-label="Progreso"
-                  onChange={(e) => seekTo(Number(e.target.value))}
-                  className="mt-6 h-1 w-full cursor-pointer appearance-none rounded-full bg-secondary accent-primary"
-                />
-                <div className="mt-2 flex justify-between text-xs text-muted-foreground">
-                  <span>{formatDuration(seconds)}</span>
-                  <span>{formatDuration(duration)}</span>
-                </div>
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-2xl font-bold md:text-4xl">
+                          {activeAudioLabel ?? current.title}
+                        </p>
+                        <p className="truncate text-base text-muted-foreground md:text-lg">
+                          {activeAudioLabel && !isMainAudio
+                            ? `${current.title} · ${current.artist}`
+                            : current.artist}
+                        </p>
+                      </div>
+                      <FavButton songId={current.id} />
+                    </div>
 
-                <div className="mt-6 flex items-center justify-center gap-10">
-                  <button
-                    type="button"
-                    onClick={back}
-                    aria-label="Volver al principio (dos toques: canción anterior)"
-                    className="rounded-full p-2 text-foreground"
-                  >
-                    <SkipBack className="h-9 w-9 fill-current" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={toggle}
-                    aria-label={isPlaying ? "Pausar" : "Reproducir"}
-                    className="flex h-18 w-18 items-center justify-center rounded-full gradient-gold text-primary-foreground"
-                  >
-                    {isPlaying ? <Pause className="h-8 w-8" /> : <Play className="ml-1 h-8 w-8" />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => playAt(1)}
-                    aria-label="Siguiente canción"
-                    className="rounded-full p-2 text-foreground"
-                  >
-                    <SkipForward className="h-9 w-9 fill-current" />
-                  </button>
+                    {/* características del tema */}
+                    <div className="mt-4 grid grid-cols-4 gap-2">
+                      {[
+                        ["Tono", current.key],
+                        ["Compás", current.compas],
+                        ["BPM", String(current.bpm)],
+                        ["Duración", formatDuration(duration)],
+                      ].map(([label, value]) => (
+                        <div
+                          key={label}
+                          className="rounded-xl border border-border bg-card px-2 py-2 text-center"
+                        >
+                          <p className="text-[10px] tracking-widest text-muted-foreground uppercase">
+                            {label}
+                          </p>
+                          <p className="mt-0.5 text-sm font-semibold">{value}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {current.tags.length ? (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {current.tags.map((tag) => (
+                          <TagChip key={tag} tag={tag} />
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {/* desplegable para alternar entre los audios del tema */}
+                    {audioOptions.length > 1 ? (
+                      <label className="mt-4 block">
+                        <span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                          <ListMusic className="h-3.5 w-3.5" /> Audio
+                        </span>
+                        <select
+                          value={current.audioKey ?? ""}
+                          onChange={(e) => play({ ...current, audioKey: e.target.value })}
+                          aria-label="Elegir audio del tema"
+                          className="w-full rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none focus:border-primary/60"
+                        >
+                          {audioOptions.map((option) => (
+                            <option key={option.key} value={option.key}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : null}
+
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={progress}
+                      aria-label="Progreso"
+                      onChange={(e) => seekTo(Number(e.target.value))}
+                      className="mt-6 h-1 w-full cursor-pointer appearance-none rounded-full bg-secondary accent-primary"
+                    />
+                    <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+                      <span>{formatDuration(seconds)}</span>
+                      <span>{formatDuration(duration)}</span>
+                    </div>
+
+                    <div className="mt-6 flex items-center justify-center gap-10">
+                      <button
+                        type="button"
+                        onClick={back}
+                        aria-label="Volver al principio (dos toques: canción anterior)"
+                        className="rounded-full p-2 text-foreground"
+                      >
+                        <SkipBack className="h-9 w-9 fill-current" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={toggle}
+                        aria-label={isPlaying ? "Pausar" : "Reproducir"}
+                        className="flex h-18 w-18 items-center justify-center rounded-full gradient-gold text-primary-foreground"
+                      >
+                        {isPlaying ? (
+                          <Pause className="h-8 w-8" />
+                        ) : (
+                          <Play className="ml-1 h-8 w-8" />
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => playAt(1)}
+                        aria-label="Siguiente canción"
+                        className="rounded-full p-2 text-foreground"
+                      >
+                        <SkipForward className="h-9 w-9 fill-current" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>,

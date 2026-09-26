@@ -116,10 +116,10 @@ export function EscucharPage() {
         />
       ) : (
         <div className="surface-card overflow-x-auto">
-          <div className="hidden min-w-[1050px] grid-cols-[40px_minmax(260px,1fr)_180px_180px_220px] gap-4 border-b border-border/60 px-4 py-3 text-[11px] tracking-widest text-muted-foreground uppercase md:grid">
+          <div className="hidden grid-cols-[40px_minmax(0,1fr)_auto_auto] xl:grid-cols-[40px_minmax(220px,1fr)_180px_170px_auto] gap-4 border-b border-border/60 px-4 py-3 text-[11px] tracking-widest text-muted-foreground uppercase md:grid">
             <span>#</span>
             <span>Título</span>
-            <span>Temas</span>
+            <span className="hidden xl:block">Temas</span>
             <span>Tono / Compás / BPM</span>
             <span className="text-right">Duración</span>
           </div>
@@ -127,7 +127,7 @@ export function EscucharPage() {
             <div
               key={song.id}
               onClick={() => play(song)}
-              className={`group grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-2.5 transition-colors hover:bg-elevated/70 md:min-w-[1050px] md:grid-cols-[40px_minmax(260px,1fr)_180px_180px_220px] ${
+              className={`group grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-2.5 transition-colors hover:bg-elevated/70 md:grid-cols-[40px_minmax(0,1fr)_auto_auto] xl:grid-cols-[40px_minmax(220px,1fr)_180px_170px_auto] ${
                 current?.id === song.id ? "bg-elevated/60" : ""
               }`}
             >
@@ -157,7 +157,7 @@ export function EscucharPage() {
                   </p>
                 </div>
               </div>
-              <div className="hidden flex-wrap gap-1.5 md:flex">
+              <div className="hidden flex-wrap gap-1.5 xl:flex">
                 {song.tags.map((t) => (
                   <TagChip key={t} tag={t} />
                 ))}

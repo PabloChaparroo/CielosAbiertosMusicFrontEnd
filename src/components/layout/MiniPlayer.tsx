@@ -18,6 +18,8 @@ import type { AudioTrack } from "@/features/canciones/types/audio-track";
 import { useApp } from "@/hooks/useApp";
 import { Cover, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
 import { StorageClient } from "@/lib/storage-client";
+import { loadYoutubeApi } from "@/lib/youtube-api";
+import { YoutubeStage, type YoutubeStageHandle } from "./YoutubeStage";
 
 export function MiniPlayer() {
   const { current, isPlaying, play, toggle, audioRef, songs } = useApp();
@@ -34,13 +36,29 @@ export function MiniPlayer() {
   const [videos, setVideos] = useState<Array<{ id: string; label: string; videoId: string }>>([]);
   const [openVideo, setOpenVideo] = useState<{ videoId: string; label: string } | null>(null);
   const [mainAudioKey, setMainAudioKey] = useState<string | null>(null);
+  // Qué suena: si la canción tiene video de YouTube, YouTube (decisión de Pablo: YouTube antes
+  // que el audio subido); "audio" = el usuario eligió el audio subido o una pista.
+  const [source, setSource] = useState<"auto" | "audio">("auto");
+  const [ytDuration, setYtDuration] = useState(0);
+  const stageRef = useRef<YoutubeStageHandle | null>(null);
+  // lugar de la portada en la pantalla completa: ahí se ubica el video
+  const videoAnchorRef = useRef<HTMLDivElement | null>(null);
+  const isPlayingRef = useRef(isPlaying);
+  isPlayingRef.current = isPlaying;
   const currentSongId = current?.id;
   const currentRef = useRef(current);
   currentRef.current = current;
 
+  const ytId = current?.youtubeVideoId ?? null;
+  const useYoutube = Boolean(ytId) && source === "auto";
+
   const activeTrack = tracks.find((track) => track.audioKey === current?.audioKey);
   const isMainAudio = Boolean(mainAudioKey && current?.audioKey === mainAudioKey);
-  const activeAudioLabel = isMainAudio ? current?.title : activeTrack?.label;
+  const activeAudioLabel = useYoutube
+    ? undefined
+    : isMainAudio
+      ? current?.title
+      : activeTrack?.label;
   const localRef = useRef<HTMLAudioElement | null>(null);
 
   // `audioKey` es una key de S3/MinIO, no una URL reproducible — hay que
@@ -51,6 +69,8 @@ export function MiniPlayer() {
   useEffect(() => {
     setTracks([]);
     setVideos([]);
+    setSource("auto");
+    setYtDuration(0);
     setTracksOpen(false);
     setMainAudioKey(currentRef.current?.audioKey ?? null);
     if (!currentSongId) return;
@@ -69,7 +89,13 @@ export function MiniPlayer() {
       .catch(() => setVideos([]));
   }, [currentSongId]);
 
-  const hasRelated = tracks.length > 0 || videos.length > 0;
+  useEffect(() => {
+    void loadYoutubeApi();
+  }, []);
+
+  // otros videos de YouTube de la canción (el principal ya suena en el reproductor)
+  const extraVideos = videos.filter((video) => video.videoId !== ytId);
+  const hasRelated = tracks.length > 0 || extraVideos.length > 0 || Boolean(ytId);
   const openYoutube = (video: { videoId: string; label: string }) => {
     setTracksOpen(false);
     setOpenVideo(video);
@@ -97,9 +123,23 @@ export function MiniPlayer() {
     if (!el) return;
     audioRef.current = el;
     el.volume = volume;
-    if (isPlaying && resolvedUrl) void el.play().catch(() => undefined);
+    if (isPlaying && resolvedUrl && !useYoutube) void el.play().catch(() => undefined);
     else el.pause();
-  }, [isPlaying, current, volume, audioRef, resolvedUrl]);
+  }, [isPlaying, current, volume, audioRef, resolvedUrl, useYoutube]);
+
+  // controles comunes al audio y a YouTube
+  const media = {
+    time: () =>
+      useYoutube ? (stageRef.current?.getTime() ?? 0) : (localRef.current?.currentTime ?? 0),
+    duration: () =>
+      (useYoutube ? stageRef.current?.getDuration() : localRef.current?.duration) ||
+      current?.duration ||
+      0,
+    seek: (seconds: number) => {
+      if (useYoutube) stageRef.current?.seek(seconds);
+      else if (localRef.current) localRef.current.currentTime = seconds;
+    },
+  };
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -112,9 +152,6 @@ export function MiniPlayer() {
         return;
       }
 
-      const el = localRef.current;
-      if (!el) return;
-
       if (event.code === "Space") {
         event.preventDefault();
         toggle();
@@ -124,40 +161,41 @@ export function MiniPlayer() {
       if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
         event.preventDefault();
         const delta = event.key === "ArrowLeft" ? -5 : 5;
-        const limit = el.duration || current.duration;
-        el.currentTime = Math.max(0, Math.min(limit, el.currentTime + delta));
-        setProgress(limit ? (el.currentTime / limit) * 100 : 0);
+        const limit = media.duration();
+        const next = Math.max(0, Math.min(limit, media.time() + delta));
+        media.seek(next);
+        setProgress(limit ? (next / limit) * 100 : 0);
         return;
       }
 
       if (event.key === "0" || event.key === "Home") {
         event.preventDefault();
-        el.currentTime = 0;
+        media.seek(0);
         setProgress(0);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [current, toggle]);
+    // media depende de useYoutube (incluido)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current, toggle, useYoutube]);
 
   const seekBy = (seconds: number) => {
-    const el = localRef.current;
-    if (!el) return;
-    const limit = el.duration || current?.duration || 0;
-    el.currentTime = Math.max(0, Math.min(limit, el.currentTime + seconds));
-    setProgress(limit ? (el.currentTime / limit) * 100 : 0);
+    const limit = media.duration();
+    const next = Math.max(0, Math.min(limit, media.time() + seconds));
+    media.seek(next);
+    setProgress(limit ? (next / limit) * 100 : 0);
   };
 
   const restart = () => {
-    const el = localRef.current;
-    if (!el) return;
-    el.currentTime = 0;
+    media.seek(0);
     setProgress(0);
   };
 
-  // Siguiente / anterior: recorre el repertorio en el orden de la lista, salteando canciones sin audio
-  const playable = songs.filter((s) => s.audioKey);
+  // Siguiente / anterior: recorre el repertorio en el orden de la lista, salteando las canciones
+  // que no se pueden reproducir (sin audio subido ni video de YouTube)
+  const playable = songs.filter((s) => s.audioKey || s.youtubeVideoId);
   const playAt = (offset: number) => {
     if (!current || playable.length === 0) return;
     const index = playable.findIndex((s) => s.id === current.id);
@@ -180,9 +218,20 @@ export function MiniPlayer() {
 
   const seekTo = (value: number) => {
     setProgress(value);
-    const el = localRef.current;
-    if (el?.duration) el.currentTime = (value / 100) * el.duration;
+    const limit = media.duration();
+    if (limit) media.seek((value / 100) * limit);
   };
+
+  const chooseAudio = (audioKey: string) => {
+    setSource("audio");
+    // play() con el mismo audio alterna play/pausa: si ya es el actual, solo se asegura que suene
+    if (current?.audioKey === audioKey) {
+      if (!isPlaying) toggle();
+    } else {
+      play({ ...current!, audioKey });
+    }
+  };
+  const chooseYoutube = () => setSource("auto");
 
   // Tocar el tema (portada o nombre) abre el reproductor a pantalla completa (sube desde abajo)
   const openTitle = () => {
@@ -209,17 +258,21 @@ export function MiniPlayer() {
 
   // Audios del tema para el desplegable: el original y las pistas relacionadas
   const audioOptions = [
+    ...(ytId ? [{ key: "yt:main", label: "▶ Video de YouTube" }] : []),
     ...(mainAudioKey && current
       ? [{ key: mainAudioKey, label: `Original — ${current.title}` }]
       : []),
     ...tracks.map((track) => ({ key: track.audioKey, label: track.label })),
     // los videos van con prefijo: elegirlos abre el embed en vez de cambiar el audio
-    ...videos.map((video) => ({ key: `yt:${video.id}`, label: `▶ YouTube — ${video.label}` })),
+    ...extraVideos.map((video) => ({
+      key: `yt:${video.id}`,
+      label: `▶ YouTube — ${video.label}`,
+    })),
   ];
 
   if (!current) return null;
 
-  const duration = current.duration;
+  const duration = useYoutube && ytDuration ? ytDuration : current.duration;
   const seconds = (progress / 100) * duration;
 
   return (
@@ -238,30 +291,50 @@ export function MiniPlayer() {
             <ListMusic className="h-3.5 w-3.5" /> Pistas relacionadas
           </p>
           <div className="space-y-1">
+            {ytId ? (
+              <button
+                type="button"
+                onClick={() => {
+                  chooseYoutube();
+                  setTracksOpen(false);
+                }}
+                className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition-colors ${
+                  useYoutube ? "bg-primary/15 text-primary" : "hover:bg-secondary"
+                }`}
+              >
+                <YoutubeIcon />
+                <span className="min-w-0 flex-1 truncate">Video de YouTube</span>
+                {useYoutube ? <span className="text-xs">Activo</span> : null}
+              </button>
+            ) : null}
             {mainAudioKey ? (
               <button
                 type="button"
                 onClick={() => {
-                  play({ ...current, audioKey: mainAudioKey });
+                  chooseAudio(mainAudioKey);
                   setTracksOpen(false);
                 }}
                 className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition-colors ${
-                  isMainAudio ? "bg-primary/15 text-primary" : "hover:bg-secondary"
+                  isMainAudio && !useYoutube ? "bg-primary/15 text-primary" : "hover:bg-secondary"
                 }`}
               >
-                {isMainAudio ? <Play className="h-3.5 w-3.5" /> : <span className="w-3.5" />}
+                {isMainAudio && !useYoutube ? (
+                  <Play className="h-3.5 w-3.5" />
+                ) : (
+                  <span className="w-3.5" />
+                )}
                 <span className="min-w-0 flex-1 truncate">{current.title}</span>
-                {isMainAudio ? <span className="text-xs">Activo</span> : null}
+                {isMainAudio && !useYoutube ? <span className="text-xs">Activo</span> : null}
               </button>
             ) : null}
             {tracks.map((track) => {
-              const active = current.audioKey === track.audioKey;
+              const active = !useYoutube && current.audioKey === track.audioKey;
               return (
                 <button
                   key={track.id}
                   type="button"
                   onClick={() => {
-                    play({ ...current, audioKey: track.audioKey });
+                    chooseAudio(track.audioKey);
                     setTracksOpen(false);
                   }}
                   className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition-colors ${
@@ -274,7 +347,7 @@ export function MiniPlayer() {
                 </button>
               );
             })}
-            {videos.map((video) => (
+            {extraVideos.map((video) => (
               <button
                 key={video.id}
                 type="button"
@@ -432,11 +505,19 @@ export function MiniPlayer() {
                 {/* celular: una columna; compu: portada a la izquierda, datos y controles a la derecha */}
                 <div className="flex flex-1 flex-col md:grid md:grid-cols-2 md:items-center md:gap-12">
                   <div className="flex flex-1 items-center justify-center py-6">
-                    <Cover
-                      song={current}
-                      size="lg"
-                      className="h-auto w-full max-w-[340px] rounded-2xl md:max-w-[min(460px,70vh)]"
-                    />
+                    {useYoutube ? (
+                      // acá se ubica el video (YoutubeStage): mismo iframe que en la barra
+                      <div
+                        ref={videoAnchorRef}
+                        className="aspect-video w-full rounded-2xl bg-black md:max-w-[min(640px,70vh)]"
+                      />
+                    ) : (
+                      <Cover
+                        song={current}
+                        size="lg"
+                        className="h-auto w-full max-w-[340px] rounded-2xl md:max-w-[min(460px,70vh)]"
+                      />
+                    )}
                   </div>
 
                   <div className="flex flex-col">
@@ -493,12 +574,13 @@ export function MiniPlayer() {
                           <ListMusic className="h-3.5 w-3.5" /> Audio
                         </span>
                         <select
-                          value={current.audioKey ?? ""}
+                          value={useYoutube ? "yt:main" : (current.audioKey ?? "")}
                           onChange={(e) => {
                             const value = e.target.value;
-                            const video = videos.find((v) => `yt:${v.id}` === value);
-                            if (video) openYoutube(video);
-                            else play({ ...current, audioKey: value });
+                            const video = extraVideos.find((v) => `yt:${v.id}` === value);
+                            if (value === "yt:main") chooseYoutube();
+                            else if (video) openYoutube(video);
+                            else chooseAudio(value);
                           }}
                           aria-label="Elegir audio del tema"
                           className="w-full rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none focus:border-primary/60"
@@ -563,6 +645,30 @@ export function MiniPlayer() {
             document.body,
           )
         : null}
+      {useYoutube && ytId ? (
+        <YoutubeStage
+          ref={stageRef}
+          videoId={ytId}
+          playing={isPlaying}
+          volume={volume}
+          expanded={expanded && !closing}
+          anchorRef={videoAnchorRef}
+          onProgress={(time, total) => {
+            if (total) {
+              setYtDuration(Math.round(total));
+              setProgress((time / total) * 100);
+            }
+          }}
+          onPlayingChange={(playing) => {
+            // pausa/play desde los controles propios del video (o la X del flotante)
+            if (playing !== isPlayingRef.current) toggle();
+          }}
+          onEnded={() => {
+            if (isPlayingRef.current) toggle();
+          }}
+          onOpenFull={openTitle}
+        />
+      ) : null}
       {openVideo ? (
         <YoutubeEmbed
           videoId={openVideo.videoId}

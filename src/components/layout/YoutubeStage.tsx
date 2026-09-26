@@ -161,10 +161,12 @@ export const YoutubeStage = forwardRef<
       ? { top: rect.top, left: rect.left, width: rect.width, height: rect.height }
       : { right: 16, bottom: 96, width: "min(356px, calc(100vw - 32px))", aspectRatio: "16 / 9" };
 
+  // flotante en z-35: arriba del contenido y del encabezado (z-30), pero debajo de la barra del
+  // reproductor y su panel de pistas (z-40), para no taparlo; en pantalla completa, arriba (z-55)
   return createPortal(
     <div
       className={`group fixed overflow-hidden rounded-2xl bg-black shadow-2xl ${
-        expanded ? "z-[55]" : "z-[45]"
+        expanded ? "z-[55]" : "z-[35]"
       } ${visible ? "" : "pointer-events-none invisible"}`}
       style={style}
       aria-label="Video de YouTube"

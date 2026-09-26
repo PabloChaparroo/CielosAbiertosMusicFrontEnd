@@ -84,6 +84,15 @@ function chordChartSegments(pairs: ChordPair[]): ChartSegment[] {
   return segments;
 }
 
+/**
+ * Línea con acordes pero sin letra (ej. "[A]" o "[D] [A] - [Em]"): en "Letra + acordes" se
+ * muestra como compases, "| A |", igual que en "Solo acordes". Solo cuenta como letra el texto
+ * que no sea "-", ":]" o espacios.
+ */
+function isChordOnlyLine(pairs: ChordPair[]): boolean {
+  return pairs.some((p) => p.chord) && pairs.every((p) => p.note || /^(?:\s|-|:\])*$/.test(p.text));
+}
+
 /** Tamaño de las notas "(…)" respecto de la letra de la hoja */
 const NOTE_SCALE = 0.7;
 
@@ -181,7 +190,8 @@ export function ChordSheet({
                 ))}
               </p>
             );
-          if (mode === "chords") {
+          // en "Letra + acordes", una línea sin letra también va como compases
+          if (mode === "chords" || isChordOnlyLine(line.pairs)) {
             const pairs = line.pairs.filter((pair) => pair.chord || pair.note || pair.text.trim());
             const hasChords = pairs.some((pair) => pair.chord);
             const segments: ChartSegment[] = hasChords

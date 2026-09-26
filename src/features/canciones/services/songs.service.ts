@@ -21,6 +21,8 @@ export interface RawSong {
   compas: string;
   duration: number;
   cover: string;
+  /** Ausente en respuestas de un backend anterior a la migración AddSongCoverKey */
+  coverKey?: string | null;
   audioKey: string | null;
   chordpro: string;
   lyricsImageKey: string | null;
@@ -49,6 +51,8 @@ export interface CreateSongInput {
   tags: string[];
   audioKey?: string;
   lyricsImageKey?: string;
+  /** null quita la portada */
+  coverKey?: string | null;
 }
 
 export type UpdateSongInput = Partial<CreateSongInput>;
@@ -76,6 +80,7 @@ export function mapSong(raw: RawSong): Song {
     duration: raw.duration,
     tags: raw.tags.map((t) => t.valor) as Tag[],
     cover: raw.cover,
+    coverKey: raw.coverKey ?? null,
     audioKey: raw.audioKey,
     chordpro: raw.chordpro,
     lyricsImageKey: raw.lyricsImageKey,

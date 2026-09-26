@@ -10,7 +10,9 @@ export interface Song {
   compas: string;
   duration: number; // seconds
   tags: Tag[];
-  cover: string; // css gradient
+  cover: string; // css gradient — placeholder mientras no haya portada real (coverKey)
+  /** Portada real: key de la imagen en S3/MinIO (carpeta "portadas"), mismo criterio que audioKey. null = se muestra `cover`. */
+  coverKey: string | null;
   /** Key del objeto en S3/MinIO, no una URL reproducible — hay que resolverla con StorageClient.getDownloadUrl() antes de reproducir. null si la canción no tiene audio cargado. */
   audioKey: string | null;
   /** ChordPro-style body: chords inside [] before the syllable */

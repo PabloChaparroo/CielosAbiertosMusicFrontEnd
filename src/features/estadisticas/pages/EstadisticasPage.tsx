@@ -15,7 +15,7 @@ import {
   YAxis,
 } from "recharts";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Skeletons } from "@/components/common/ui-bits";
+import { Cover, Skeletons } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import {
   historicRanking,
@@ -210,10 +210,7 @@ export function EstadisticasPage() {
                 <span className="w-6 text-center font-display text-lg font-semibold text-primary">
                   {i + 1}
                 </span>
-                <div
-                  className="h-9 w-9 shrink-0 rounded-lg"
-                  style={{ backgroundImage: r.song.cover }}
-                />
+                <Cover song={r.song} size="none" className="h-9 w-9 shadow-none" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{r.song.title}</p>
                   <p className="truncate text-xs text-muted-foreground">{r.song.artist}</p>

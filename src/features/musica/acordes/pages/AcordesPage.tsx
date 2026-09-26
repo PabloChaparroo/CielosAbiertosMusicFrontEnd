@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useSearch } from "@tanstack/react-router";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { FavButton, Skeletons } from "@/components/common/ui-bits";
+import { Cover, FavButton, Skeletons } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import { chordsOnly, diatonicChords, KEYS, parseChordPro, transposeKey } from "@/lib/chords";
 import { exportChordsPdf } from "@/lib/pdf";
@@ -342,10 +342,7 @@ export function AcordesPage() {
                       className="flex min-w-0 flex-1 items-center gap-3 text-left"
                       aria-label={`Ver acordes de ${s.title}`}
                     >
-                      <div
-                        className="h-8 w-8 shrink-0 rounded-lg"
-                        style={{ backgroundImage: s.cover }}
-                      />
+                      <Cover song={s} size="none" className="h-8 w-8 shadow-none" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{s.title}</p>
                         <p className="truncate text-xs text-muted-foreground">{s.artist}</p>

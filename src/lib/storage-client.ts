@@ -6,7 +6,7 @@ export interface UploadUrlResult {
 }
 
 export const StorageClient = {
-  getUploadUrl: (folder: "audios" | "letras" | "avatares", contentType: string) =>
+  getUploadUrl: (folder: "audios" | "letras" | "avatares" | "portadas", contentType: string) =>
     apiRequest<UploadUrlResult>("/storage/upload-url", {
       method: "POST",
       body: { folder, contentType },

@@ -14,6 +14,7 @@ const raw: RawSong = {
   audioKey: "audios/5bd96ffd-3884-440b-981b-02a6f10d2a09",
   chordpro: "[INTRO]\n[F]Mil veces",
   lyricsImageKey: null,
+  coverKey: "portadas/0c1f2b9e-portada",
   tags: [
     { id: "t1", valor: "Júbilo" },
     { id: "t2", valor: "Adoración" },
@@ -42,6 +43,13 @@ describe("mapSong — canción del backend → canción de la UI", () => {
   it("audioKey: se conserva la key (no es una URL) y null si no hay audio", () => {
     expect(mapSong(raw).audioKey).toBe("audios/5bd96ffd-3884-440b-981b-02a6f10d2a09");
     expect(mapSong({ ...raw, audioKey: null }).audioKey).toBeNull();
+  });
+
+  it("coverKey: se conserva la key de la portada; null o ausente (backend viejo) → null", () => {
+    expect(mapSong(raw).coverKey).toBe("portadas/0c1f2b9e-portada");
+    expect(mapSong({ ...raw, coverKey: null }).coverKey).toBeNull();
+    const { coverKey: _, ...sinCampo } = raw;
+    expect(mapSong(sinCampo).coverKey).toBeNull();
   });
 
   it("fechaHoraAlta pasa a addedAt y el resto de los campos se copian igual", () => {

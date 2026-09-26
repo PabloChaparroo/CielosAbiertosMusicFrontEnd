@@ -80,16 +80,62 @@ export function Avatar({
   );
 }
 
+/** Mismo criterio que avatarUrlCache: cada portada nueva tiene una coverKey nueva, nunca queda vieja */
+const coverUrlCache = new Map<string, string>();
+
+/**
+ * Portada de una canción, compartida por todos los listados (Escuchar, Inicio, MiniPlayer,
+ * Letras, Acordes, Favoritos, Estadísticas, Setlists): si la canción tiene portada real
+ * (`coverKey`) resuelve su URL firmada y la muestra; si no tiene, o la imagen no carga, queda el
+ * gradiente de siempre (`cover`). `size` da los tamaños de siempre; `className` los ajusta.
+ */
 export function Cover({
   song,
   size = "md",
   className,
 }: {
-  song: Song;
-  size?: "sm" | "md" | "lg";
+  song: Pick<Song, "cover" | "coverKey">;
+  size?: "sm" | "md" | "lg" | "none";
   className?: string;
 }) {
-  const sizes = { sm: "h-11 w-11", md: "h-14 w-14", lg: "h-full w-full aspect-square" };
+  const coverKey = song.coverKey;
+  const [url, setUrl] = useState<string | null>(
+    coverKey ? (coverUrlCache.get(coverKey) ?? null) : null,
+  );
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+    if (!coverKey) {
+      setUrl(null);
+      return;
+    }
+    const cached = coverUrlCache.get(coverKey);
+    if (cached) {
+      setUrl(cached);
+      return;
+    }
+    setUrl(null);
+    let cancelled = false;
+    StorageClient.getDownloadUrl(coverKey)
+      .then((res) => {
+        coverUrlCache.set(coverKey, res.url);
+        if (!cancelled) setUrl(res.url);
+      })
+      .catch(() => {
+        /* sin portada disponible; queda el gradiente */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [coverKey]);
+
+  const sizes = {
+    sm: "h-11 w-11",
+    md: "h-14 w-14",
+    lg: "h-full w-full aspect-square",
+    none: "",
+  };
   return (
     <div
       className={cn(
@@ -99,7 +145,16 @@ export function Cover({
       )}
       style={{ backgroundImage: song.cover }}
       aria-hidden
-    />
+    >
+      {url && !failed ? (
+        <img
+          src={url}
+          alt=""
+          className="h-full w-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      ) : null}
+    </div>
   );
 }
 

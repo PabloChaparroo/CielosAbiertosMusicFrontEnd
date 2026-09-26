@@ -17,7 +17,9 @@ const inputCls =
 type LoadState = "loading" | "ready" | "error";
 
 export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () => void }) {
-  const { can, isPlaying: mainIsPlaying, toggle: toggleMain, updateSong } = useApp();
+  const { can, isPlaying: mainIsPlaying, toggle: toggleMain, updateSong, songs } = useApp();
+  // la canción más reciente de la lista (el prop puede haber quedado viejo tras otro cambio)
+  const latestSong = () => songs.find((s) => s.id === song.id) ?? song;
 
   const [tracks, setTracks] = useState<AudioTrack[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
@@ -99,7 +101,11 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
         order: tracks.length,
       };
       const created = await AudioTracksService.create(song.id, dto);
-      setTracks((prev) => [...prev, created]);
+      setTracks((prev) => {
+        const next = [...prev, created];
+        updateSong({ ...latestSong(), trackCount: next.length });
+        return next;
+      });
       setLabel("");
       setAudioFile(null);
       setSaving(false);
@@ -118,7 +124,11 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
     }
     try {
       await AudioTracksService.remove(id);
-      setTracks((prev) => prev.filter((t) => t.id !== id));
+      setTracks((prev) => {
+        const next = prev.filter((t) => t.id !== id);
+        updateSong({ ...latestSong(), trackCount: next.length });
+        return next;
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo borrar la pista");
     }

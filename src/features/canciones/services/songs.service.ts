@@ -30,6 +30,8 @@ export interface RawSong {
   /** Ausentes en respuestas de un backend anterior a la migración AddTipoCancion */
   tipoId?: string;
   tipo?: { id: string; nombre: string };
+  /** Cantidad de pistas (ausente en un backend anterior) */
+  trackCount?: number;
   /** Ausente en la respuesta de POST /canciones (bug de backend, ver mapSong). Presente en GET. */
   playStats?: RawPlayStat[];
   fechaHoraAlta: string;
@@ -85,6 +87,7 @@ export function mapSong(raw: RawSong): Song {
     tags: raw.tags.map((t) => t.valor) as Tag[],
     tipoId: raw.tipoId ?? raw.tipo?.id ?? "",
     tipo: raw.tipo?.nombre ?? "",
+    trackCount: raw.trackCount ?? 0,
     cover: raw.cover,
     coverKey: raw.coverKey ?? null,
     audioKey: raw.audioKey,

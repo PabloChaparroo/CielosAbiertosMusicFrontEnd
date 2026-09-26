@@ -32,6 +32,7 @@ function song(title: string, tags: Tag[], playsByMonth: Record<string, number>):
     coverKey: null,
     tipoId: "t-alabanza",
     tipo: "Alabanza",
+    trackCount: 0,
     addedAt: "",
     playsByMonth,
   };

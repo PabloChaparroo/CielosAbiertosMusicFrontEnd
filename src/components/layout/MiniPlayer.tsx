@@ -434,8 +434,13 @@ export function MiniPlayer() {
                         </div>
                       ))}
                     </div>
-                    {current.tags.length ? (
+                    {current.tags.length || current.tipo ? (
                       <div className="mt-3 flex flex-wrap gap-1.5">
+                        {current.tipo ? (
+                          <span className="rounded-full bg-primary/15 px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-primary uppercase">
+                            {current.tipo}
+                          </span>
+                        ) : null}
                         {current.tags.map((tag) => (
                           <TagChip key={tag} tag={tag} />
                         ))}

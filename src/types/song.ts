@@ -10,6 +10,9 @@ export interface Song {
   compas: string;
   duration: number; // seconds
   tags: Tag[];
+  /** Tipo de canción (GET /tipos-cancion): id y nombre ("Alabanza" = rápida, "Adoración" = lenta) */
+  tipoId: string;
+  tipo: string;
   cover: string; // css gradient — placeholder mientras no haya portada real (coverKey)
   /** Portada real: key de la imagen en S3/MinIO (carpeta "portadas"), mismo criterio que audioKey. null = se muestra `cover`. */
   coverKey: string | null;

@@ -30,6 +30,8 @@ function song(title: string, tags: Tag[], playsByMonth: Record<string, number>):
     chordpro: "",
     lyricsImageKey: null,
     coverKey: null,
+    tipoId: "t-alabanza",
+    tipo: "Alabanza",
     addedAt: "",
     playsByMonth,
   };

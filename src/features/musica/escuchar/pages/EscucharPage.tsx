@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { SongsService } from "@/features/canciones/services/songs.service";
 import { Layers, Link2, Music4, Pencil, Play, Plus, Search } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, EmptyState, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
@@ -23,6 +24,15 @@ export function EscucharPage() {
   const { songs, play, current, can, addSong, updateSong } = useApp();
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState<Tag | null>(null);
+  const [tipo, setTipo] = useState<string | null>(null);
+  // tipos para el filtro (Alabanza / Adoración), desde el backend: aparecen aunque ninguna
+  // canción tenga todavía ese tipo
+  const [tipos, setTipos] = useState<string[]>([]);
+  useEffect(() => {
+    SongsService.listTipos()
+      .then((list) => setTipos(list.map((t) => t.nombre)))
+      .catch(() => setTipos([]));
+  }, []);
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<Song | null>(null);
   const [managingTracks, setManagingTracks] = useState<Song | null>(null);
@@ -33,10 +43,11 @@ export function EscucharPage() {
       songs.filter(
         (s) =>
           (!tag || s.tags.includes(tag)) &&
+          (!tipo || s.tipo === tipo) &&
           (s.title.toLowerCase().includes(query.toLowerCase()) ||
             s.artist.toLowerCase().includes(query.toLowerCase())),
       ),
-    [songs, query, tag],
+    [songs, query, tag, tipo],
   );
 
   return (
@@ -64,6 +75,27 @@ export function EscucharPage() {
             className="w-full rounded-full border border-border bg-card py-2.5 pr-4 pl-10 text-sm outline-none transition-colors focus:border-primary/60"
           />
         </div>
+        {/* tipo (rápida / lenta): botones más marcados que los temas, para no confundir el
+            tipo "Adoración" con el tema "Adoración" */}
+        {tipos.length ? (
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por tipo">
+            {[null, ...tipos].map((t) => (
+              <button
+                key={t ?? "todos"}
+                type="button"
+                onClick={() => setTipo(t)}
+                aria-pressed={tipo === t}
+                className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
+                  tipo === t
+                    ? "gradient-gold text-primary-foreground"
+                    : "border border-border bg-card text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t ?? "Todos los tipos"}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <div className="flex flex-wrap gap-2">
           <button onClick={() => setTag(null)}>
             <TagChip tag="Todas" active={tag === null} />
@@ -115,7 +147,14 @@ export function EscucharPage() {
                   >
                     {song.title}
                   </p>
-                  <p className="truncate text-sm text-muted-foreground">{song.artist}</p>
+                  <p className="truncate text-sm text-muted-foreground">
+                    {song.artist}
+                    {song.tipo ? (
+                      <span className="ml-2 rounded-md bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-primary uppercase">
+                        {song.tipo}
+                      </span>
+                    ) : null}
+                  </p>
                 </div>
               </div>
               <div className="hidden flex-wrap gap-1.5 md:flex">

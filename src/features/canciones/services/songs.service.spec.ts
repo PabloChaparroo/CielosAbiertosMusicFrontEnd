@@ -15,6 +15,8 @@ const raw: RawSong = {
   chordpro: "[INTRO]\n[F]Mil veces",
   lyricsImageKey: null,
   coverKey: "portadas/0c1f2b9e-portada",
+  tipoId: "t-adoracion",
+  tipo: { id: "t-adoracion", nombre: "Adoración" },
   tags: [
     { id: "t1", valor: "Júbilo" },
     { id: "t2", valor: "Adoración" },
@@ -50,6 +52,12 @@ describe("mapSong — canción del backend → canción de la UI", () => {
     expect(mapSong({ ...raw, coverKey: null }).coverKey).toBeNull();
     const { coverKey: _, ...sinCampo } = raw;
     expect(mapSong(sinCampo).coverKey).toBeNull();
+  });
+
+  it("tipo: se toma el id y el nombre; backend viejo sin tipo → vacío, sin romper", () => {
+    expect(mapSong(raw)).toMatchObject({ tipoId: "t-adoracion", tipo: "Adoración" });
+    const { tipoId: _a, tipo: _b, ...sinTipo } = raw;
+    expect(mapSong(sinTipo)).toMatchObject({ tipoId: "", tipo: "" });
   });
 
   it("fechaHoraAlta pasa a addedAt y el resto de los campos se copian igual", () => {

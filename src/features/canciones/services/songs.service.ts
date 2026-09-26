@@ -27,6 +27,9 @@ export interface RawSong {
   chordpro: string;
   lyricsImageKey: string | null;
   tags: RawTag[];
+  /** Ausentes en respuestas de un backend anterior a la migración AddTipoCancion */
+  tipoId?: string;
+  tipo?: { id: string; nombre: string };
   /** Ausente en la respuesta de POST /canciones (bug de backend, ver mapSong). Presente en GET. */
   playStats?: RawPlayStat[];
   fechaHoraAlta: string;
@@ -49,6 +52,7 @@ export interface CreateSongInput {
   cover: string;
   chordpro: string;
   tags: string[];
+  tipoId: string;
   audioKey?: string;
   lyricsImageKey?: string;
   /** null quita la portada */
@@ -79,6 +83,8 @@ export function mapSong(raw: RawSong): Song {
     compas: raw.compas ?? "4/4",
     duration: raw.duration,
     tags: raw.tags.map((t) => t.valor) as Tag[],
+    tipoId: raw.tipoId ?? raw.tipo?.id ?? "",
+    tipo: raw.tipo?.nombre ?? "",
     cover: raw.cover,
     coverKey: raw.coverKey ?? null,
     audioKey: raw.audioKey,
@@ -89,7 +95,17 @@ export function mapSong(raw: RawSong): Song {
   };
 }
 
+export interface TipoCancion {
+  id: string;
+  nombre: string;
+}
+
 export const SongsService = {
+  /** Tipos de canción (Alabanza / Adoración) para el formulario y el filtro */
+  listTipos(): Promise<TipoCancion[]> {
+    return apiRequest<TipoCancion[]>("/tipos-cancion");
+  },
+
   /** Trae todas las canciones reales en una sola página (hoy son 21, muy por debajo del límite de 100 del backend). */
   async listAll(): Promise<Song[]> {
     const result = await apiRequest<PaginatedResult<RawSong>>("/canciones?limit=100");

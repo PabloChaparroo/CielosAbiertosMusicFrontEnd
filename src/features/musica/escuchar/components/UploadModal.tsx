@@ -3,7 +3,7 @@ import { CheckCircle2, ImagePlus, Music, Trash2, Upload, X } from "lucide-react"
 import { Cover, TagChip } from "@/components/common/ui-bits";
 import { KEYS } from "@/lib/chords";
 import { StorageClient } from "@/lib/storage-client";
-import { SongsService } from "@/features/canciones/services/songs.service";
+import { SongsService, type TipoCancion } from "@/features/canciones/services/songs.service";
 import { validateAudioFile } from "@/features/canciones/lib/audio-validation";
 import {
   ALLOWED_IMAGE_TYPES,
@@ -85,6 +85,14 @@ export function UploadModal({
     song?.chordpro ?? "{estrofa 1}\n[G]Nueva canción del minis[D]terio",
   );
   const [tags, setTags] = useState<Tag[]>(song?.tags ?? []);
+  // tipo obligatorio: en alta arranca sin elegir, para que se decida a propósito
+  const [tipoId, setTipoId] = useState(song?.tipoId ?? "");
+  const [tipos, setTipos] = useState<TipoCancion[]>([]);
+  useEffect(() => {
+    SongsService.listTipos()
+      .then(setTipos)
+      .catch(() => setTipos([]));
+  }, []);
   // true = la duración actual se leyó del archivo de audio (cambia el texto de ayuda)
   const [durationFromAudio, setDurationFromAudio] = useState(false);
   // si el usuario ya tocó la duración a mano, la lectura del audio existente no la pisa
@@ -197,7 +205,12 @@ export function UploadModal({
     void readFileDuration(file).then((seconds) => applyAudioDuration(seconds, requestId));
   };
 
-  const canSave = title.trim() !== "" && artist.trim() !== "" && chordpro.trim() !== "" && !saving;
+  const canSave =
+    title.trim() !== "" &&
+    artist.trim() !== "" &&
+    chordpro.trim() !== "" &&
+    tipoId !== "" &&
+    !saving;
 
   const handleSave = async () => {
     setSaving(true);
@@ -254,6 +267,7 @@ export function UploadModal({
         cover: isEdit ? (song?.cover ?? coverFor(title.trim())) : coverFor(title.trim()),
         chordpro,
         tags: tags.length ? tags : (["Adoración"] as Tag[]),
+        tipoId,
         ...(audioKey ? { audioKey } : {}),
         ...(coverKey !== undefined && (isEdit || coverKey) ? { coverKey } : {}),
       };
@@ -306,6 +320,29 @@ export function UploadModal({
               value={artist}
               onChange={(e) => setArtist(e.target.value)}
             />
+          </Field>
+
+          <Field
+            label="Tipo"
+            help="Obligatorio. Alabanza = canción rápida; Adoración = canción lenta."
+          >
+            <div className="flex gap-2">
+              {tipos.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTipoId(t.id)}
+                  aria-pressed={tipoId === t.id}
+                  className={`flex-1 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors ${
+                    tipoId === t.id
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t.nombre}
+                </button>
+              ))}
+            </div>
           </Field>
 
           <Field label="Portada" help="jpg, png o webp — hasta 5MB. Opcional.">

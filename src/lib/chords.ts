@@ -325,30 +325,42 @@ export function mergeRepeatedChartLines(lines: ParsedLine[]): ParsedLine[] {
 }
 
 /**
- * "Solo acordes": dos líneas seguidas de 2 compases cada una van en un mismo renglón:
- * "| Em | % |" + "| G | A |" → "| Em | % | G | A |". Solo líneas "simples" que no sean una
- * repetición (esas ya se escriben con ":]"); se juntan de a dos.
+ * "Solo acordes": líneas cortas seguidas (1 o 2 compases; lo que está entre "|" es un compás,
+ * aunque sea "Bm - A") van en un mismo renglón de hasta 4 compases:
+ * "| Em | % |" + "| G | A |" → "| Em | % | G | A |"; "| Bm - A |" + "| G - A/C# |" →
+ * "| Bm - A | G - A/C# |". Solo líneas "simples" que no sean una repetición (esas ya se
+ * escriben con ":]").
  */
 export function joinShortChartLines(lines: ParsedLine[]): ParsedLine[] {
-  const isShort = (line: ParsedLine | undefined): line is Extract<ParsedLine, { kind: "line" }> =>
-    !!line &&
-    line.kind === "line" &&
-    isSimpleChartLine(line.pairs) &&
-    chartBars(line.pairs).length === 2 &&
-    !isRepeated(chartBars(line.pairs));
+  // compases de una línea corta (1 o 2, sin ser repetición); 0 si no se puede juntar
+  const shortBars = (line: ParsedLine | undefined): number => {
+    if (!line || line.kind !== "line" || !isSimpleChartLine(line.pairs)) return 0;
+    const bars = chartBars(line.pairs);
+    return bars.length <= 2 && !isRepeated(bars) ? bars.length : 0;
+  };
+  // un "-" colgando al final no pega la línea al primer compás de la siguiente
+  const closed = (line: Extract<ParsedLine, { kind: "line" }>) =>
+    line.pairs.map((p, j) =>
+      j === line.pairs.length - 1 && p.text.trim() === "-" ? { ...p, text: "" } : p,
+    );
   const out: ParsedLine[] = [];
-  for (let i = 0; i < lines.length; i += 1) {
+  let i = 0;
+  while (i < lines.length) {
     const line = lines[i]!;
-    const next = lines[i + 1];
-    if (isShort(line) && isShort(next)) {
-      const pairs = line.pairs.map((p, j) =>
-        j === line.pairs.length - 1 && p.text.trim() === "-" ? { ...p, text: "" } : p,
-      );
-      out.push({ kind: "line", pairs: [...pairs, ...next.pairs] });
-      i += 1;
-    } else {
-      out.push(line);
+    let total = shortBars(line);
+    let end = i;
+    // se suman líneas cortas seguidas mientras el renglón no pase de 4 compases
+    while (total > 0 && shortBars(lines[end + 1]) > 0 && total + shortBars(lines[end + 1]) <= 4) {
+      end += 1;
+      total += shortBars(lines[end]);
     }
+    if (end === i) {
+      out.push(line);
+    } else {
+      const pairs = lines.slice(i, end + 1).flatMap((l) => (l.kind === "line" ? closed(l) : []));
+      out.push({ kind: "line", pairs });
+    }
+    i = end + 1;
   }
   return out;
 }

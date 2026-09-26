@@ -211,7 +211,18 @@ describe("joinShortChartLines — Solo acordes: dos líneas de 2 compases en un 
     ]);
   });
 
-  it("una línea de 2 junto a una de otra cantidad no se junta", () => {
+  it("líneas de 1 compás: | Bm - A | + | G - A/C# | → | Bm - A | G - A/C# |", () => {
+    expect(chart("[Bm] - [A]", "[G] - [A/C#]").map(barsOf)).toEqual([["Bm - A", "G - A/C#"]]);
+  });
+
+  it("se suman líneas cortas hasta 4 compases: 1 + 1 + 2 → un renglón; la siguiente abre otro", () => {
+    expect(chart("[D]", "[A]", "[G] [A]", "[Bm] [G]").map(barsOf)).toEqual([
+      ["D", "A", "G", "A"],
+      ["Bm", "G"],
+    ]);
+  });
+
+  it("una línea de 2 junto a una de 3 no se junta (pasaría de 4)", () => {
     expect(chart("[D] [A]", "[G] [A] [D]")).toHaveLength(2);
   });
 

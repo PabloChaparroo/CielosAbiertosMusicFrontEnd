@@ -140,6 +140,11 @@ export const SongsService = {
     return mapSong(created);
   },
 
+  /** Elimina la canción DEFINITIVAMENTE, con todo lo relacionado y sus archivos (solo Admin) */
+  deleteSongForever(id: string): Promise<{ deletedFiles: number; removedFromSetlists: number }> {
+    return apiRequest(`/canciones/${id}/definitivo`, { method: "DELETE" });
+  },
+
   async updateSong(id: string, dto: UpdateSongInput): Promise<Song> {
     const updated = await apiRequest<RawSong>(`/canciones/${id}`, { method: "PATCH", body: dto });
     return mapSong(updated);

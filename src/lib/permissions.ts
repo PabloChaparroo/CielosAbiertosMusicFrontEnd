@@ -15,6 +15,7 @@ const resourceLabels: Record<string, string> = {
   "anotacion-propia": "Anotaciones propias",
   estadisticas: "Estadísticas",
   rol: "Roles y permisos",
+  "cancion-definitiva": "Canciones: eliminar definitivamente (solo cuenta Eliminar)",
 };
 
 export function resourceLabel(resource: string): string {

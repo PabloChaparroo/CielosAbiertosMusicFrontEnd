@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Music, Upload, X } from "lucide-react";
+import { CheckCircle2, Music, Trash2, Upload, X } from "lucide-react";
+import { useApp } from "@/hooks/useApp";
+import { DeleteSongModal } from "./DeleteSongModal";
 import { TagChip } from "@/components/common/ui-bits";
 import { KEYS } from "@/lib/chords";
 import { StorageClient } from "@/lib/storage-client";
@@ -58,6 +60,8 @@ export function UploadModal({
   onSave: (s: Song) => void;
 }) {
   const isEdit = song !== undefined;
+  const { can } = useApp();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [title, setTitle] = useState(song?.title ?? "");
   const [artist, setArtist] = useState(song?.artist ?? "");
   const [key, setKey] = useState(song?.key ?? "G");
@@ -420,7 +424,17 @@ export function UploadModal({
           ) : null}
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
+        <div className="mt-6 flex items-center justify-end gap-2">
+          {isEdit && can("deleteSongForever") ? (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              disabled={saving}
+              className="mr-auto flex items-center gap-1.5 rounded-full px-3 py-2 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-40"
+            >
+              <Trash2 className="h-4 w-4" /> Eliminar canción
+            </button>
+          ) : null}
           <button
             onClick={handleClose}
             disabled={saving && !uploading}
@@ -437,6 +451,9 @@ export function UploadModal({
           </button>
         </div>
       </div>
+      {confirmDelete && song ? (
+        <DeleteSongModal song={song} onClose={() => setConfirmDelete(false)} onDeleted={onClose} />
+      ) : null}
     </div>
   );
 }

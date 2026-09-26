@@ -28,6 +28,8 @@ interface AppState {
   songsLoadState: LoadState;
   addSong: (song: Song) => void;
   updateSong: (song: Song) => void;
+  /** Saca una canción eliminada definitivamente de todo el estado (lista, setlists, favoritos, reproductor) */
+  removeSong: (id: string) => void;
   setlists: Setlist[];
   setlistsLoadState: LoadState;
   addSetlist: (s: Setlist) => void;
@@ -173,6 +175,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       songsLoadState,
       addSong: (song) => setSongs((prev) => [song, ...prev]),
       updateSong: (song) => setSongs((prev) => prev.map((s) => (s.id === song.id ? song : s))),
+      removeSong: (id) => {
+        setSongs((prev) => prev.filter((s) => s.id !== id));
+        setSetlists((prev) =>
+          prev.map((s) => ({ ...s, items: s.items.filter((item) => item.songId !== id) })),
+        );
+        setFavorites((prev) => prev.filter((f) => f !== id));
+        if (current?.id === id) {
+          setIsPlaying(false);
+          setCurrent(null);
+        }
+      },
       setlists,
       setlistsLoadState,
       addSetlist: (s) => setSetlists((prev) => [s, ...prev]),

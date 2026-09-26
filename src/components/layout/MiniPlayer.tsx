@@ -486,7 +486,11 @@ export function MiniPlayer() {
                   : "animate-in duration-300 ease-out slide-in-from-bottom"
               }`}
             >
-              <div className="mx-auto flex min-h-full w-full max-w-md flex-col px-6 pt-4 pb-10 md:max-w-5xl md:px-10 md:py-8">
+              <div
+                className={`mx-auto flex min-h-full w-full flex-col px-6 pt-4 pb-10 md:px-10 md:py-8 ${
+                  useYoutube ? "max-w-6xl" : "max-w-md md:max-w-5xl"
+                }`}
+              >
                 <div className="flex items-center justify-between">
                   <button
                     type="button"
@@ -503,13 +507,26 @@ export function MiniPlayer() {
                 </div>
 
                 {/* celular: una columna; compu: portada a la izquierda, datos y controles a la derecha */}
-                <div className="flex flex-1 flex-col md:grid md:grid-cols-2 md:items-center md:gap-12">
-                  <div className="flex flex-1 items-center justify-center py-6">
+                {/* con video: el video arriba y a lo ancho, datos y controles abajo (más grandes) */}
+                <div
+                  className={
+                    useYoutube
+                      ? "flex flex-1 flex-col items-center"
+                      : "flex flex-1 flex-col md:grid md:grid-cols-2 md:items-center md:gap-12"
+                  }
+                >
+                  <div
+                    className={
+                      useYoutube
+                        ? "flex w-full justify-center pt-2 pb-5"
+                        : "flex flex-1 items-center justify-center py-6"
+                    }
+                  >
                     {useYoutube ? (
                       // acá se ubica el video (YoutubeStage): mismo iframe que en la barra
                       <div
                         ref={videoAnchorRef}
-                        className="aspect-video w-full rounded-2xl bg-black md:max-w-[min(640px,70vh)]"
+                        className="aspect-video w-full max-w-[min(72rem,calc((100vh-24rem)*16/9))] rounded-2xl bg-black"
                       />
                     ) : (
                       <Cover
@@ -520,10 +537,20 @@ export function MiniPlayer() {
                     )}
                   </div>
 
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-3">
+                  <div
+                    className={
+                      useYoutube
+                        ? "flex w-full max-w-[min(72rem,calc((100vh-24rem)*16/9))] flex-col md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] md:gap-x-10"
+                        : "flex flex-col"
+                    }
+                  >
+                    <div
+                      className={`flex items-center gap-3 ${useYoutube ? "md:col-start-1 md:row-start-1" : ""}`}
+                    >
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-2xl font-bold md:text-4xl">
+                        <p
+                          className={`truncate font-bold ${useYoutube ? "text-2xl md:text-4xl" : "text-2xl md:text-4xl"}`}
+                        >
                           {activeAudioLabel ?? current.title}
                         </p>
                         <p className="truncate text-base text-muted-foreground md:text-lg">
@@ -536,7 +563,9 @@ export function MiniPlayer() {
                     </div>
 
                     {/* características del tema */}
-                    <div className="mt-4 grid grid-cols-4 gap-2">
+                    <div
+                      className={`mt-4 grid grid-cols-4 gap-2 ${useYoutube ? "md:col-start-2 md:row-start-1 md:mt-0 md:self-center" : ""}`}
+                    >
                       {[
                         ["Tono", current.key],
                         ["Compás", current.compas],
@@ -555,7 +584,9 @@ export function MiniPlayer() {
                       ))}
                     </div>
                     {current.tags.length || current.tipo ? (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
+                      <div
+                        className={`mt-3 flex flex-wrap gap-1.5 ${useYoutube ? "md:col-start-1 md:row-start-2 md:self-start" : ""}`}
+                      >
                         {current.tipo ? (
                           <span className="rounded-full bg-primary/15 px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-primary uppercase">
                             {current.tipo}
@@ -569,7 +600,9 @@ export function MiniPlayer() {
 
                     {/* desplegable para alternar entre los audios del tema */}
                     {audioOptions.length > 1 ? (
-                      <label className="mt-4 block">
+                      <label
+                        className={`mt-4 block ${useYoutube ? "md:col-start-2 md:row-start-2 md:mt-3" : ""}`}
+                      >
                         <span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                           <ListMusic className="h-3.5 w-3.5" /> Audio
                         </span>
@@ -601,27 +634,31 @@ export function MiniPlayer() {
                       value={progress}
                       aria-label="Progreso"
                       onChange={(e) => seekTo(Number(e.target.value))}
-                      className="mt-6 h-1 w-full cursor-pointer appearance-none rounded-full bg-secondary accent-primary"
+                      className={`mt-6 h-1 w-full cursor-pointer appearance-none rounded-full bg-secondary accent-primary ${useYoutube ? "md:col-span-2 md:mt-5" : ""}`}
                     />
-                    <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+                    <div
+                      className={`mt-2 flex justify-between text-xs text-muted-foreground ${useYoutube ? "md:col-span-2" : ""}`}
+                    >
                       <span>{formatDuration(seconds)}</span>
                       <span>{formatDuration(duration)}</span>
                     </div>
 
-                    <div className="mt-6 flex items-center justify-center gap-10">
+                    <div
+                      className={`mt-6 flex items-center justify-center gap-10 ${useYoutube ? "md:col-span-2 md:mt-2" : ""}`}
+                    >
                       <button
                         type="button"
                         onClick={back}
                         aria-label="Volver al principio (dos toques: canción anterior)"
                         className="rounded-full p-2 text-foreground"
                       >
-                        <SkipBack className="h-9 w-9 fill-current" />
+                        <SkipBack className="h-9 w-9 fill-current md:h-11 md:w-11" />
                       </button>
                       <button
                         type="button"
                         onClick={toggle}
                         aria-label={isPlaying ? "Pausar" : "Reproducir"}
-                        className="flex h-18 w-18 items-center justify-center rounded-full gradient-gold text-primary-foreground"
+                        className="flex h-18 w-18 items-center justify-center rounded-full gradient-gold text-primary-foreground md:h-20 md:w-20"
                       >
                         {isPlaying ? (
                           <Pause className="h-8 w-8" />
@@ -635,7 +672,7 @@ export function MiniPlayer() {
                         aria-label="Siguiente canción"
                         className="rounded-full p-2 text-foreground"
                       >
-                        <SkipForward className="h-9 w-9 fill-current" />
+                        <SkipForward className="h-9 w-9 fill-current md:h-11 md:w-11" />
                       </button>
                     </div>
                   </div>

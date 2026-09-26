@@ -480,14 +480,15 @@ export function MiniPlayer() {
               role="dialog"
               aria-modal="true"
               aria-label="Reproductor"
-              className={`fixed inset-0 z-50 overflow-y-auto bg-background ${
+              // fondo: el mismo degradé morado de Inicio (gradient-sky); el contenido va en una tarjeta gris
+              className={`fixed inset-0 z-50 overflow-y-auto bg-background gradient-sky p-3 md:p-6 ${
                 closing
                   ? "animate-out fill-mode-forwards duration-250 ease-in slide-out-to-bottom"
                   : "animate-in duration-300 ease-out slide-in-from-bottom"
               }`}
             >
               <div
-                className={`mx-auto flex min-h-full w-full flex-col px-6 pt-4 pb-10 md:px-10 md:py-8 ${
+                className={`surface-card mx-auto flex min-h-full w-full flex-col rounded-3xl px-5 pt-3 pb-8 md:px-10 md:py-6 ${
                   useYoutube ? "max-w-6xl" : "max-w-md md:max-w-5xl"
                 }`}
               >
@@ -526,7 +527,7 @@ export function MiniPlayer() {
                       // acá se ubica el video (YoutubeStage): mismo iframe que en la barra
                       <div
                         ref={videoAnchorRef}
-                        className="aspect-video w-full max-w-[min(72rem,calc((100vh-24rem)*16/9))] rounded-2xl bg-black"
+                        className="aspect-video w-full max-w-[min(72rem,calc((100vh-27rem)*16/9))] rounded-2xl bg-black"
                       />
                     ) : (
                       <Cover
@@ -540,7 +541,7 @@ export function MiniPlayer() {
                   <div
                     className={
                       useYoutube
-                        ? "flex w-full max-w-[min(72rem,calc((100vh-24rem)*16/9))] flex-col md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] md:gap-x-10"
+                        ? "flex w-full max-w-[min(72rem,max(46rem,calc((100vh-27rem)*16/9)))] flex-col md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] md:gap-x-10"
                         : "flex flex-col"
                     }
                   >

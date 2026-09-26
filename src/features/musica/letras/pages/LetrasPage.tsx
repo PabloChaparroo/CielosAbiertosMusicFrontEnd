@@ -21,7 +21,11 @@ import { StorageClient } from "@/lib/storage-client";
 import { validateImageFile } from "@/features/canciones/lib/image-validation";
 import { SongsService } from "@/features/canciones/services/songs.service";
 import type { Song } from "@/types";
-import { enterBrowserFullscreen, exitBrowserFullscreen, isBrowserFullscreen } from "@/lib/browser-fullscreen";
+import {
+  enterBrowserFullscreen,
+  exitBrowserFullscreen,
+  isBrowserFullscreen,
+} from "@/lib/browser-fullscreen";
 
 export function LetrasPage() {
   const { songs, can, updateSong, current, isPlaying, play, toggle } = useApp();
@@ -60,7 +64,10 @@ export function LetrasPage() {
     [availableSongs, query],
   );
   const visibleSongs = useMemo(
-    () => query ? filtered : [...filtered].sort((a, b) => Number(b.id === selected) - Number(a.id === selected)),
+    () =>
+      query
+        ? filtered
+        : [...filtered].sort((a, b) => Number(b.id === selected) - Number(a.id === selected)),
     [filtered, query, selected],
   );
 
@@ -69,7 +76,10 @@ export function LetrasPage() {
   return (
     <AppLayout title="Letras" subtitle="Buscá por nombre o tema">
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <aside ref={searchPanelRef} className="surface-card order-1 flex max-h-[55vh] flex-col overflow-hidden lg:order-1 lg:sticky lg:top-24 lg:max-h-[70vh]">
+        <aside
+          ref={searchPanelRef}
+          className="surface-card order-1 flex max-h-[55vh] flex-col overflow-hidden lg:order-1 lg:sticky lg:top-24 lg:max-h-[70vh]"
+        >
           <div className="relative border-b border-border/60 p-3">
             <Search className="absolute top-1/2 left-6 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -84,64 +94,68 @@ export function LetrasPage() {
             className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out lg:flex-1 lg:grid-rows-[1fr] lg:opacity-100 ${searchOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
           >
             <div className="min-h-0 overflow-y-auto p-2 lg:max-h-[65vh]">
-            {!query && <p className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Recientes</p>}
-            {filtered.length === 0 ? (
-              <p className="p-4 text-center text-sm text-muted-foreground">Sin resultados</p>
-            ) : (
-              visibleSongs.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => {
-                    setSelected(item.id);
-                    setSearchOpen(false);
-                    play(item);
-                  }}
-                  className={`flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left transition-colors ${
-                    item.id === song?.id ? "bg-primary/15 text-primary" : "hover:bg-elevated/70"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
+              {!query && (
+                <p className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Recientes
+                </p>
+              )}
+              {filtered.length === 0 ? (
+                <p className="p-4 text-center text-sm text-muted-foreground">Sin resultados</p>
+              ) : (
+                visibleSongs.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => {
                       setSelected(item.id);
                       setSearchOpen(false);
+                      play(item);
                     }}
-                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    className={`flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left transition-colors ${
+                      item.id === song?.id ? "bg-primary/15 text-primary" : "hover:bg-elevated/70"
+                    }`}
                   >
-                    <Cover song={item} size="sm" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">{item.title}</span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {item.artist}
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSelected(item.id);
+                        setSearchOpen(false);
+                      }}
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    >
+                      <Cover song={item} size="sm" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{item.title}</span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {item.artist}
+                        </span>
                       </span>
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setSearchOpen(false);
-                      if (current?.id === item.id && isPlaying) toggle();
-                      else play(item);
-                    }}
-                    aria-label={
-                      current?.id === item.id && isPlaying
-                        ? `Pausar ${item.title}`
-                        : `Reproducir ${item.title}`
-                    }
-                    title={current?.id === item.id && isPlaying ? "Pausar" : "Reproducir"}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-primary"
-                  >
-                    {current?.id === item.id && isPlaying ? (
-                      <Pause className="h-3.5 w-3.5" />
-                    ) : (
-                      <Play className="ml-0.5 h-3.5 w-3.5" />
-                    )}
-                  </button>
-                </div>
-              ))
-            )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSearchOpen(false);
+                        if (current?.id === item.id && isPlaying) toggle();
+                        else play(item);
+                      }}
+                      aria-label={
+                        current?.id === item.id && isPlaying
+                          ? `Pausar ${item.title}`
+                          : `Reproducir ${item.title}`
+                      }
+                      title={current?.id === item.id && isPlaying ? "Pausar" : "Reproducir"}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-primary"
+                    >
+                      {current?.id === item.id && isPlaying ? (
+                        <Pause className="h-3.5 w-3.5" />
+                      ) : (
+                        <Play className="ml-0.5 h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </aside>

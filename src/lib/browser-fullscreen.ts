@@ -30,7 +30,10 @@ export async function exitBrowserFullscreen(): Promise<void> {
   try {
     if (document.exitFullscreen && document.fullscreenElement) {
       await document.exitFullscreen();
-    } else if (fullscreenDocument.webkitExitFullscreen && fullscreenDocument.webkitFullscreenElement) {
+    } else if (
+      fullscreenDocument.webkitExitFullscreen &&
+      fullscreenDocument.webkitFullscreenElement
+    ) {
       await fullscreenDocument.webkitExitFullscreen();
     }
   } catch {

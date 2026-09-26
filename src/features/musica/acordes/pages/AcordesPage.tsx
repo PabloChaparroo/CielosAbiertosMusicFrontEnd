@@ -23,7 +23,11 @@ import { ChordSheet } from "../components/ChordSheet";
 import { useFitFontSize } from "../hooks/useFitFontSize";
 import { useAuth } from "@/core/auth/useAuth";
 import { ChordProEditor } from "../../components/ChordProEditor";
-import { enterBrowserFullscreen, exitBrowserFullscreen, isBrowserFullscreen } from "@/lib/browser-fullscreen";
+import {
+  enterBrowserFullscreen,
+  exitBrowserFullscreen,
+  isBrowserFullscreen,
+} from "@/lib/browser-fullscreen";
 
 export function AcordesPage() {
   const { songs, songsLoadState, current, isPlaying, play, toggle, can, updateSong } = useApp();
@@ -139,7 +143,10 @@ export function AcordesPage() {
   const filtered = availableSongs.filter((s) =>
     (s.title + s.artist).toLowerCase().includes(query.toLowerCase()),
   );
-  const visibleSongs = query ? filtered : [...filtered].sort((a, b) => Number(b.id === song.id) - Number(a.id === song.id));
+  // sin búsqueda, la canción abierta va primera en la lista
+  const visibleSongs = query
+    ? filtered
+    : [...filtered].sort((a, b) => Number(b.id === song?.id) - Number(a.id === song?.id));
 
   const sectionShortcuts = [
     "INTRO",
@@ -284,7 +291,10 @@ export function AcordesPage() {
       }
     >
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <aside ref={searchPanelRef} className="surface-card order-1 flex max-h-[55vh] flex-col overflow-hidden lg:order-1 lg:sticky lg:top-24 lg:max-h-[70vh]">
+        <aside
+          ref={searchPanelRef}
+          className="surface-card order-1 flex max-h-[55vh] flex-col overflow-hidden lg:order-1 lg:sticky lg:top-24 lg:max-h-[70vh]"
+        >
           <div className="relative border-b border-border/60 p-3">
             <Search className="absolute top-1/2 left-6 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -299,67 +309,71 @@ export function AcordesPage() {
             className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out lg:flex-1 lg:grid-rows-[1fr] lg:opacity-100 ${searchOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
           >
             <div className="min-h-0 overflow-y-auto p-2 lg:max-h-[65vh]">
-            {!query && <p className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Recientes</p>}
-            {filtered.length === 0 ? (
-              <p className="p-4 text-center text-sm text-muted-foreground">Sin resultados</p>
-            ) : (
-              visibleSongs.map((s) => (
-                <div
-                  key={s.id}
-                  onClick={() => {
-                    setSongId(s.id);
-                    setSearchOpen(false);
-                    play(s);
-                  }}
-                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors ${
-                    s.id === song.id ? "bg-primary/15 text-primary" : "hover:bg-elevated/70"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
+              {!query && (
+                <p className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Recientes
+                </p>
+              )}
+              {filtered.length === 0 ? (
+                <p className="p-4 text-center text-sm text-muted-foreground">Sin resultados</p>
+              ) : (
+                visibleSongs.map((s) => (
+                  <div
+                    key={s.id}
+                    onClick={() => {
                       setSongId(s.id);
                       setSearchOpen(false);
+                      play(s);
                     }}
-                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                    aria-label={`Ver acordes de ${s.title}`}
+                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors ${
+                      s.id === song.id ? "bg-primary/15 text-primary" : "hover:bg-elevated/70"
+                    }`}
                   >
-                    <div
-                      className="h-8 w-8 shrink-0 rounded-lg"
-                      style={{ backgroundImage: s.cover }}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{s.title}</p>
-                      <p className="truncate text-xs text-muted-foreground">{s.artist}</p>
-                    </div>
-                    <span className="text-xs text-muted-foreground">{s.key}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setSearchOpen(false);
-                      if (current?.id === s.id && isPlaying) toggle();
-                      else play(s);
-                    }}
-                    aria-label={
-                      current?.id === s.id && isPlaying
-                        ? `Pausar ${s.title}`
-                        : `Reproducir ${s.title}`
-                    }
-                    title={current?.id === s.id && isPlaying ? "Pausar" : "Reproducir"}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-primary"
-                  >
-                    {current?.id === s.id && isPlaying ? (
-                      <Pause className="h-3.5 w-3.5" />
-                    ) : (
-                      <Play className="ml-0.5 h-3.5 w-3.5" />
-                    )}
-                  </button>
-                </div>
-              ))
-            )}
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSongId(s.id);
+                        setSearchOpen(false);
+                      }}
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                      aria-label={`Ver acordes de ${s.title}`}
+                    >
+                      <div
+                        className="h-8 w-8 shrink-0 rounded-lg"
+                        style={{ backgroundImage: s.cover }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{s.title}</p>
+                        <p className="truncate text-xs text-muted-foreground">{s.artist}</p>
+                      </div>
+                      <span className="text-xs text-muted-foreground">{s.key}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSearchOpen(false);
+                        if (current?.id === s.id && isPlaying) toggle();
+                        else play(s);
+                      }}
+                      aria-label={
+                        current?.id === s.id && isPlaying
+                          ? `Pausar ${s.title}`
+                          : `Reproducir ${s.title}`
+                      }
+                      title={current?.id === s.id && isPlaying ? "Pausar" : "Reproducir"}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-primary"
+                    >
+                      {current?.id === s.id && isPlaying ? (
+                        <Pause className="h-3.5 w-3.5" />
+                      ) : (
+                        <Play className="ml-0.5 h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </aside>

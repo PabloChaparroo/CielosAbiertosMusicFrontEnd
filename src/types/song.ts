@@ -19,6 +19,11 @@ export interface Song {
   trackCount: number;
   tipo: string;
   cover: string; // css gradient — placeholder mientras no haya portada real (coverKey)
+  /**
+   * Video de YouTube de la canción: el del primer link relacionado que sea de YouTube. Se usa
+   * como portada (su miniatura). null si no tiene ningún link de YouTube.
+   */
+  youtubeVideoId: string | null;
   /** Portada real: key de la imagen en S3/MinIO (carpeta "portadas"), mismo criterio que audioKey. null = se muestra `cover`. */
   coverKey: string | null;
   /** Key del objeto en S3/MinIO, no una URL reproducible — hay que resolverla con StorageClient.getDownloadUrl() antes de reproducir. null si la canción no tiene audio cargado. */

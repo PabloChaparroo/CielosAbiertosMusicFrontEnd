@@ -94,15 +94,21 @@ export function Cover({
   size = "md",
   className,
 }: {
-  song: Pick<Song, "cover" | "coverKey">;
+  song: Pick<Song, "cover" | "coverKey"> & { youtubeVideoId?: string | null };
   size?: "sm" | "md" | "lg" | "none";
   className?: string;
 }) {
-  const coverKey = song.coverKey;
+  // la miniatura de YouTube manda: no se sube ni se guarda ninguna imagen
+  const youtubeId = song.youtubeVideoId ?? null;
+  const coverKey = youtubeId ? null : song.coverKey;
   const [url, setUrl] = useState<string | null>(
     coverKey ? (coverUrlCache.get(coverKey) ?? null) : null,
   );
   const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [youtubeId]);
 
   useEffect(() => {
     setFailed(false);
@@ -130,6 +136,13 @@ export function Cover({
     };
   }, [coverKey]);
 
+  // miniatura de YouTube: la chica (16:9, sin franjas) en listados; la grande en la vista
+  // grande, con la chica de respaldo (no todos los videos tienen la de alta resolución)
+  const youtubeSrc = youtubeId
+    ? `https://i.ytimg.com/vi/${youtubeId}/${size === "lg" && !failed ? "maxresdefault" : "mqdefault"}.jpg`
+    : null;
+  const imageSrc = youtubeSrc ?? (url && !failed ? url : null);
+
   const sizes = {
     sm: "h-11 w-11",
     md: "h-14 w-14",
@@ -146,10 +159,11 @@ export function Cover({
       style={{ backgroundImage: song.cover }}
       aria-hidden
     >
-      {url && !failed ? (
+      {imageSrc ? (
         <img
-          src={url}
+          src={imageSrc}
           alt=""
+          loading="lazy"
           className="h-full w-full object-cover"
           onError={() => setFailed(true)}
         />

@@ -18,6 +18,11 @@ const raw: RawSong = {
   tipoId: "t-adoracion",
   tipo: { id: "t-adoracion", nombre: "Adoración" },
   trackCount: 2,
+  links: [
+    { url: "https://drive.google.com/partitura", order: 0 },
+    { url: "https://youtu.be/pORjEfnPALk?si=x", order: 1 },
+    { url: "https://www.youtube.com/watch?v=aaaaaaaaaaa", order: 2 },
+  ],
   tags: [
     { id: "t1", valor: "Júbilo" },
     { id: "t2", valor: "Adoración" },
@@ -65,6 +70,17 @@ describe("mapSong — canción del backend → canción de la UI", () => {
     expect(mapSong(raw).trackCount).toBe(2);
     const { trackCount: _, ...sinCampo } = raw;
     expect(mapSong(sinCampo).trackCount).toBe(0);
+  });
+
+  it("youtubeVideoId: el del primer link de YouTube (los otros links no cuentan); sin links → null", () => {
+    expect(mapSong(raw).youtubeVideoId).toBe("pORjEfnPALk");
+    expect(mapSong({ ...raw, links: [] }).youtubeVideoId).toBeNull();
+    const { links: _, ...sinLinks } = raw;
+    expect(mapSong(sinLinks).youtubeVideoId).toBeNull();
+    expect(
+      mapSong({ ...raw, links: [{ url: "https://www.youtube.com/watch?v=roto", order: 0 }] })
+        .youtubeVideoId,
+    ).toBeNull();
   });
 
   it("fechaHoraAlta pasa a addedAt y el resto de los campos se copian igual", () => {

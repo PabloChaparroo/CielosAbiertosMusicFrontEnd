@@ -30,6 +30,7 @@ function song(title: string, tags: Tag[], playsByMonth: Record<string, number>):
     chordpro: "",
     lyricsImageKey: null,
     coverKey: null,
+    youtubeVideoId: null,
     tipoId: "t-alabanza",
     tipo: "Alabanza",
     trackCount: 0,

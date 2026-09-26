@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/api-client";
+import { parseYoutubeVideoId } from "@/lib/youtube";
 import type { Song, Tag } from "@/types";
 
 export interface RawTag {
@@ -30,6 +31,8 @@ export interface RawSong {
   /** Ausentes en respuestas de un backend anterior a la migración AddTipoCancion */
   tipoId?: string;
   tipo?: { id: string; nombre: string };
+  /** Links relacionados (ausentes en un backend anterior): de acá sale la portada de YouTube */
+  links?: Array<{ url: string; order?: number }>;
   /** Cantidad de pistas (ausente en un backend anterior) */
   trackCount?: number;
   /** Ausente en la respuesta de POST /canciones (bug de backend, ver mapSong). Presente en GET. */
@@ -75,6 +78,16 @@ export type UpdateSongInput = Partial<CreateSongInput>;
  * Canciones estaba fuera de alcance en ese ticket; acá alcanza con no
  * asumir que siempre viene.
  */
+/** Video del primer link de YouTube (en el orden de los links); null si no hay */
+export function youtubeVideoIdOf(links: Array<{ url: string; order?: number }>): string | null {
+  const ordered = [...links].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  for (const link of ordered) {
+    const id = parseYoutubeVideoId(link.url);
+    if (id) return id;
+  }
+  return null;
+}
+
 export function mapSong(raw: RawSong): Song {
   return {
     id: raw.id,
@@ -90,6 +103,7 @@ export function mapSong(raw: RawSong): Song {
     trackCount: raw.trackCount ?? 0,
     cover: raw.cover,
     coverKey: raw.coverKey ?? null,
+    youtubeVideoId: youtubeVideoIdOf(raw.links ?? []),
     audioKey: raw.audioKey,
     chordpro: raw.chordpro,
     lyricsImageKey: raw.lyricsImageKey,

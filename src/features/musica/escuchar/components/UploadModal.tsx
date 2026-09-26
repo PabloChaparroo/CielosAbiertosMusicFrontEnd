@@ -1,15 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, ImagePlus, Music, Trash2, Upload, X } from "lucide-react";
-import { Cover, TagChip } from "@/components/common/ui-bits";
+import { CheckCircle2, Music, Upload, X } from "lucide-react";
+import { TagChip } from "@/components/common/ui-bits";
 import { KEYS } from "@/lib/chords";
 import { StorageClient } from "@/lib/storage-client";
 import { SongsService, type TipoCancion } from "@/features/canciones/services/songs.service";
 import { validateAudioFile } from "@/features/canciones/lib/audio-validation";
-import {
-  ALLOWED_IMAGE_TYPES,
-  MAX_COVER_BYTES,
-  validateImageFile,
-} from "@/features/canciones/lib/image-validation";
 import { readAudioDuration, readFileDuration } from "@/features/canciones/lib/audio-duration";
 import type { Song, Tag } from "@/types";
 
@@ -99,12 +94,6 @@ export function UploadModal({
   const [uploadPct, setUploadPct] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Portada: archivo nuevo elegido (se sube recién al guardar) o "quitar la actual"
-  const [coverFile, setCoverFile] = useState<File | null>(null);
-  const [coverPreview, setCoverPreview] = useState<string | null>(null);
-  const [coverRemoved, setCoverRemoved] = useState(false);
-  const [coverError, setCoverError] = useState<string | null>(null);
-
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -118,37 +107,6 @@ export function UploadModal({
   useEffect(() => {
     return () => abortRef.current?.abort();
   }, []);
-
-  // vista previa local del archivo elegido (sin subirlo); se libera al cambiarlo o cerrar
-  useEffect(() => {
-    if (!coverFile) {
-      setCoverPreview(null);
-      return;
-    }
-    const objectUrl = URL.createObjectURL(coverFile);
-    setCoverPreview(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [coverFile]);
-
-  const handleCoverChange = (file: File | null) => {
-    setCoverError(null);
-    if (!file) return;
-    const validationError = validateImageFile(file, MAX_COVER_BYTES);
-    if (validationError) {
-      setCoverError(validationError);
-      return;
-    }
-    setCoverFile(file);
-    setCoverRemoved(false);
-  };
-
-  const removeCover = () => {
-    setCoverFile(null);
-    setCoverError(null);
-    setCoverRemoved(true);
-  };
-
-  const hasCurrentCover = Boolean(song?.coverKey) && !coverRemoved && !coverFile;
 
   const applyAudioDuration = (seconds: number | null, requestId: number) => {
     if (seconds === null || requestId !== durationRequestRef.current) return;
@@ -232,26 +190,6 @@ export function UploadModal({
         audioKey = newKey;
       }
 
-      // portada: se sube igual que el audio (URL firmada, sin pasar por el backend); es chica,
-      // así que sin barra de progreso. Sin cambios → no se manda (queda la que estaba).
-      let coverKey: string | null | undefined = coverRemoved ? null : undefined;
-      if (coverFile) {
-        const { uploadUrl, key: newKey } = await StorageClient.getUploadUrl(
-          "portadas",
-          coverFile.type,
-        );
-        const controller = new AbortController();
-        abortRef.current = controller;
-        await StorageClient.uploadFileWithProgress(
-          uploadUrl,
-          coverFile,
-          coverFile.type,
-          () => undefined,
-          controller.signal,
-        );
-        coverKey = newKey;
-      }
-
       const dto = {
         title: title.trim(),
         artist: artist.trim(),
@@ -264,7 +202,6 @@ export function UploadModal({
         tags: tags.length ? tags : (["Adoración"] as Tag[]),
         tipoId,
         ...(audioKey ? { audioKey } : {}),
-        ...(coverKey !== undefined && (isEdit || coverKey) ? { coverKey } : {}),
       };
 
       const saved = isEdit
@@ -338,62 +275,6 @@ export function UploadModal({
                 </button>
               ))}
             </div>
-          </Field>
-
-          <Field label="Portada" help="jpg, png o webp — hasta 5MB. Opcional.">
-            <div className="flex items-center gap-3">
-              {coverPreview ? (
-                <img
-                  src={coverPreview}
-                  alt="Vista previa de la portada"
-                  className="h-16 w-16 shrink-0 rounded-lg object-cover"
-                />
-              ) : (
-                <Cover
-                  song={{
-                    cover: song?.cover ?? coverFor(title.trim()),
-                    coverKey: hasCurrentCover ? (song?.coverKey ?? null) : null,
-                  }}
-                  size="none"
-                  className="h-16 w-16"
-                />
-              )}
-              <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border py-4 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground">
-                <ImagePlus className="h-4 w-4" />
-                <span className="truncate">
-                  {coverFile
-                    ? coverFile.name
-                    : hasCurrentCover
-                      ? "Cambiar portada"
-                      : "Elegir imagen de portada"}
-                </span>
-                <input
-                  type="file"
-                  accept={ALLOWED_IMAGE_TYPES.join(",")}
-                  className="hidden"
-                  onChange={(e) => {
-                    handleCoverChange(e.target.files?.[0] ?? null);
-                    e.target.value = "";
-                  }}
-                />
-              </label>
-              {coverFile || hasCurrentCover ? (
-                <button
-                  type="button"
-                  onClick={removeCover}
-                  aria-label="Quitar portada"
-                  title="Quitar portada"
-                  className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              ) : null}
-            </div>
-            {coverError ? (
-              <p role="alert" className="mt-1.5 text-xs text-destructive">
-                {coverError}
-              </p>
-            ) : null}
           </Field>
 
           <Field label="Archivo de audio" help="mp3, wav, ogg, m4a o aac — hasta 100MB.">

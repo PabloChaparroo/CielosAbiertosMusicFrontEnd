@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  chartBars,
+  chordsOnly,
   diatonicChords,
+  mergeRepeatedChartLines,
   parseChordPro,
   semitonesBetween,
   transposeChord,
@@ -127,5 +130,62 @@ describe("parseChordPro — transposición y robustez", () => {
   it("un título de sección no se toma como acorde ni se transpone", () => {
     const [section] = parseChordPro("[CORO]\nDios eterno", 5, "F");
     expect(section).toEqual({ kind: "section", label: "CORO", notes: [] });
+  });
+});
+
+describe("mergeRepeatedChartLines — Solo acordes: líneas seguidas con los mismos compases", () => {
+  const chart = (body: string) => mergeRepeatedChartLines(chordsOnly(parseChordPro(body, 0, "D")));
+  const barsOf = (line: ParsedLine) => (line.kind === "line" ? chartBars(line.pairs) : []);
+
+  it("el verso de 'A quién iré' (3 veces | D | Bm | G | D - A |) queda en una sola línea", () => {
+    const lines = chart(
+      [
+        "{Verso}",
+        "[D]¿A quién iré en necesi[Bm]dad?",
+        "[G]¿A quién iré en busca de [D]paz? - [A]",
+        "[D]¿Y quién podrá mi vida sa[Bm]ciar de verdad?",
+        "[G]¿Quién más tendrá de mí compa[D]sión? - [A]",
+        "[D]¿Y entenderá mi cora[Bm]zón?",
+        "[G]¿Quién cambiará mi eterni[D]dad? sino - [A]Tú, Jesús.",
+      ].join("\n"),
+    );
+    expect(lines).toHaveLength(2);
+    expect(barsOf(lines[1]!)).toEqual([
+      ...["D", "Bm", "G", "D - A"],
+      ...["D", "Bm", "G", "D - A"],
+      ...["D", "Bm", "G", "D - A"],
+    ]);
+  });
+
+  it("dos líneas iguales seguidas se juntan", () => {
+    const lines = chart("[F] [C] [G]\n[F] [C] [G]");
+    expect(lines).toHaveLength(1);
+    expect(barsOf(lines[0]!)).toEqual(["F", "C", "G", "F", "C", "G"]);
+  });
+
+  it("si la última vuelta es distinta, solo se junta lo que se repite", () => {
+    const lines = chart("[D] [Bm]\n[D] [Bm]\n[G] [A]");
+    expect(lines.map(barsOf)).toEqual([
+      ["D", "Bm", "D", "Bm"],
+      ["G", "A"],
+    ]);
+  });
+
+  it("líneas distintas quedan como están", () => {
+    expect(chart("[D] [Bm]\n[G] [A]").map(barsOf)).toEqual([
+      ["D", "Bm"],
+      ["G", "A"],
+    ]);
+  });
+
+  it("una sección o una línea vacía cortan el tramo", () => {
+    expect(chart("[D] [A]\n{Coro}\n[D] [A]")).toHaveLength(3);
+    expect(chart("[D] [A]\n\n[D] [A]")).toHaveLength(3);
+  });
+
+  it("las líneas con ':]', marcas o notas se respetan y no se juntan", () => {
+    expect(chart("[D] [A] :]\n[D] [A] :]")).toHaveLength(2);
+    expect(chart("[D] [A] [x3]\n[D] [A] [x3]")).toHaveLength(2);
+    expect(chart("[D] (suave) [A]\n[D] (suave) [A]")).toHaveLength(2);
   });
 });

@@ -231,6 +231,99 @@ export function parseChordPro(body: string, semitones: number, targetKey: string
   });
 }
 
+/**
+ * Compases de una línea de "Solo acordes": acordes unidos por "-" van en el mismo compás.
+ * "[D] [Bm] [G] [D] - [A]" → ["D", "Bm", "G", "D - A"]
+ */
+export function chartBars(pairs: ChordPair[]): string[] {
+  const bars: string[][] = [];
+  let joinsNext = false;
+  pairs.forEach((pair) => {
+    if (pair.chord) {
+      if (joinsNext && bars.length) bars[bars.length - 1]!.push(pair.chord);
+      else bars.push([pair.chord]);
+      joinsNext = false;
+    }
+    if (pair.text.includes("-")) joinsNext = true;
+  });
+  return bars.map((bar) => bar.join(" - "));
+}
+
+/**
+ * Línea de acordes "simple": sin ":]", marcas ("x3", "Sube Tono") ni notas "(…)" — las que el
+ * usuario anotó así se respetan tal cual y no se comprimen.
+ */
+export function isSimpleChartLine(pairs: ChordPair[]): boolean {
+  return (
+    pairs.some((p) => p.chord) &&
+    !pairs.some((p) => p.note || (p.chord && isChartMarker(p.chord)) || p.text.includes(":]"))
+  );
+}
+
+/** true si los compases son un mismo grupo repetido 2 o más veces */
+function isRepeated(bars: string[]): boolean {
+  for (let period = 1; period <= bars.length / 2; period += 1) {
+    if (bars.length % period !== 0) continue;
+    if (bars.every((bar, i) => bar === bars[i % period])) return true;
+  }
+  return false;
+}
+
+/**
+ * "Solo acordes": si varias líneas seguidas repiten el mismo grupo de compases, se juntan en una
+ * sola línea (que después se escribe una vez con ":]" / "x3]" / "x4]"). Ej. un verso con
+ * "| D | Bm |" / "| G | D - A |" tres veces → una línea "| D | Bm | G | D - A |x3]".
+ * El grupo empieza y termina en líneas enteras; se toma el tramo más largo posible. Las líneas
+ * que no son "simples" (ver isSimpleChartLine), las secciones y las vacías cortan el tramo.
+ */
+export function mergeRepeatedChartLines(lines: ParsedLine[]): ParsedLine[] {
+  const out: ParsedLine[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i]!;
+    if (line.kind !== "line" || !isSimpleChartLine(line.pairs)) {
+      out.push(line);
+      i += 1;
+      continue;
+    }
+    // hasta dónde llegan las líneas simples seguidas
+    let runEnd = i;
+    while (runEnd + 1 < lines.length) {
+      const next = lines[runEnd + 1]!;
+      if (next.kind !== "line" || !isSimpleChartLine(next.pairs)) break;
+      runEnd += 1;
+    }
+    let mergedUntil = i;
+    for (let end = runEnd; end > i; end -= 1) {
+      const bars = lines
+        .slice(i, end + 1)
+        .flatMap((l) => (l.kind === "line" ? chartBars(l.pairs) : []));
+      if (isRepeated(bars)) {
+        mergedUntil = end;
+        break;
+      }
+    }
+    if (mergedUntil === i) {
+      out.push(line);
+      i += 1;
+      continue;
+    }
+    // se unen los pares; cada línea abre compás nuevo (un "-" colgando al final no la pega a la siguiente)
+    const pairs = lines
+      .slice(i, mergedUntil + 1)
+      .flatMap((l) =>
+        l.kind === "line"
+          ? l.pairs.map((p, j) =>
+              j === l.pairs.length - 1 && p.text.trim() === "-" ? { ...p, text: "" } : { ...p },
+            )
+          : [],
+      );
+    out.push({ kind: "line", pairs });
+    i = mergedUntil + 1;
+  }
+  return out;
+}
+
 export function chordsOnly(lines: ParsedLine[]): ParsedLine[] {
   return lines.map((l) =>
     l.kind === "line"

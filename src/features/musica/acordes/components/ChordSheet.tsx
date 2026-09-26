@@ -1,4 +1,11 @@
-import { isChartMarker, type ChordPair, type ParsedLine } from "@/lib/chords";
+import {
+  chartBars,
+  isChartMarker,
+  isSimpleChartLine,
+  mergeRepeatedChartLines,
+  type ChordPair,
+  type ParsedLine,
+} from "@/lib/chords";
 
 type ChartSegment = { kind: "chart"; value: string } | { kind: "note"; value: string };
 
@@ -9,21 +16,8 @@ type ChartSegment = { kind: "chart"; value: string } | { kind: "note"; value: st
  * respeta tal cual la escribió el usuario. null si no hay repetición.
  */
 function compressRepeats(pairs: ChordPair[]): string | null {
-  if (pairs.some((p) => p.note || (p.chord && isChartMarker(p.chord)) || p.text.includes(":]"))) {
-    return null;
-  }
-  // compases: acordes unidos por "-" van en el mismo compás (mismo criterio que abajo)
-  const bars: string[][] = [];
-  let joinsNext = false;
-  pairs.forEach((pair) => {
-    if (pair.chord) {
-      if (joinsNext && bars.length) bars[bars.length - 1]!.push(pair.chord);
-      else bars.push([pair.chord]);
-      joinsNext = false;
-    }
-    if (pair.text.includes("-")) joinsNext = true;
-  });
-  const keys = bars.map((bar) => bar.join(" - "));
+  if (!isSimpleChartLine(pairs)) return null;
+  const keys = chartBars(pairs);
   for (let period = 1; period <= keys.length / 2; period += 1) {
     if (keys.length % period !== 0) continue;
     if (keys.every((key, i) => key === keys[i % period])) {
@@ -167,7 +161,8 @@ export function ChordSheet({
       className={`font-mono leading-none ${dark ? "text-white" : ""}`}
       style={{ fontSize }}
     >
-      {lines.map((line, i) => {
+      {/* en Solo acordes, las líneas seguidas que repiten los mismos compases se juntan en una */}
+      {(mode === "chords" ? mergeRepeatedChartLines(lines) : lines).map((line, i) => {
         if (line.kind === "blank") return <div key={i} style={{ height: fontSize }} />;
         if (line.kind === "section")
           return (

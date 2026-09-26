@@ -9,7 +9,8 @@ export interface RawSetlistItem {
   key: string;
   note: string | null;
   position: number;
-  song: RawRef;
+  /** null si la canción fue dada de baja (la relación no trae canciones dadas de baja) */
+  song: RawRef | null;
 }
 
 /** Espejo exacto de la entidad Setlist real (GET /setlists). */
@@ -49,6 +50,9 @@ export interface UpsertSetlistInput {
 export function mapSetlist(raw: RawSetlist): Setlist {
   const items: SetlistItem[] = [...raw.items]
     .sort((a, b) => a.position - b.position)
+    // un ítem cuya canción fue dada de baja llega con song: null — se omite (si no, fallaba la
+    // carga de TODOS los setlists)
+    .flatMap((item) => (item.song ? [{ ...item, song: item.song }] : []))
     .map((item) => ({
       songId: item.song.id,
       key: item.key,

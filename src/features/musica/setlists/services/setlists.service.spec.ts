@@ -62,4 +62,12 @@ describe("mapSetlist — setlist del backend → setlist de la UI", () => {
     mapSetlist(copy);
     expect(copy.items.map((i) => i.position)).toEqual([2, 0, 1]);
   });
+
+  it("un ítem cuya canción fue dada de baja (song: null) se omite, sin romper el setlist", () => {
+    const withGone = {
+      ...raw,
+      items: [...raw.items, { id: "i9", song: null, key: "C", note: null, position: 9 }],
+    } as unknown as RawSetlist;
+    expect(mapSetlist(withGone).items).toHaveLength(raw.items.length);
+  });
 });

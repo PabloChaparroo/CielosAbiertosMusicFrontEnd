@@ -95,39 +95,49 @@ export function EscucharPage() {
             ))}
           </div>
         ) : null}
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por secuencia">
-          {(
-            [
-              [null, "Con y sin secuencia"],
-              ["con", "Con secuencia"],
-              ["sin", "Sin secuencia"],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={label}
-              type="button"
-              onClick={() => setSecuencia(value)}
-              aria-pressed={secuencia === value}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-                secuencia === value
-                  ? "bg-primary/15 text-primary ring-1 ring-primary/50"
-                  : "border border-border bg-card text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {value === "con" ? <Check className="h-3.5 w-3.5" /> : null}
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={() => setTag(null)}>
-            <TagChip tag="Todas" active={tag === null} />
-          </button>
-          {allTags.map((t) => (
-            <button key={t} onClick={() => setTag(t === tag ? null : t)}>
-              <TagChip tag={t} active={tag === t} />
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por secuencia">
+            {(
+              [
+                [null, "Con y sin secuencia"],
+                ["con", "Con secuencia"],
+                ["sin", "Sin secuencia"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => setSecuencia(value)}
+                aria-pressed={secuencia === value}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                  secuencia === value
+                    ? "bg-primary/15 text-primary ring-1 ring-primary/50"
+                    : "border border-border bg-card text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {value === "con" ? <Check className="h-3.5 w-3.5" /> : null}
+                {label}
+              </button>
+            ))}
+          </div>
+          {/* temas: son muchos (catálogo del backend), van en un desplegable */}
+          <select
+            value={tag ?? ""}
+            onChange={(e) => setTag(e.target.value || null)}
+            aria-label="Filtrar por tema"
+            className={`rounded-full border px-3 py-1 text-xs font-semibold outline-none transition-colors focus:border-primary/60 ${
+              tag
+                ? "border-primary/50 bg-primary/15 text-primary"
+                : "border-border bg-card text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <option value="">Todos los temas</option>
+            {allTags.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 

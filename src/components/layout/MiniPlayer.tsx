@@ -16,10 +16,12 @@ import { YoutubeEmbed, YoutubeIcon } from "@/components/common/YoutubeEmbed";
 import { parseYoutubeVideoId } from "@/lib/youtube";
 import type { AudioTrack } from "@/features/canciones/types/audio-track";
 import { useApp } from "@/hooks/useApp";
-import { Cover, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
+import { Cover, FavButton, formatDuration } from "@/components/common/ui-bits";
 import { StorageClient } from "@/lib/storage-client";
 import { loadYoutubeApi } from "@/lib/youtube-api";
 import { YoutubeStage, type YoutubeStageHandle } from "./YoutubeStage";
+import { FullPlayer, type AudioOption } from "./FullPlayer";
+import { buildQueue, pickNext, type QueueFilter } from "@/lib/queue";
 
 export function MiniPlayer() {
   const { current, isPlaying, play, toggle, audioRef, songs } = useApp();
@@ -43,6 +45,10 @@ export function MiniPlayer() {
   const stageRef = useRef<YoutubeStageHandle | null>(null);
   // lugar de la portada en la pantalla completa: ahí se ubica el video
   const videoAnchorRef = useRef<HTMLDivElement | null>(null);
+  // cola de la pantalla completa: qué tipo se sigue escuchando y si va en aleatorio
+  const [filter, setFilter] = useState<QueueFilter>("todas");
+  const [shuffle, setShuffle] = useState(false);
+  const shuffleHistoryRef = useRef<string[]>([]);
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
   const currentSongId = current?.id;
@@ -193,16 +199,30 @@ export function MiniPlayer() {
     setProgress(0);
   };
 
-  // Siguiente / anterior: recorre el repertorio en el orden de la lista, salteando las canciones
-  // que no se pueden reproducir (sin audio subido ni video de YouTube)
-  const playable = songs.filter((s) => s.audioKey || s.youtubeVideoId);
-  const playAt = (offset: number) => {
-    if (!current || playable.length === 0) return;
-    const index = playable.findIndex((s) => s.id === current.id);
-    const next = playable[(index + offset + playable.length) % playable.length];
-    if (next && next.id !== current.id) play(next);
-    else restart();
+  // Siguiente / anterior: recorre la cola (solo las que se pueden reproducir, filtradas por tipo
+  // en la pantalla completa: Todas / Alabanzas / Adoraciones), en orden o en aleatorio
+  const queue = buildQueue(songs, filter);
+  const playAt = (offset: 1 | -1) => {
+    if (!current) return;
+    // aleatorio: "anterior" vuelve a la que sonó antes (no a una al azar)
+    if (offset === -1 && shuffle && shuffleHistoryRef.current.length) {
+      const previousId = shuffleHistoryRef.current.pop();
+      const previous = songs.find((s) => s.id === previousId);
+      if (previous) {
+        play(previous);
+        return;
+      }
+    }
+    const next = pickNext(queue, current.id, offset, shuffle);
+    if (next && next.id !== current.id) {
+      if (offset === 1)
+        shuffleHistoryRef.current = [...shuffleHistoryRef.current, current.id].slice(-50);
+      play(next);
+    } else restart();
   };
+  // al terminar un tema sigue con el siguiente de la cola
+  const playAtRef = useRef(playAt);
+  playAtRef.current = playAt;
 
   // "Atrás": un toque vuelve al principio del tema; dos toques seguidos van a la canción anterior
   const back = () => {
@@ -256,19 +276,47 @@ export function MiniPlayer() {
     return () => window.removeEventListener("keydown", onKey);
   }, [expanded]);
 
-  // Audios del tema para el desplegable: el original y las pistas relacionadas
-  const audioOptions = [
-    ...(ytId ? [{ key: "yt:main", label: "▶ Video de YouTube" }] : []),
-    ...(mainAudioKey && current
-      ? [{ key: mainAudioKey, label: `Original — ${current.title}` }]
+  // los mismos audios, para desplegarlos debajo del tema en la lista de la pantalla completa
+  const fullAudioOptions: AudioOption[] = [
+    ...(ytId
+      ? [
+          {
+            key: "yt:main",
+            label: "Video de YouTube",
+            kind: "youtube" as const,
+            active: useYoutube,
+          },
+        ]
       : []),
-    ...tracks.map((track) => ({ key: track.audioKey, label: track.label })),
-    // los videos van con prefijo: elegirlos abre el embed en vez de cambiar el audio
+    ...(mainAudioKey && current
+      ? [
+          {
+            key: mainAudioKey,
+            label: `Original — ${current.title}`,
+            kind: "audio" as const,
+            active: isMainAudio && !useYoutube,
+          },
+        ]
+      : []),
+    ...tracks.map((track) => ({
+      key: track.audioKey,
+      label: track.label,
+      kind: "audio" as const,
+      active: !useYoutube && current?.audioKey === track.audioKey,
+    })),
     ...extraVideos.map((video) => ({
       key: `yt:${video.id}`,
-      label: `▶ YouTube — ${video.label}`,
+      label: `YouTube — ${video.label}`,
+      kind: "youtube" as const,
+      active: openVideo?.videoId === video.videoId,
     })),
   ];
+  const chooseAudioOption = (key: string) => {
+    const video = extraVideos.find((v) => `yt:${v.id}` === key);
+    if (key === "yt:main") chooseYoutube();
+    else if (video) openYoutube(video);
+    else chooseAudio(key);
+  };
 
   if (!current) return null;
 
@@ -280,6 +328,7 @@ export function MiniPlayer() {
       <audio
         ref={localRef}
         src={resolvedUrl ?? undefined}
+        onEnded={() => playAtRef.current(1)}
         onTimeUpdate={(e) => {
           const el = e.currentTarget;
           if (el.duration) setProgress((el.currentTime / el.duration) * 100);
@@ -476,210 +525,37 @@ export function MiniPlayer() {
       {/* en un portal: el backdrop-blur de la barra encerraría al "fixed" dentro de ella */}
       {expanded
         ? createPortal(
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-label="Reproductor"
-              // fondo: el mismo degradé morado de Inicio (gradient-sky); el contenido va en una tarjeta gris
-              className={`fixed inset-0 z-50 overflow-y-auto bg-background gradient-sky p-3 md:p-6 ${
-                closing
-                  ? "animate-out fill-mode-forwards duration-250 ease-in slide-out-to-bottom"
-                  : "animate-in duration-300 ease-out slide-in-from-bottom"
-              }`}
-            >
-              <div
-                className={`surface-card mx-auto flex min-h-full w-full flex-col rounded-3xl px-5 pt-3 pb-8 md:px-10 md:py-6 ${
-                  useYoutube ? "max-w-6xl" : "max-w-md md:max-w-5xl"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={closeExpanded}
-                    aria-label="Cerrar reproductor"
-                    className="-ml-2 rounded-full p-2 text-muted-foreground hover:text-foreground"
-                  >
-                    <ChevronDown className="h-6 w-6" />
-                  </button>
-                  <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                    Reproduciendo
-                  </span>
-                  <span className="w-10" />
-                </div>
-
-                {/* celular: una columna; compu: portada a la izquierda, datos y controles a la derecha */}
-                {/* con video: el video arriba y a lo ancho, datos y controles abajo (más grandes) */}
-                <div
-                  className={
-                    useYoutube
-                      ? "flex flex-1 flex-col items-center"
-                      : "flex flex-1 flex-col md:grid md:grid-cols-2 md:items-center md:gap-12"
-                  }
-                >
-                  <div
-                    className={
-                      useYoutube
-                        ? "flex w-full justify-center pt-2 pb-5"
-                        : "flex flex-1 items-center justify-center py-6"
-                    }
-                  >
-                    {useYoutube ? (
-                      // acá se ubica el video (YoutubeStage): mismo iframe que en la barra
-                      <div
-                        ref={videoAnchorRef}
-                        className="aspect-video w-full max-w-[min(72rem,calc((100vh-27rem)*16/9))] rounded-2xl bg-black"
-                      />
-                    ) : (
-                      <Cover
-                        song={current}
-                        size="lg"
-                        className="h-auto w-full max-w-[340px] rounded-2xl md:max-w-[min(460px,70vh)]"
-                      />
-                    )}
-                  </div>
-
-                  <div
-                    className={
-                      useYoutube
-                        ? "flex w-full max-w-[min(72rem,max(46rem,calc((100vh-27rem)*16/9)))] flex-col md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] md:gap-x-10"
-                        : "flex flex-col"
-                    }
-                  >
-                    <div
-                      className={`flex items-center gap-3 ${useYoutube ? "md:col-start-1 md:row-start-1" : ""}`}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p
-                          className={`truncate font-bold ${useYoutube ? "text-2xl md:text-4xl" : "text-2xl md:text-4xl"}`}
-                        >
-                          {activeAudioLabel ?? current.title}
-                        </p>
-                        <p className="truncate text-base text-muted-foreground md:text-lg">
-                          {activeAudioLabel && !isMainAudio
-                            ? `${current.title} · ${current.artist}`
-                            : current.artist}
-                        </p>
-                      </div>
-                      <FavButton songId={current.id} />
-                    </div>
-
-                    {/* características del tema */}
-                    <div
-                      className={`mt-4 grid grid-cols-4 gap-2 ${useYoutube ? "md:col-start-2 md:row-start-1 md:mt-0 md:self-center" : ""}`}
-                    >
-                      {[
-                        ["Tono", current.key],
-                        ["Compás", current.compas],
-                        ["BPM", String(current.bpm)],
-                        ["Duración", formatDuration(duration)],
-                      ].map(([label, value]) => (
-                        <div
-                          key={label}
-                          className="rounded-xl border border-border bg-card px-2 py-2 text-center"
-                        >
-                          <p className="text-[10px] tracking-widest text-muted-foreground uppercase">
-                            {label}
-                          </p>
-                          <p className="mt-0.5 text-sm font-semibold">{value}</p>
-                        </div>
-                      ))}
-                    </div>
-                    {current.tags.length || current.tipo ? (
-                      <div
-                        className={`mt-3 flex flex-wrap gap-1.5 ${useYoutube ? "md:col-start-1 md:row-start-2 md:self-start" : ""}`}
-                      >
-                        {current.tipo ? (
-                          <span className="rounded-full bg-primary/15 px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-primary uppercase">
-                            {current.tipo}
-                          </span>
-                        ) : null}
-                        {current.tags.map((tag) => (
-                          <TagChip key={tag} tag={tag} />
-                        ))}
-                      </div>
-                    ) : null}
-
-                    {/* desplegable para alternar entre los audios del tema */}
-                    {audioOptions.length > 1 ? (
-                      <label
-                        className={`mt-4 block ${useYoutube ? "md:col-start-2 md:row-start-2 md:mt-3" : ""}`}
-                      >
-                        <span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                          <ListMusic className="h-3.5 w-3.5" /> Audio
-                        </span>
-                        <select
-                          value={useYoutube ? "yt:main" : (current.audioKey ?? "")}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            const video = extraVideos.find((v) => `yt:${v.id}` === value);
-                            if (value === "yt:main") chooseYoutube();
-                            else if (video) openYoutube(video);
-                            else chooseAudio(value);
-                          }}
-                          aria-label="Elegir audio del tema"
-                          className="w-full rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none focus:border-primary/60"
-                        >
-                          {audioOptions.map((option) => (
-                            <option key={option.key} value={option.key}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    ) : null}
-
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      value={progress}
-                      aria-label="Progreso"
-                      onChange={(e) => seekTo(Number(e.target.value))}
-                      className={`mt-6 h-1 w-full cursor-pointer appearance-none rounded-full bg-secondary accent-primary ${useYoutube ? "md:col-span-2 md:mt-5" : ""}`}
-                    />
-                    <div
-                      className={`mt-2 flex justify-between text-xs text-muted-foreground ${useYoutube ? "md:col-span-2" : ""}`}
-                    >
-                      <span>{formatDuration(seconds)}</span>
-                      <span>{formatDuration(duration)}</span>
-                    </div>
-
-                    <div
-                      className={`mt-6 flex items-center justify-center gap-10 ${useYoutube ? "md:col-span-2 md:mt-2" : ""}`}
-                    >
-                      <button
-                        type="button"
-                        onClick={back}
-                        aria-label="Volver al principio (dos toques: canción anterior)"
-                        className="rounded-full p-2 text-foreground"
-                      >
-                        <SkipBack className="h-9 w-9 fill-current md:h-11 md:w-11" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={toggle}
-                        aria-label={isPlaying ? "Pausar" : "Reproducir"}
-                        className="flex h-18 w-18 items-center justify-center rounded-full gradient-gold text-primary-foreground md:h-20 md:w-20"
-                      >
-                        {isPlaying ? (
-                          <Pause className="h-8 w-8" />
-                        ) : (
-                          <Play className="ml-1 h-8 w-8" />
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => playAt(1)}
-                        aria-label="Siguiente canción"
-                        className="rounded-full p-2 text-foreground"
-                      >
-                        <SkipForward className="h-9 w-9 fill-current md:h-11 md:w-11" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>,
+            <FullPlayer
+              current={current}
+              isPlaying={isPlaying}
+              closing={closing}
+              onClose={closeExpanded}
+              onToggle={toggle}
+              onBack={back}
+              onNext={() => playAt(1)}
+              onPlaySong={(song) => play(song)}
+              queue={queue}
+              filter={filter}
+              onFilterChange={setFilter}
+              shuffle={shuffle}
+              onShuffleChange={setShuffle}
+              progress={progress}
+              seconds={seconds}
+              duration={duration}
+              onSeek={seekTo}
+              volume={volume}
+              onVolumeChange={setVolume}
+              useYoutube={useYoutube}
+              videoAnchorRef={videoAnchorRef}
+              audioOptions={fullAudioOptions}
+              onChooseAudio={chooseAudioOption}
+              titleLabel={activeAudioLabel ?? current.title}
+              subtitleLabel={
+                activeAudioLabel && !isMainAudio
+                  ? `${current.title} · ${current.artist}`
+                  : current.artist
+              }
+            />,
             document.body,
           )
         : null}
@@ -702,9 +578,7 @@ export function MiniPlayer() {
             // pausa/play desde los controles propios del video (o la X del flotante)
             if (playing !== isPlayingRef.current) toggle();
           }}
-          onEnded={() => {
-            if (isPlayingRef.current) toggle();
-          }}
+          onEnded={() => playAtRef.current(1)}
           onOpenFull={openTitle}
         />
       ) : null}

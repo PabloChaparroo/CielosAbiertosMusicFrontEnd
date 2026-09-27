@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import {
   ChevronDown,
   Music2,
@@ -102,6 +102,24 @@ export function FullPlayer({
     else if (bottom > list.scrollTop + list.clientHeight)
       list.scrollTop = bottom - list.clientHeight + 8;
   }, [current.id, filter]);
+  // en compu la columna derecha mide lo mismo que la tarjeta de la izquierda (que mide lo que su
+  // lista): terminan a la misma altura y la lista de audios scrollea adentro de ese espacio
+  const leftCardRef = useRef<HTMLElement | null>(null);
+  const [leftHeight, setLeftHeight] = useState<number | null>(null);
+  useEffect(() => {
+    const el = leftCardRef.current;
+    if (!el) return;
+    const wide = window.matchMedia("(min-width: 1024px)");
+    const update = () => setLeftHeight(wide.matches ? el.offsetHeight : null);
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    wide.addEventListener("change", update);
+    update();
+    return () => {
+      observer.disconnect();
+      wide.removeEventListener("change", update);
+    };
+  }, []);
   const currentInQueue = queue.some((song) => song.id === current.id);
 
   const shuffleButton = (
@@ -148,7 +166,10 @@ export function FullPlayer({
 
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,400px)] lg:grid-rows-[minmax(0,1fr)]">
           {/* ---------- derecha (arriba en celular): lo que suena ---------- */}
-          <aside className="flex min-h-0 flex-col gap-3 lg:order-2">
+          <aside
+            className="flex min-h-0 flex-col gap-3 lg:order-2 lg:self-start"
+            style={leftHeight ? { height: leftHeight } : undefined}
+          >
             <section className="surface-card overflow-hidden rounded-3xl">
               <p className="pt-4 text-center text-sm font-semibold text-foreground/90">
                 Reproduciendo ahora
@@ -203,7 +224,7 @@ export function FullPlayer({
                   Este tema no tiene otros audios.
                 </p>
               ) : (
-                <ul className="max-h-64 min-h-0 space-y-1 overflow-y-auto px-3 pb-3 lg:max-h-none lg:flex-1">
+                <ul className="max-h-64 min-h-0 space-y-1 overflow-y-auto px-3 pb-3 lg:max-h-none lg:min-h-28 lg:flex-1">
                   {audioOptions.map((option) => (
                     <li key={option.key}>
                       <button
@@ -233,7 +254,10 @@ export function FullPlayer({
           </aside>
 
           {/* ---------- izquierda: tema, lista para seguir escuchando y controles ---------- */}
-          <section className="surface-card flex min-h-0 flex-col rounded-3xl lg:order-1 lg:max-h-full lg:self-start">
+          <section
+            ref={leftCardRef}
+            className="surface-card flex min-h-0 flex-col rounded-3xl lg:order-1 lg:max-h-full lg:min-h-[45rem] lg:self-start"
+          >
             {/* encabezado del tema, con los círculos decorativos del mockup */}
             <div className="relative overflow-hidden rounded-t-3xl px-5 pt-6 pb-5 md:px-8 md:pt-8">
               <div className="pointer-events-none absolute -top-40 right-[-6rem] h-96 w-96 rounded-full border border-white/10 bg-white/[0.02]" />
@@ -308,7 +332,7 @@ export function FullPlayer({
             {/* lista para seguir escuchando */}
             <ol
               ref={listRef}
-              className="relative max-h-[55vh] min-h-0 overflow-y-auto px-2 py-2 md:px-4 lg:max-h-none"
+              className="relative max-h-[55vh] min-h-0 overflow-y-auto px-2 py-2 md:px-4 lg:max-h-none lg:flex-1"
             >
               {!currentInQueue ? (
                 <li className="px-3 pt-1 pb-2 text-xs text-muted-foreground">

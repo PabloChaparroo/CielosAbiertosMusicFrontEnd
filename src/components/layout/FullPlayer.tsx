@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import {
   ChevronDown,
-  ChevronRight,
   Music2,
   Pause,
   Play,
@@ -32,9 +31,8 @@ const FILTERS: Array<{ value: QueueFilter; label: string }> = [
 /**
  * Reproductor a pantalla completa (diseño tomado del mockup de Figma que eligió Pablo, con los
  * colores de la app): a la izquierda el tema (título grande, reproducir, favorito), las pestañas
- * Todas / Alabanzas / Adoraciones, la lista para seguir escuchando (el tema actual se despliega
- * con sus otros audios) y los controles abajo; a la derecha "Reproduciendo" con el video o la
- * portada y las características del tema. En celular, una sola columna.
+ * Todas / Alabanzas / Adoraciones, la lista para seguir escuchando y los controles debajo; a la derecha "Reproduciendo" con el
+ * video o la portada, las características del tema y la lista de sus audios. En celular, una sola columna.
  */
 export function FullPlayer({
   current,
@@ -89,8 +87,6 @@ export function FullPlayer({
   titleLabel: string;
   subtitleLabel: string;
 }) {
-  // el tema actual arranca desplegado con sus audios (si tiene más de uno)
-  const [audiosOpen, setAudiosOpen] = useState(true);
   // la lista se desplaza sola hasta el tema que suena (al abrir y al cambiar de tema o de pestaña)
   // (solo la lista por dentro: scrollIntoView movería toda la pantalla y en celular taparía el video)
   const listRef = useRef<HTMLOListElement | null>(null);
@@ -128,7 +124,7 @@ export function FullPlayer({
       role="dialog"
       aria-modal="true"
       aria-label="Reproductor"
-      className={`fixed inset-0 z-50 overflow-y-auto bg-background gradient-sky p-2 md:p-4 ${
+      className={`fixed inset-0 z-50 overflow-y-auto bg-black p-2 md:p-4 ${
         closing
           ? "animate-out fill-mode-forwards duration-250 ease-in slide-out-to-bottom"
           : "animate-in duration-300 ease-out slide-in-from-bottom"
@@ -152,7 +148,7 @@ export function FullPlayer({
 
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,400px)] lg:grid-rows-[minmax(0,1fr)]">
           {/* ---------- derecha (arriba en celular): lo que suena ---------- */}
-          <aside className="flex min-h-0 flex-col gap-3 lg:order-2 lg:overflow-y-auto">
+          <aside className="flex min-h-0 flex-col gap-3 lg:order-2">
             <section className="surface-card overflow-hidden rounded-3xl">
               <p className="pt-4 text-center text-sm font-semibold text-foreground/90">
                 Reproduciendo ahora
@@ -196,10 +192,48 @@ export function FullPlayer({
                 </div>
               ))}
             </section>
+
+            {/* audios del tema que suena: ocupa el resto de la columna, con scroll propio */}
+            <section className="surface-card flex min-h-0 flex-col rounded-3xl lg:flex-1">
+              <p className="px-5 pt-4 pb-2 text-sm font-semibold text-foreground/90">
+                Audios de este tema
+              </p>
+              {audioOptions.length === 0 ? (
+                <p className="px-5 pb-5 text-sm text-muted-foreground">
+                  Este tema no tiene otros audios.
+                </p>
+              ) : (
+                <ul className="max-h-64 min-h-0 space-y-1 overflow-y-auto px-3 pb-3 lg:max-h-none lg:flex-1">
+                  {audioOptions.map((option) => (
+                    <li key={option.key}>
+                      <button
+                        type="button"
+                        onClick={() => onChooseAudio(option.key)}
+                        className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm transition-colors ${
+                          option.active
+                            ? "bg-primary/15 text-primary"
+                            : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                        }`}
+                      >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-background/60">
+                          {option.kind === "youtube" ? (
+                            <YoutubeIcon className="h-4 w-4" />
+                          ) : (
+                            <Music2 className="h-4 w-4" />
+                          )}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate font-medium">{option.label}</span>
+                        {option.active ? <span className="text-xs">Sonando</span> : null}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           </aside>
 
           {/* ---------- izquierda: tema, lista para seguir escuchando y controles ---------- */}
-          <section className="surface-card flex min-h-0 flex-col rounded-3xl lg:order-1">
+          <section className="surface-card flex min-h-0 flex-col rounded-3xl lg:order-1 lg:max-h-full lg:self-start">
             {/* encabezado del tema, con los círculos decorativos del mockup */}
             <div className="relative overflow-hidden rounded-t-3xl px-5 pt-6 pb-5 md:px-8 md:pt-8">
               <div className="pointer-events-none absolute -top-40 right-[-6rem] h-96 w-96 rounded-full border border-white/10 bg-white/[0.02]" />
@@ -274,7 +308,7 @@ export function FullPlayer({
             {/* lista para seguir escuchando */}
             <ol
               ref={listRef}
-              className="relative max-h-[55vh] min-h-0 overflow-y-auto px-2 py-2 md:px-4 lg:max-h-none lg:flex-1"
+              className="relative max-h-[55vh] min-h-0 overflow-y-auto px-2 py-2 md:px-4 lg:max-h-none"
             >
               {!currentInQueue ? (
                 <li className="px-3 pt-1 pb-2 text-xs text-muted-foreground">
@@ -289,7 +323,6 @@ export function FullPlayer({
               ) : null}
               {queue.map((song, index) => {
                 const isCurrent = song.id === current.id;
-                const showAudios = isCurrent && audioOptions.length > 1;
                 return (
                   <li
                     key={song.id}
@@ -347,50 +380,7 @@ export function FullPlayer({
                         {formatDuration(song.duration)}
                       </span>
                       <FavButton songId={song.id} />
-                      {showAudios ? (
-                        <button
-                          type="button"
-                          onClick={() => setAudiosOpen((open) => !open)}
-                          aria-expanded={audiosOpen}
-                          aria-label={
-                            audiosOpen ? "Ocultar los audios del tema" : "Ver los audios del tema"
-                          }
-                          title="Audios del tema"
-                          className="rounded-full p-1.5 text-muted-foreground hover:bg-secondary hover:text-primary"
-                        >
-                          <ChevronRight
-                            className={`h-4 w-4 transition-transform ${audiosOpen ? "rotate-90" : ""}`}
-                          />
-                        </button>
-                      ) : (
-                        <span className="w-7 shrink-0" />
-                      )}
                     </div>
-                    {showAudios && audiosOpen ? (
-                      <ul className="mb-2 ml-10 space-y-0.5 border-l border-primary/30 py-1 pl-3 md:ml-14">
-                        {audioOptions.map((option) => (
-                          <li key={option.key}>
-                            <button
-                              type="button"
-                              onClick={() => onChooseAudio(option.key)}
-                              className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition-colors ${
-                                option.active
-                                  ? "bg-primary/15 text-primary"
-                                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                              }`}
-                            >
-                              {option.kind === "youtube" ? (
-                                <YoutubeIcon />
-                              ) : (
-                                <Music2 className="h-3.5 w-3.5" />
-                              )}
-                              <span className="min-w-0 flex-1 truncate">{option.label}</span>
-                              {option.active ? <span className="text-xs">Sonando</span> : null}
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
                   </li>
                 );
               })}

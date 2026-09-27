@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { announcePlaying, onOtherPlaying } from "@/lib/exclusive-audio";
 import { Check, Pause, Play, Plus, Star, Trash2, Upload, X } from "lucide-react";
 import { StorageClient } from "@/lib/storage-client";
 import { validateAudioFile } from "@/features/canciones/lib/audio-validation";
@@ -48,6 +49,17 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
       })
       .catch(() => setLoadState("error"));
   }, [song.id]);
+
+  // Un audio a la vez, en el otro sentido: si arranca el reproductor principal (audio o YouTube)
+  // o un video de YouTube extra, se pausa la pista que estaba sonando acá
+  const stopTrack = () => {
+    audioRef.current?.pause();
+    setPlayingId(null);
+  };
+  useEffect(() => {
+    if (mainIsPlaying) stopTrack();
+  }, [mainIsPlaying]);
+  useEffect(() => onOtherPlaying("pista", stopTrack), []);
 
   // Mismo criterio de cierre-cancela que UploadModal: si se cierra el modal
   // (o se desmonta) a mitad de una subida, se aborta — nunca sigue en
@@ -164,6 +176,7 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
       const { url } = await StorageClient.getDownloadUrl(track.audioKey);
       el.src = url;
       await el.play();
+      announcePlaying("pista");
       setPlayingId(track.id);
     } catch {
       setPlayingId(null);

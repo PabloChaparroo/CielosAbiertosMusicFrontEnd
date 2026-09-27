@@ -1,8 +1,9 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { FloatingVideoFrame } from "./FloatingVideoFrame";
 import { useApp } from "@/hooks/useApp";
 import { youtubeEmbedUrl } from "@/lib/youtube";
+import { announcePlaying, onOtherPlaying } from "@/lib/exclusive-audio";
 
 /**
  * Video de YouTube embebido dentro de la app, con el reproductor oficial (sus propios controles).
@@ -24,20 +25,25 @@ export function YoutubeEmbed({
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const openedRef = useRef(false);
 
-  // al abrir: si el reproductor de la app estaba sonando, se pausa
+  const pauseVideo = () =>
+    iframeRef.current?.contentWindow?.postMessage(
+      JSON.stringify({ event: "command", func: "pauseVideo", args: [] }),
+      "https://www.youtube.com",
+    );
+
+  // si arranca una pista subida (AudioTracksModal), se pausa el video
+  useEffect(() => onOtherPlaying("youtube-extra", pauseVideo), []);
+
+  // al abrir: si el reproductor de la app o una pista subida estaban sonando, se pausan
   useEffect(() => {
     if (!openedRef.current) {
       openedRef.current = true;
       if (isPlaying) toggle();
+      announcePlaying("youtube-extra");
       return;
     }
     // ya abierto: si el reproductor de la app vuelve a sonar, se pausa el video
-    if (isPlaying) {
-      iframeRef.current?.contentWindow?.postMessage(
-        JSON.stringify({ event: "command", func: "pauseVideo", args: [] }),
-        "https://www.youtube.com",
-      );
-    }
+    if (isPlaying) pauseVideo();
     // toggle es estable a los fines de este efecto; solo interesa el cambio de isPlaying
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPlaying]);
@@ -50,41 +56,23 @@ export function YoutubeEmbed({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  // ventanita flotante chica y arrastrable (no un modal): no tapa la letra ni los acordes
   return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Video de YouTube: ${title}`}
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
-      onClick={onClose}
+    <FloatingVideoFrame
+      title={title}
+      closeLabel="Cerrar video"
+      onClose={onClose}
+      className="z-[36]"
     >
-      <div
-        className="w-full max-w-3xl animate-in zoom-in-95 fade-in duration-200"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <p className="truncate text-sm font-semibold text-white">{title}</p>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Cerrar video"
-            className="rounded-full p-2 text-white/80 hover:bg-white/10 hover:text-white"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-2xl">
-          <iframe
-            ref={iframeRef}
-            src={youtubeEmbedUrl(videoId)}
-            title={title}
-            className="h-full w-full"
-            allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-            allowFullScreen
-          />
-        </div>
-      </div>
-    </div>,
+      <iframe
+        ref={iframeRef}
+        src={youtubeEmbedUrl(videoId)}
+        title={title}
+        className="h-full w-full"
+        allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+        allowFullScreen
+      />
+    </FloatingVideoFrame>,
     document.body,
   );
 }

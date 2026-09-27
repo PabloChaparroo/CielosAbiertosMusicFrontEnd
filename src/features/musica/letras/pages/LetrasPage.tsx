@@ -164,10 +164,36 @@ export function LetrasPage() {
           {song ? (
             <SongLyricsDetail song={song} canEdit={can("editSongs")} onSave={updateSong} />
           ) : (
-            <div className="surface-card flex min-h-[420px] flex-col items-center justify-center gap-3 p-10 text-center">
-              <TypeIcon className="h-8 w-8 text-primary" />
-              <p className="font-medium">Seleccioná una canción</p>
-              <p className="text-sm text-muted-foreground">La letra aparecerá acá.</p>
+            // sin canción elegida: las últimas subidas (mismo orden que "Últimas subidas" de Inicio)
+            <div className="surface-card p-4 sm:p-6">
+              <div className="mb-3 flex items-center gap-2">
+                <TypeIcon className="h-5 w-5 text-primary" />
+                <h2 className="font-display text-lg font-semibold">Últimas canciones subidas</h2>
+              </div>
+              {availableSongs.length === 0 ? (
+                <p className="py-10 text-center text-sm text-muted-foreground">
+                  Todavía no hay canciones.
+                </p>
+              ) : (
+                <div className="divide-y divide-border/60">
+                  {availableSongs.slice(0, 8).map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setSelected(item.id)}
+                      className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-elevated/70"
+                    >
+                      <Cover song={item} size="sm" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium">{item.title}</span>
+                        <span className="block truncate text-sm text-muted-foreground">
+                          {item.artist}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

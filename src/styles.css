@@ -158,3 +158,19 @@
 @utility glow {
   box-shadow: var(--shadow-glow);
 }
+
+/* barritas de "sonando" en la lista del reproductor (ecualizador) */
+@keyframes eq-bar {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@utility eq-bar {
+  transform-origin: bottom;
+  animation: eq-bar 0.9s ease-in-out infinite;
+}

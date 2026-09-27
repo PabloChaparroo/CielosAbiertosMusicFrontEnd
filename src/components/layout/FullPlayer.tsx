@@ -142,6 +142,10 @@ export function FullPlayer({
       role="dialog"
       aria-modal="true"
       aria-label="Reproductor"
+      // un click en el fondo negro (fuera de las tarjetas y de los botones) cierra el reproductor
+      onClick={(event) => {
+        if (!(event.target as HTMLElement).closest(".surface-card, button")) onClose();
+      }}
       className={`fixed inset-0 z-50 overflow-y-auto bg-black p-2 md:p-4 ${
         closing
           ? "animate-out fill-mode-forwards duration-250 ease-in slide-out-to-bottom"

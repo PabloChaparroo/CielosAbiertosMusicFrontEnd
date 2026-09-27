@@ -112,7 +112,7 @@ export function SidebarContent({
         ))}
       </nav>
 
-      <div className="border-t border-sidebar-border p-4">
+      <div data-sidebar-profile className="border-t border-sidebar-border p-4">
         {/* un invitado no tiene perfil que editar */}
         <button
           onClick={isGuest ? undefined : onOpenPerfil}

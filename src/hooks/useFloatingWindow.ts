@@ -37,8 +37,10 @@ let lastLarge = false;
 
 export function useFloatingWindow() {
   const ref = useRef<HTMLDivElement | null>(null);
-  // null = lugar por defecto (abajo a la derecha, arriba de la barra del reproductor)
+  // null = lugar por defecto: en compu, en la barra lateral justo arriba del perfil (un lugar que
+  // no tapa nada); si no hay barra lateral (celular), abajo a la derecha arriba del reproductor
   const [pos, setPos] = useState<Point | null>(lastPosition);
+  const [defaultPos, setDefaultPos] = useState<Point | null>(null);
   const [large, setLargeState] = useState(lastLarge);
   const drag = useRef<{ id: number; dx: number; dy: number } | null>(null);
 
@@ -61,6 +63,27 @@ export function useFloatingWindow() {
     [clampNow],
   );
 
+  const updateDefault = useCallback(() => {
+    const el = ref.current;
+    // la barra lateral fija de compu (la del menú del celular está oculta y mide 0)
+    const profile = [...document.querySelectorAll<HTMLElement>("[data-sidebar-profile]")]
+      .map((node) => node.getBoundingClientRect())
+      .find((rect) => rect.width > 0 && rect.left >= 0);
+    if (!el || !profile) {
+      setDefaultPos(null);
+      return;
+    }
+    setDefaultPos(
+      clampNow({
+        x: profile.left + (profile.width - el.offsetWidth) / 2,
+        y: profile.top - el.offsetHeight - 8,
+      }),
+    );
+  }, [clampNow]);
+  useLayoutEffect(() => {
+    updateDefault();
+  }, [updateDefault, large]);
+
   // al cambiar de tamaño (de la ventanita o de la pantalla, ej. girar el celular) sigue adentro
   useLayoutEffect(() => {
     if (pos) place(pos);
@@ -70,10 +93,11 @@ export function useFloatingWindow() {
   useEffect(() => {
     const onResize = () => {
       if (lastPosition) place(lastPosition);
+      else updateDefault();
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, [place]);
+  }, [place, updateDefault]);
 
   const setLarge = (value: boolean) => {
     lastLarge = value;
@@ -112,8 +136,9 @@ export function useFloatingWindow() {
     },
   };
 
-  const positionStyle: React.CSSProperties = pos
-    ? { left: pos.x, top: pos.y }
+  const shown = pos ?? defaultPos;
+  const positionStyle: React.CSSProperties = shown
+    ? { left: shown.x, top: shown.y }
     : { right: 16, bottom: 96 };
 
   return { ref, positionStyle, handleProps, large, setLarge };

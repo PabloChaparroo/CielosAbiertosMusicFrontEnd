@@ -66,7 +66,12 @@ export function SidebarContent({
 
   return (
     <div className="flex h-full flex-col bg-sidebar">
-      <div className="flex items-center gap-3 px-6 py-6">
+      {/* el logo lleva a Inicio */}
+      <Link
+        to="/"
+        onClick={onNavigate}
+        className="flex items-center gap-3 px-6 py-6 transition-opacity hover:opacity-80"
+      >
         <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-gold text-primary-foreground">
           <Cloud className="h-5 w-5" />
         </div>
@@ -74,7 +79,7 @@ export function SidebarContent({
           <p className="font-display text-lg font-semibold">Cielos Abiertos</p>
           <p className="text-[11px] tracking-widest text-muted-foreground uppercase">Adoración</p>
         </div>
-      </div>
+      </Link>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 pb-6">
         {visibleGroups.map((group) => (

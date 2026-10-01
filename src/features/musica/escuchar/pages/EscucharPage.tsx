@@ -102,8 +102,8 @@ export function EscucharPage() {
         ) : null
       }
     >
-      <div className="mb-6 space-y-4">
-        <div className="relative max-w-md">
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <div className="relative w-full sm:w-80">
           <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={query}
@@ -112,8 +112,8 @@ export function EscucharPage() {
             className="w-full rounded-full border border-border bg-card py-2.5 pr-4 pl-10 text-sm outline-none transition-colors focus:border-primary/60"
           />
         </div>
-        {/* tipo, secuencia y temas: tres desplegables en una fila */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* tipo, secuencia y temas al lado del buscador (abajo en celular) */}
+        <div className="flex flex-1 flex-wrap items-center gap-2">
           {tipos.length ? (
             <select
               value={tipo ?? ""}

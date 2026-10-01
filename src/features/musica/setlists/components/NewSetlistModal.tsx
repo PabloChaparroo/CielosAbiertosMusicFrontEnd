@@ -76,6 +76,33 @@ export function NewSetlistModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Rotación: veces que se tocó cada canción en el último mes (para avisar si se repite mucho)
+  const recentCounts = useMemo(() => {
+    const since = new Date();
+    since.setDate(since.getDate() - 30);
+    const now = new Date();
+    const counts = new Map<string, number>();
+    setlists.forEach((sl) => {
+      const d = new Date(sl.date);
+      if (d < since || d > now) return;
+      sl.items.forEach((it) => counts.set(it.songId, (counts.get(it.songId) ?? 0) + 1));
+    });
+    return counts;
+  }, [setlists]);
+  // Sugerencias: las menos tocadas en 5 meses que todavía no están en la lista
+  const suggestions = useMemo(
+    () =>
+      songs
+        .filter((s) => !picked.includes(s.id))
+        .sort((a, b) => (playCounts.get(a.id) ?? 0) - (playCounts.get(b.id) ?? 0))
+        .slice(0, 6),
+    [songs, picked, playCounts],
+  );
+  const repeatedWarning = (songId: string) => {
+    const n = recentCounts.get(songId) ?? 0;
+    return n >= 2 ? `Se tocó ${n} veces en el último mes` : null;
+  };
+
   const results = useMemo(() => {
     const found = songs.filter((s) => s.title.toLowerCase().includes(query.toLowerCase()));
     if (leastPlayed)
@@ -195,6 +222,21 @@ export function NewSetlistModal({
             >
               Menos tocadas (últimos 5 meses)
             </button>
+            {suggestions.length ? (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">Sugeridas para rotar:</span>
+                {suggestions.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setPicked((p) => [...p, s.id])}
+                    className="rounded-full border border-dashed border-primary/40 px-2.5 py-0.5 text-xs text-primary transition-colors hover:bg-primary/10"
+                  >
+                    + {s.title}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           <div className="max-h-64 overflow-y-auto rounded-xl border border-border">
@@ -214,6 +256,11 @@ export function NewSetlistModal({
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{s.title}</p>
                     <p className="truncate text-xs text-muted-foreground">{s.artist}</p>
+                    {repeatedWarning(s.id) ? (
+                      <p className="truncate text-[11px] text-amber-400">
+                        ⚠ {repeatedWarning(s.id)}
+                      </p>
+                    ) : null}
                   </div>
                   {leastPlayed ? (
                     <span className="text-xs text-muted-foreground">
@@ -269,6 +316,11 @@ export function NewSetlistModal({
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{song.title}</p>
                       <p className="truncate text-xs text-muted-foreground">{song.artist}</p>
+                      {repeatedWarning(song.id) ? (
+                        <p className="truncate text-[11px] text-amber-400">
+                          ⚠ {repeatedWarning(song.id)}
+                        </p>
+                      ) : null}
                     </div>
                     <button
                       type="button"

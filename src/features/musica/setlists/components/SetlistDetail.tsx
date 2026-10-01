@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   Check,
+  Copy,
   FileDown,
   GripVertical,
   Music2,
@@ -18,6 +19,7 @@ import { KEYS } from "@/lib/chords";
 import { exportSetlistPdf } from "@/lib/pdf";
 import type { Setlist, SetlistItem } from "@/types";
 import { LockedHint } from "./LockedHint";
+import { setlistToWhatsapp } from "../lib/whatsapp";
 
 export function SetlistDetail({
   setlist,
@@ -62,6 +64,18 @@ export function SetlistDetail({
 
   const openSelectedSong = (songId: string) => openSong(`/${viewMode}`, songId);
 
+  // "Copiar": el setlist como texto para pegar en WhatsApp
+  const [copied, setCopied] = useState(false);
+  const copyForWhatsapp = async () => {
+    try {
+      await navigator.clipboard.writeText(setlistToWhatsapp(setlist, songs));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
+
   return (
     <AppLayout
       title={setlist.title}
@@ -70,12 +84,21 @@ export function SetlistDetail({
         timeStyle: "short",
       })}
       actions={
-        <button
-          onClick={() => exportSetlistPdf(setlist, songs)}
-          className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
-        >
-          <FileDown className="h-4 w-4" /> <span className="hidden sm:inline">Exportar PDF</span>
-        </button>
+        <>
+          <button
+            onClick={() => void copyForWhatsapp()}
+            className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold transition-colors hover:border-primary/60"
+          >
+            {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
+            <span className="hidden sm:inline">{copied ? "¡Copiado!" : "Copiar"}</span>
+          </button>
+          <button
+            onClick={() => exportSetlistPdf(setlist, songs)}
+            className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
+          >
+            <FileDown className="h-4 w-4" /> <span className="hidden sm:inline">Exportar PDF</span>
+          </button>
+        </>
       }
     >
       <button

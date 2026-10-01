@@ -274,28 +274,6 @@ export function AcordesPage() {
     <AppLayout
       title="Acordes"
       subtitle="Transposición, zoom y modo en vivo"
-      actions={
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              void enterBrowserFullscreen();
-              setLive(true);
-            }}
-            className="flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm hover:bg-secondary"
-          >
-            <Maximize2 className="h-4 w-4" /> <span className="hidden sm:inline">En vivo</span>
-          </button>
-          <button
-            // el PDF no depende del ancho de la pantalla: tamaño de siempre, salvo que se haya elegido a mano
-            onClick={() =>
-              exportChordsPdf(song, { semitones, targetKey, mode, fontSize: manualFontSize ?? 25 })
-            }
-            className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
-          >
-            <FileDown className="h-4 w-4" /> <span className="hidden sm:inline">PDF</span>
-          </button>
-        </div>
-      }
     >
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <aside
@@ -393,6 +371,33 @@ export function AcordesPage() {
               <p className="truncate text-sm text-muted-foreground">
                 {song.artist} · original {song.key} · {song.compas} · {song.bpm} BPM
               </p>
+            </div>
+
+            {/* "En vivo" y PDF en la tarjeta de la canción, igual que en Letras */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  void enterBrowserFullscreen();
+                  setLive(true);
+                }}
+                className="flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm hover:bg-secondary"
+              >
+                <Maximize2 className="h-4 w-4" /> <span className="hidden sm:inline">En vivo</span>
+              </button>
+              <button
+                // el PDF no depende del ancho de la pantalla: tamaño de siempre, salvo que se haya elegido a mano
+                onClick={() =>
+                  exportChordsPdf(song, {
+                    semitones,
+                    targetKey,
+                    mode,
+                    fontSize: manualFontSize ?? 25,
+                  })
+                }
+                className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
+              >
+                <FileDown className="h-4 w-4" /> <span className="hidden sm:inline">PDF</span>
+              </button>
             </div>
 
             <div className="flex items-center gap-1 rounded-full border border-border p-1">

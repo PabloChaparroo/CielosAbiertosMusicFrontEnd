@@ -5,14 +5,16 @@ import type { Setlist, Song } from "@/types";
 const CHURCH = "Cielos Abiertos";
 
 function header(doc: jsPDF, title: string, subtitle: string) {
-  doc.setFillColor(18, 18, 18);
-  doc.rect(0, 0, 210, 26, "F");
-  doc.setTextColor(240, 190, 100);
+  // sin fondo negro (gasta mucha tinta al imprimir): texto y una línea fina
+  doc.setTextColor(190, 130, 30);
   doc.setFontSize(13);
-  doc.text(CHURCH, 14, 12);
-  doc.setTextColor(235, 235, 235);
+  doc.text(CHURCH, 14, 14);
+  doc.setTextColor(110, 110, 110);
   doc.setFontSize(9);
-  doc.text(new Date().toLocaleDateString("es-AR"), 196, 12, { align: "right" });
+  doc.text(new Date().toLocaleDateString("es-AR"), 196, 14, { align: "right" });
+  doc.setDrawColor(210, 210, 210);
+  doc.setLineWidth(0.3);
+  doc.line(14, 19, 196, 19);
   doc.setTextColor(20, 20, 20);
   doc.setFontSize(18);
   doc.text(title, 14, 40);
@@ -102,7 +104,7 @@ export function exportChordsPdf(
   lines.forEach((line) => {
     y = ensure(doc, y);
     if (line.kind === "blank") {
-      y += size * 0.5;
+      y += size * 0.3;
       return;
     }
     if (line.kind === "section") {
@@ -111,7 +113,7 @@ export function exportChordsPdf(
       doc.text(line.label, 14, y);
       drawNotes(doc, line.notes, 14 + doc.getTextWidth(line.label), y, size);
       doc.setTextColor(20, 20, 20);
-      y += size * 0.8;
+      y += size * 0.55;
       return;
     }
     doc.setFont("courier", "bold");
@@ -163,13 +165,14 @@ export function exportChordsPdf(
     notes.forEach((n) =>
       drawNoteAt(doc, n.text, 14 + doc.getTextWidth(" ".repeat(n.col)), y, size),
     );
-    y += size * 0.75;
+    // interlineado: el acorde pegado a su letra, y un poco más de aire hasta el renglón siguiente
+    y += opts.mode === "both" ? size * 0.42 : size * 0.55;
     y = ensure(doc, y);
     if (opts.mode === "both") {
       doc.setFont("courier", "normal");
       doc.setTextColor(20, 20, 20);
       doc.text(lyricLine, 14, y);
-      y += size * 0.75;
+      y += size * 0.55;
     }
   });
 

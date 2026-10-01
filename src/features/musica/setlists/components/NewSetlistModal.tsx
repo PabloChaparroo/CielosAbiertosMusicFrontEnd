@@ -8,6 +8,31 @@ import { EVENT_TYPES, type EventType, type Setlist } from "@/types";
 const inputCls =
   "w-full rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary/60";
 
+/** "AAAA-MM-DDTHH:mm" (lo que usa el input datetime-local), en hora local */
+const toLocalInput = (d: Date) => {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+/**
+ * Próximo día de la semana (0 = domingo, 3 = miércoles) desde hoy, inclusive; weeksLater = 1 es
+ * el de la semana siguiente. Mantiene la hora "HH:mm" que ya estaba elegida.
+ */
+function nextWeekday(weekday: number, weeksLater: number, time: string): string {
+  const d = new Date();
+  d.setDate(d.getDate() + ((weekday - d.getDay() + 7) % 7) + weeksLater * 7);
+  const [h, m] = time.split(":").map(Number);
+  d.setHours(h || 0, m || 0, 0, 0);
+  return toLocalInput(d);
+}
+
+const DATE_SHORTCUTS = [
+  { label: "Este domingo", weekday: 0, weeksLater: 0 },
+  { label: "Domingo siguiente", weekday: 0, weeksLater: 1 },
+  { label: "Este miércoles", weekday: 3, weeksLater: 0 },
+  { label: "Miércoles siguiente", weekday: 3, weeksLater: 1 },
+];
+
 export function NewSetlistModal({
   onClose,
   onSave,
@@ -17,7 +42,7 @@ export function NewSetlistModal({
 }) {
   const { songs, users, currentUser } = useApp();
   const [title, setTitle] = useState("");
-  const [date, setDate] = useState("2026-09-13T10:30");
+  const [date, setDate] = useState(() => nextWeekday(0, 0, "10:30"));
   const [type, setType] = useState<EventType>("Culto Domingo a la mañana");
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
@@ -100,6 +125,27 @@ export function NewSetlistModal({
                   <option key={t}>{t}</option>
                 ))}
               </select>
+            </div>
+            {/* accesos directos de fecha: mantienen la hora elegida */}
+            <div className="flex flex-wrap gap-2">
+              {DATE_SHORTCUTS.map((sc) => {
+                const value = nextWeekday(sc.weekday, sc.weeksLater, date.slice(11, 16));
+                const active = value === date;
+                return (
+                  <button
+                    key={sc.label}
+                    type="button"
+                    onClick={() => setDate(value)}
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+                      active
+                        ? "border-primary/50 bg-primary/15 text-primary"
+                        : "border-border bg-card text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {sc.label} · {value.slice(8, 10)}/{value.slice(5, 7)}
+                  </button>
+                );
+              })}
             </div>
             <div className="relative">
               <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

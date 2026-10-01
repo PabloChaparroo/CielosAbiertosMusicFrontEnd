@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, FavButton } from "@/components/common/ui-bits";
+import { usePinchZoom } from "@/hooks/usePinchZoom";
 import { useApp } from "@/hooks/useApp";
 import { displayLyricsLines } from "@/lib/chords";
 import { exportLyricsPdf } from "@/lib/pdf";
@@ -336,8 +337,12 @@ function SongLyricsDetail({
 
   const uploading = uploadPct !== null;
 
-  const renderLyrics = (className: string) => (
-    <div className={className}>
+  // tamaño de la letra en pantalla completa: se cambia pellizcando con dos dedos
+  const [lyricsSize, setLyricsSize] = useState(20);
+  const pinch = usePinchZoom(lyricsSize, setLyricsSize, 12, 56);
+
+  const renderLyrics = (className: string, fontSize?: number) => (
+    <div className={className} style={fontSize ? { fontSize } : undefined}>
       {displayLyricsLines(song.chordpro).map((line, index) =>
         line.kind === "section" ? (
           <div key={index} className="mt-6 mb-3 text-xl font-semibold tracking-widest text-primary">
@@ -354,7 +359,10 @@ function SongLyricsDetail({
 
   if (fullscreen) {
     return (
-      <div className="fixed inset-0 z-50 overflow-y-auto bg-background px-5 py-8 sm:px-10 sm:py-10">
+      <div
+        className="fixed inset-0 z-50 overflow-y-auto bg-background px-5 py-8 sm:px-10 sm:py-10"
+        {...pinch}
+      >
         <button
           type="button"
           onClick={() => {
@@ -375,7 +383,7 @@ function SongLyricsDetail({
               <h2 className="font-display text-3xl font-semibold">{song.title}</h2>
             </div>
             {mode === "texto" ? (
-              renderLyrics("text-lg leading-relaxed sm:text-xl sm:leading-relaxed")
+              renderLyrics("leading-relaxed", lyricsSize)
             ) : resolvedUrl ? (
               <img
                 src={resolvedUrl}

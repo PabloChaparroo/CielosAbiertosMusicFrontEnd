@@ -21,6 +21,7 @@ import { SongsService } from "@/features/canciones/services/songs.service";
 import { Annotations } from "../components/Annotations";
 import { ChordSheet } from "../components/ChordSheet";
 import { useFitFontSize } from "../hooks/useFitFontSize";
+import { usePinchZoom } from "@/hooks/usePinchZoom";
 import { useAuth } from "@/core/auth/useAuth";
 import { ChordProEditor } from "../../components/ChordProEditor";
 import {
@@ -135,6 +136,8 @@ export function AcordesPage() {
   const fontSize = manualFontSize ?? fittedFontSize;
   const changeFontSize = (delta: number, max: number) =>
     setManualFontSize(Math.max(12, Math.min(max, fontSize + delta)));
+  // en pantalla completa, pellizcar con dos dedos agranda o achica la letra
+  const pinch = usePinchZoom(fontSize, setManualFontSize, 12, 60);
 
   useEffect(() => {
     setManualFontSize(null);
@@ -225,7 +228,7 @@ export function AcordesPage() {
 
   if (live) {
     return (
-      <div className="fixed inset-0 z-50 overflow-y-auto bg-black px-5 py-10 sm:px-10">
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-black px-5 py-10 sm:px-10" {...pinch}>
         <button
           onClick={() => {
             setLive(false);

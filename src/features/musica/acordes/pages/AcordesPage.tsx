@@ -15,6 +15,7 @@ import { useSearch } from "@tanstack/react-router";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, FavButton, Skeletons } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
+import { Pager, usePaged } from "@/components/common/Pager";
 import { chordsOnly, diatonicChords, KEYS, parseChordPro, transposeKey } from "@/lib/chords";
 import { exportChordsPdf } from "@/lib/pdf";
 import { SongsService } from "@/features/canciones/services/songs.service";
@@ -151,6 +152,8 @@ export function AcordesPage() {
   const visibleSongs = query
     ? filtered
     : [...filtered].sort((a, b) => Number(b.id === song?.id) - Number(a.id === song?.id));
+  // el buscador muestra de a 15: con muchas canciones no dibuja la lista entera
+  const pagedList = usePaged(visibleSongs, 15, query);
 
   const sectionShortcuts = [
     "INTRO",
@@ -271,10 +274,7 @@ export function AcordesPage() {
   }
 
   return (
-    <AppLayout
-      title="Acordes"
-      subtitle="Transposición, zoom y modo en vivo"
-    >
+    <AppLayout title="Acordes" subtitle="Transposición, zoom y modo en vivo">
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <aside
           ref={searchPanelRef}
@@ -302,7 +302,7 @@ export function AcordesPage() {
               {filtered.length === 0 ? (
                 <p className="p-4 text-center text-sm text-muted-foreground">Sin resultados</p>
               ) : (
-                visibleSongs.map((s) => (
+                pagedList.pageItems.map((s) => (
                   <div
                     key={s.id}
                     onClick={() => {
@@ -356,6 +356,12 @@ export function AcordesPage() {
                   </div>
                 ))
               )}
+              <Pager
+                page={pagedList.page}
+                pages={pagedList.pages}
+                onChange={pagedList.setPage}
+                compact
+              />
             </div>
           </div>
         </aside>

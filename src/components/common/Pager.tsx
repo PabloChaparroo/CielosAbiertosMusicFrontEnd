@@ -24,20 +24,25 @@ export function Pager({
   page,
   pages,
   onChange,
+  compact,
 }: {
   page: number;
   pages: number;
   onChange: (page: number) => void;
+  /** Para listas chicas (buscadores laterales): más chico y sin volver arriba de la página */
+  compact?: boolean;
 }) {
   if (pages <= 1) return null;
   const go = (p: number) => {
     onChange(p);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (!compact) window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const btn =
     "flex h-9 min-w-9 items-center justify-center rounded-full border border-border px-3 text-sm transition-colors enabled:hover:border-primary/60 disabled:opacity-40";
   return (
-    <div className="mt-6 flex items-center justify-center gap-3">
+    <div
+      className={`flex items-center justify-center gap-3 ${compact ? "mt-2 pb-1 [&_button]:h-7 [&_button]:min-w-7" : "mt-6"}`}
+    >
       <button
         className={btn}
         disabled={page <= 1}

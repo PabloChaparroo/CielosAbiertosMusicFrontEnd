@@ -18,6 +18,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, FavButton } from "@/components/common/ui-bits";
 import { usePinchZoom } from "@/hooks/usePinchZoom";
 import { useApp } from "@/hooks/useApp";
+import { Pager, usePaged } from "@/components/common/Pager";
 import { displayLyricsLines } from "@/lib/chords";
 import { exportLyricsPdf } from "@/lib/pdf";
 import { StorageClient } from "@/lib/storage-client";
@@ -73,6 +74,8 @@ export function LetrasPage() {
         : [...filtered].sort((a, b) => Number(b.id === selected) - Number(a.id === selected)),
     [filtered, query, selected],
   );
+  // el buscador muestra de a 15: con muchas canciones no dibuja la lista entera
+  const pagedList = usePaged(visibleSongs, 15, query);
 
   const song = availableSongs.find((s) => s.id === selected) ?? null;
 
@@ -105,7 +108,7 @@ export function LetrasPage() {
               {filtered.length === 0 ? (
                 <p className="p-4 text-center text-sm text-muted-foreground">Sin resultados</p>
               ) : (
-                visibleSongs.map((item) => (
+                pagedList.pageItems.map((item) => (
                   <div
                     key={item.id}
                     onClick={() => {
@@ -159,6 +162,12 @@ export function LetrasPage() {
                   </div>
                 ))
               )}
+              <Pager
+                page={pagedList.page}
+                pages={pagedList.pages}
+                onChange={pagedList.setPage}
+                compact
+              />
             </div>
           </div>
         </aside>

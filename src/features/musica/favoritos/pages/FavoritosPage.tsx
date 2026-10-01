@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Guitar, Heart, Play, Search, Type } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Cover, EmptyState, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
+import { Cover, EmptyState, FavButton, formatDuration } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 
 type Destino = "letras" | "acordes";
@@ -114,16 +114,11 @@ export function FavoritosPage() {
                   if (e.key === "Enter") openSong(song.id);
                 }}
                 aria-label={`Abrir ${destino === "letras" ? "la letra" : "los acordes"} de ${song.title}`}
-                className="surface-card group relative cursor-pointer p-2 hover:-translate-y-1 hover:border-primary/40"
+                className="surface-card group relative cursor-pointer rounded-lg p-2 hover:-translate-y-1 hover:border-primary/40"
               >
-                <Cover song={song} size="none" className="mb-2 aspect-square w-full shadow-none" />
+                <Cover song={song} size="none" className="mb-2 aspect-square w-full rounded-md shadow-none" />
                 <p className="truncate text-sm font-semibold">{song.title}</p>
                 <p className="truncate text-xs text-muted-foreground">{song.artist}</p>
-                <div className="mt-1.5 flex flex-wrap gap-1">
-                  {song.tags.map((t) => (
-                    <TagChip key={t} tag={t} />
-                  ))}
-                </div>
                 <div className="mt-1.5 flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">
                     {song.key} · {formatDuration(song.duration)}

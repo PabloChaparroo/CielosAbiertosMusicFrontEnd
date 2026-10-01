@@ -3,7 +3,7 @@ import { GripVertical, ListMusic, Search, X } from "lucide-react";
 import { Cover } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import { SetlistsService } from "../services/setlists.service";
-import { EVENT_TYPES, type EventType, type Setlist } from "@/types";
+import { EVENT_TYPES, type EventType, type Setlist, type SetlistItem } from "@/types";
 
 const inputCls =
   "w-full rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary/60";
@@ -36,9 +36,12 @@ const DATE_SHORTCUTS = [
 export function NewSetlistModal({
   onClose,
   onSave,
+  initial,
 }: {
   onClose: () => void;
   onSave: (s: Setlist) => void;
+  /** Lista predefinida de la que se parte: trae el título y las canciones (con su tono) */
+  initial?: { title: string; items: SetlistItem[] } | undefined;
 }) {
   const { songs, users, currentUser, setlists } = useApp();
   // "Menos tocadas": ordena por cuántas veces se tocó cada canción en los setlists de los
@@ -56,11 +59,18 @@ export function NewSetlistModal({
     });
     return counts;
   }, [setlists]);
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(initial?.title ?? "");
   const [date, setDate] = useState(() => nextWeekday(0, 0, "10:30"));
   const [type, setType] = useState<EventType>("Culto Domingo a la mañana");
   const [query, setQuery] = useState("");
-  const [picked, setPicked] = useState<string[]>([]);
+  const [picked, setPicked] = useState<string[]>(() =>
+    (initial?.items ?? []).map((it) => it.songId).filter((id) => songs.some((s) => s.id === id)),
+  );
+  // tono de cada canción que vino de la lista predefinida (si no, el tono original)
+  const initialKeys = useMemo(
+    () => new Map((initial?.items ?? []).map((it) => [it.songId, it.key])),
+    [initial],
+  );
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [team, setTeam] = useState<string[]>([currentUser.id]);
   const [saving, setSaving] = useState(false);
@@ -93,7 +103,7 @@ export function NewSetlistModal({
         teamIds: team,
         items: picked.map((id) => ({
           songId: id,
-          key: songs.find((s) => s.id === id)?.key ?? "C",
+          key: initialKeys.get(id) ?? songs.find((s) => s.id === id)?.key ?? "C",
         })),
       });
       onSave(created);

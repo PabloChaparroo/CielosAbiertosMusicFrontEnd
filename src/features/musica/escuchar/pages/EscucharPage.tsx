@@ -23,7 +23,7 @@ import { UploadModal } from "../components/UploadModal";
 
 /** Desplegable de filtro: dorado si tiene algo elegido */
 const filterSelectClass = (active: boolean) =>
-  `rounded-full border px-3 py-1.5 text-sm font-semibold outline-none transition-colors focus:border-primary/60 ${
+  `h-9 rounded-full border px-3 text-sm font-semibold outline-none transition-colors focus:border-primary/60 ${
     active
       ? "border-primary/50 bg-primary/15 text-primary"
       : "border-border bg-card text-muted-foreground hover:text-foreground"
@@ -103,17 +103,17 @@ export function EscucharPage() {
       }
     >
       <div className="mb-6 flex flex-wrap items-center gap-2">
-        <div className="relative w-full sm:w-80">
+        <div className="relative w-full sm:w-72">
           <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar canción o artista…"
-            className="w-full rounded-full border border-border bg-card py-2.5 pr-4 pl-10 text-sm outline-none transition-colors focus:border-primary/60"
+            className="h-9 w-full rounded-full border border-border bg-card pr-4 pl-10 text-sm outline-none transition-colors focus:border-primary/60"
           />
         </div>
         {/* tipo, secuencia y temas al lado del buscador (abajo en celular) */}
-        <div className="flex flex-1 flex-wrap items-center gap-2">
+        <div className="contents">
           {tipos.length ? (
             <select
               value={tipo ?? ""}

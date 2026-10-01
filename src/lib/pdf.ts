@@ -39,22 +39,64 @@ export function exportLyricsPdf(song: Song) {
     song.title,
     `${song.artist} · Tonalidad ${song.key} · Compás ${song.compas} · ${song.tags.join(", ")}`,
   );
-  let y = 60;
+  // Dos columnas: cada sección (título + sus líneas) entra entera en una columna; si no entra en
+  // lo que queda, pasa a la columna de la derecha y, si ya estaba ahí, a la hoja siguiente.
+  const COLS = [14, 108];
+  const COL_WIDTH = 88;
+  const BOTTOM = 285;
+  const SECTION_GAP = 8;
+  const LINE = 5.5;
+  type Block = { title: string | null; lines: string[] };
+  const blocks: Block[] = [];
   displayLyricsLines(song.chordpro).forEach((line) => {
-    y = ensure(doc, y);
-    if (line.kind === "section") {
+    if (line.kind === "section") blocks.push({ title: line.value, lines: [] });
+    else {
+      if (!blocks.length) blocks.push({ title: null, lines: [] });
+      blocks[blocks.length - 1]!.lines.push(line.value);
+    }
+  });
+
+  let col = 0;
+  let top = 58;
+  let y = top;
+  const nextColumn = () => {
+    if (col === 0) col = 1;
+    else {
+      doc.addPage();
+      col = 0;
+      top = 20;
+    }
+    y = top;
+  };
+
+  blocks.forEach((block) => {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    // las líneas largas se parten al ancho de la columna; sin líneas vacías al final
+    const lines = [...block.lines];
+    while (lines.length && !lines[lines.length - 1]!.trim()) lines.pop();
+    const rows = lines.flatMap((l) =>
+      l.trim() ? (doc.splitTextToSize(l, COL_WIDTH) as string[]) : [""],
+    );
+    const height = (block.title ? SECTION_GAP : 0) + rows.length * LINE;
+    if (y > top && y + height > BOTTOM) nextColumn();
+    const x = COLS[col]!;
+    if (block.title) {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(13);
       doc.setTextColor(190, 130, 30);
-      doc.text(line.value, 14, y);
+      doc.text(block.title, x, y);
       doc.setTextColor(20, 20, 20);
-      y += 8;
-      return;
+      y += 7;
     }
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
-    doc.text(line.value || " ", 14, y);
-    y += 6;
+    rows.forEach((row) => {
+      if (y > BOTTOM) nextColumn();
+      doc.text(row || " ", COLS[col]!, y);
+      y += row ? LINE : LINE * 0.6;
+    });
+    y += SECTION_GAP - 4;
   });
   doc.save(`${song.title} - letra.pdf`);
 }

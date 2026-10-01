@@ -40,7 +40,22 @@ export function NewSetlistModal({
   onClose: () => void;
   onSave: (s: Setlist) => void;
 }) {
-  const { songs, users, currentUser } = useApp();
+  const { songs, users, currentUser, setlists } = useApp();
+  // "Menos tocadas": ordena por cuántas veces se tocó cada canción en los setlists de los
+  // últimos 5 meses (de menos a más)
+  const [leastPlayed, setLeastPlayed] = useState(false);
+  const playCounts = useMemo(() => {
+    const since = new Date();
+    since.setMonth(since.getMonth() - 5);
+    const now = new Date();
+    const counts = new Map<string, number>();
+    setlists.forEach((sl) => {
+      const d = new Date(sl.date);
+      if (d < since || d > now) return;
+      sl.items.forEach((it) => counts.set(it.songId, (counts.get(it.songId) ?? 0) + 1));
+    });
+    return counts;
+  }, [setlists]);
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(() => nextWeekday(0, 0, "10:30"));
   const [type, setType] = useState<EventType>("Culto Domingo a la mañana");
@@ -51,10 +66,12 @@ export function NewSetlistModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const results = useMemo(
-    () => songs.filter((s) => s.title.toLowerCase().includes(query.toLowerCase())).slice(0, 40),
-    [songs, query],
-  );
+  const results = useMemo(() => {
+    const found = songs.filter((s) => s.title.toLowerCase().includes(query.toLowerCase()));
+    if (leastPlayed)
+      found.sort((a, b) => (playCounts.get(a.id) ?? 0) - (playCounts.get(b.id) ?? 0));
+    return found.slice(0, 40);
+  }, [songs, query, leastPlayed, playCounts]);
 
   const activeUsers = useMemo(() => users.filter((u) => !u.fechaHoraBaja), [users]);
   const pickedSongs = picked
@@ -156,6 +173,18 @@ export function NewSetlistModal({
                 onChange={(e) => setQuery(e.target.value)}
               />
             </div>
+            <button
+              type="button"
+              onClick={() => setLeastPlayed((v) => !v)}
+              aria-pressed={leastPlayed}
+              className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+                leastPlayed
+                  ? "border-primary/50 bg-primary/15 text-primary"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Menos tocadas (últimos 5 meses)
+            </button>
           </div>
 
           <div className="max-h-64 overflow-y-auto rounded-xl border border-border">
@@ -176,6 +205,13 @@ export function NewSetlistModal({
                     <p className="truncate text-sm font-medium">{s.title}</p>
                     <p className="truncate text-xs text-muted-foreground">{s.artist}</p>
                   </div>
+                  {leastPlayed ? (
+                    <span className="text-xs text-muted-foreground">
+                      {(playCounts.get(s.id) ?? 0) === 0
+                        ? "Sin tocar"
+                        : `${playCounts.get(s.id)} ${playCounts.get(s.id) === 1 ? "vez" : "veces"}`}
+                    </span>
+                  ) : null}
                   <span className="text-xs text-muted-foreground">{s.key}</span>
                   {on ? <span className="text-xs font-semibold text-primary">Agregada</span> : null}
                 </button>

@@ -10,6 +10,14 @@ import { AudioTracksModal } from "../components/AudioTracksModal";
 import { SongLinksModal } from "../components/SongLinksModal";
 import { UploadModal } from "../components/UploadModal";
 
+/** Desplegable de filtro: dorado si tiene algo elegido */
+const filterSelectClass = (active: boolean) =>
+  `rounded-full border px-3 py-1.5 text-sm font-semibold outline-none transition-colors focus:border-primary/60 ${
+    active
+      ? "border-primary/50 bg-primary/15 text-primary"
+      : "border-border bg-card text-muted-foreground hover:text-foreground"
+  }`;
+
 export function EscucharPage() {
   const { songs, play, current, can, addSong, updateSong } = useApp();
   const [query, setQuery] = useState("");
@@ -77,62 +85,39 @@ export function EscucharPage() {
             className="w-full rounded-full border border-border bg-card py-2.5 pr-4 pl-10 text-sm outline-none transition-colors focus:border-primary/60"
           />
         </div>
-        {/* tipo (rápida / lenta): botones más marcados que los temas, para no confundir el
-            tipo "Adoración" con el tema "Adoración" */}
-        {tipos.length ? (
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por tipo">
-            {[null, ...tipos].map((t) => (
-              <button
-                key={t ?? "todos"}
-                type="button"
-                onClick={() => setTipo(t)}
-                aria-pressed={tipo === t}
-                className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
-                  tipo === t
-                    ? "gradient-gold text-primary-foreground"
-                    : "border border-border bg-card text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {t ?? "Todos los tipos"}
-              </button>
-            ))}
-          </div>
-        ) : null}
+        {/* tipo, secuencia y temas: tres desplegables en una fila */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por secuencia">
-            {(
-              [
-                [null, "Con y sin secuencia"],
-                ["con", "Con secuencia"],
-                ["sin", "Sin secuencia"],
-              ] as const
-            ).map(([value, label]) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => setSecuencia(value)}
-                aria-pressed={secuencia === value}
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-                  secuencia === value
-                    ? "bg-primary/15 text-primary ring-1 ring-primary/50"
-                    : "border border-border bg-card text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {value === "con" ? <Check className="h-3.5 w-3.5" /> : null}
-                {label}
-              </button>
-            ))}
-          </div>
+          {tipos.length ? (
+            <select
+              value={tipo ?? ""}
+              onChange={(e) => setTipo(e.target.value || null)}
+              aria-label="Filtrar por tipo"
+              className={filterSelectClass(tipo !== null)}
+            >
+              <option value="">Todos los tipos</option>
+              {tipos.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          ) : null}
+          <select
+            value={secuencia ?? ""}
+            onChange={(e) => setSecuencia((e.target.value || null) as "con" | "sin" | null)}
+            aria-label="Filtrar por secuencia"
+            className={filterSelectClass(secuencia !== null)}
+          >
+            <option value="">Con y sin secuencia</option>
+            <option value="con">Con secuencia</option>
+            <option value="sin">Sin secuencia</option>
+          </select>
           {/* temas: son muchos (catálogo del backend), van en un desplegable */}
           <select
             value={tag ?? ""}
             onChange={(e) => setTag(e.target.value || null)}
             aria-label="Filtrar por tema"
-            className={`rounded-full border px-3 py-1 text-xs font-semibold outline-none transition-colors focus:border-primary/60 ${
-              tag
-                ? "border-primary/50 bg-primary/15 text-primary"
-                : "border-border bg-card text-muted-foreground hover:text-foreground"
-            }`}
+            className={filterSelectClass(tag !== null)}
           >
             <option value="">Todos los temas</option>
             {allTags.map((t) => (

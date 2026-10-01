@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { Song, Tag } from "@/types";
+import type { Setlist, Song, Tag } from "@/types";
 import {
   historicRanking,
   monthlyTrend,
   playsByTag,
   playsByYear,
+  songPlaysInRange,
   topSongsForMonth,
   totalPlays,
 } from "./stats";
@@ -156,5 +157,34 @@ describe("historicRanking — Top 10 histórico", () => {
   it("devuelve como máximo 10", () => {
     const muchas = Array.from({ length: 15 }, (_, i) => song(`C${i}`, [], { "2026-09": i }));
     expect(historicRanking(muchas)).toHaveLength(10);
+  });
+});
+
+describe("songPlaysInRange", () => {
+  const sl = (id: string, date: string, songIds: string[]): Setlist => ({
+    id,
+    title: id,
+    date,
+    isUpcoming: false,
+    type: "Culto Miércoles",
+    leaderId: "u1",
+    items: songIds.map((songId) => ({ songId, key: "D" })),
+    teamIds: ["u1", "u2"],
+  });
+  const setlists = [
+    sl("a", "2026-03-01T13:30:00.000Z", ["s1"]),
+    sl("b", "2026-05-10T13:30:00.000Z", ["s1", "s2"]),
+    sl("c", "2026-06-10T13:30:00.000Z", ["s2"]),
+    sl("d", "2026-08-01T13:30:00.000Z", ["s1"]),
+  ];
+
+  it("cuenta solo los setlists del rango que incluyen la canción, del más nuevo al más viejo", () => {
+    const plays = songPlaysInRange(setlists, "s1", "2026-04-01", "2026-08-01");
+    expect(plays.map((p) => p.setlistId)).toEqual(["d", "b"]);
+    expect(plays[0]!.teamIds).toEqual(["u1", "u2"]);
+  });
+
+  it("devuelve vacío si no se tocó en el rango", () => {
+    expect(songPlaysInRange(setlists, "s2", "2026-07-01", "2026-09-01")).toEqual([]);
   });
 });

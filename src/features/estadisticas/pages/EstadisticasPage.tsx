@@ -17,6 +17,7 @@ import {
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, Skeletons } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
+import { SongHistoryPanel } from "../components/SongHistoryPanel";
 import {
   historicRanking,
   monthlyTrend,
@@ -133,6 +134,7 @@ export function EstadisticasPage() {
       }
     >
       <div className="grid gap-5 xl:grid-cols-2">
+        <SongHistoryPanel />
         <Panel title={range === "mes" ? `Más tocadas en ${month}` : "Comparativa 2025 vs 2026"}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={range === "mes" ? topMonth : byYear}>

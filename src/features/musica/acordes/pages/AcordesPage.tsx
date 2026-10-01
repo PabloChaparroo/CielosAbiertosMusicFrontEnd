@@ -126,9 +126,10 @@ export function AcordesPage() {
     return mode === "chords" ? chordsOnly(parsed) : parsed;
   }, [editing, draft, semitones, targetKey, mode]);
 
-  // Tamaño que entra en el ancho de la pantalla (25px en computadora, menos en celular)
+  // Tamaño que entra en el ancho de la pantalla (25px en computadora, 16px o menos en celular)
+  // en celular arranca más chica (16px) para que entren los compases encolumnados
   const { boxRef: sheetBoxRef, fitted: fittedFontSize } = useFitFontSize(
-    25,
+    typeof window !== "undefined" && window.innerWidth < 640 ? 16 : 25,
     12,
     manualFontSize === null,
     [song?.id, mode, semitones, editing, live],

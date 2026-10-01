@@ -416,11 +416,22 @@ function SongLyricsDetail({
             </p>
           </div>
         </div>
-        <div className="flex flex-col items-stretch gap-2">
+        {/* "En vivo" y PDF, igual que en Acordes */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              void enterBrowserFullscreen();
+              setFullscreen(true);
+            }}
+            className="flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm hover:bg-secondary"
+          >
+            <Maximize2 className="h-4 w-4" /> <span className="hidden sm:inline">En vivo</span>
+          </button>
           {mode === "texto" ? (
             <button
               onClick={() => exportLyricsPdf(song)}
-              className="flex items-center justify-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
+              className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
             >
               <FileDown className="h-4 w-4" /> <span className="hidden sm:inline">PDF</span>
             </button>
@@ -444,17 +455,6 @@ function SongLyricsDetail({
           >
             Imagen
           </ModeBtn>
-          <button
-            type="button"
-            onClick={() => {
-              void enterBrowserFullscreen();
-              setFullscreen(true);
-            }}
-            className="flex items-center gap-2 rounded-full border border-border px-4 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
-          >
-            <Maximize2 className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Pantalla completa</span>
-          </button>
         </div>
         {/* La letra se edita en Acordes: editar acá solo la letra y guardarla como chordpro
             borraba todos los acordes de la canción (ver docs/estado-actual.md del backend) */}

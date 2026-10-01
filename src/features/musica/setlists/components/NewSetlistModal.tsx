@@ -3,7 +3,7 @@ import { GripVertical, ListMusic, Search, X } from "lucide-react";
 import { Cover } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import { SetlistsService } from "../services/setlists.service";
-import type { EventType, Setlist } from "@/types";
+import { EVENT_TYPES, type EventType, type Setlist } from "@/types";
 
 const inputCls =
   "w-full rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary/60";
@@ -18,7 +18,7 @@ export function NewSetlistModal({
   const { songs, users, currentUser } = useApp();
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("2026-09-13T10:30");
-  const [type, setType] = useState<EventType>("Culto Domingo");
+  const [type, setType] = useState<EventType>("Culto Domingo a la mañana");
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -96,9 +96,9 @@ export function NewSetlistModal({
                 value={type}
                 onChange={(e) => setType(e.target.value as EventType)}
               >
-                <option>Culto Domingo</option>
-                <option>Ensayo</option>
-                <option>Evento Especial</option>
+                {EVENT_TYPES.map((t) => (
+                  <option key={t}>{t}</option>
+                ))}
               </select>
             </div>
             <div className="relative">

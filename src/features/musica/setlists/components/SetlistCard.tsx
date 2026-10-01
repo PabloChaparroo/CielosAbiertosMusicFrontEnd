@@ -4,7 +4,10 @@ import { useApp } from "@/hooks/useApp";
 import type { EventType, Setlist } from "@/types";
 
 const eventColor: Record<EventType, string> = {
-  "Culto Domingo": "bg-primary/15 text-primary border-primary/40",
+  "Culto Domingo a la mañana": "bg-primary/15 text-primary border-primary/40",
+  "Culto Domingo a la tarde": "bg-primary/15 text-primary border-primary/40",
+  "Culto Miércoles": "bg-primary/15 text-primary border-primary/40",
+  "Culto Sábado Jóvenes": "bg-primary/15 text-primary border-primary/40",
   Ensayo: "bg-sky/15 text-sky border-sky/40",
   "Evento Especial": "bg-secondary text-foreground border-border",
 };

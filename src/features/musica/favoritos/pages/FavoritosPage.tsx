@@ -4,6 +4,7 @@ import { Guitar, Heart, Play, Search, Type } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, EmptyState, FavButton, formatDuration } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
+import { Pager, usePaged } from "@/components/common/Pager";
 
 type Destino = "letras" | "acordes";
 const DESTINO_KEY = "favoritos:destino";
@@ -38,6 +39,8 @@ export function FavoritosPage() {
     const text = `${song.title} ${song.artist}`.toLowerCase();
     return text.includes(query.toLowerCase());
   });
+  // 24 por página; la búsqueda mira todos los favoritos
+  const paged = usePaged(list, 24, query);
 
   return (
     <AppLayout title="Favoritos" subtitle={`${favoriteSongs.length} canciones guardadas`}>
@@ -104,7 +107,7 @@ export function FavoritosPage() {
             />
           ) : null}
           <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-5 lg:grid-cols-7 2xl:grid-cols-9">
-            {list.map((song) => (
+            {paged.pageItems.map((song) => (
               <div
                 key={song.id}
                 role="link"
@@ -116,7 +119,11 @@ export function FavoritosPage() {
                 aria-label={`Abrir ${destino === "letras" ? "la letra" : "los acordes"} de ${song.title}`}
                 className="surface-card group relative cursor-pointer rounded-lg p-2 hover:-translate-y-1 hover:border-primary/40"
               >
-                <Cover song={song} size="none" className="mb-2 aspect-square w-full rounded-md shadow-none" />
+                <Cover
+                  song={song}
+                  size="none"
+                  className="mb-2 aspect-square w-full rounded-md shadow-none"
+                />
                 <p className="truncate text-sm font-semibold">{song.title}</p>
                 <p className="truncate text-xs text-muted-foreground">{song.artist}</p>
                 <div className="mt-1.5 flex items-center justify-between">
@@ -141,6 +148,7 @@ export function FavoritosPage() {
               </div>
             ))}
           </div>
+          <Pager page={paged.page} pages={paged.pages} onChange={paged.setPage} />
         </>
       )}
     </AppLayout>

@@ -4,6 +4,7 @@ import { Check, Layers, Link2, Music4, Pencil, Play, Plus, Search } from "lucide
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, EmptyState, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
+import { Pager, usePaged } from "@/components/common/Pager";
 import type { Song, Tag } from "@/types";
 import { AudioTracksModal } from "../components/AudioTracksModal";
 import { SongLinksModal } from "../components/SongLinksModal";
@@ -48,6 +49,8 @@ export function EscucharPage() {
       ),
     [songs, query, tag, tipo, secuencia],
   );
+  // 30 por página; la búsqueda y los filtros miran todas las canciones
+  const paged = usePaged(filtered, 30, `${query}|${tag}|${tipo}|${secuencia}`);
 
   return (
     <AppLayout
@@ -158,7 +161,7 @@ export function EscucharPage() {
             <span>Tono / Compás / BPM</span>
             <span className="text-right">Duración</span>
           </div>
-          {filtered.map((song, i) => (
+          {paged.pageItems.map((song, i) => (
             <div
               key={song.id}
               onClick={() => play(song)}
@@ -171,7 +174,7 @@ export function EscucharPage() {
                 aria-label={`Reproducir ${song.title}`}
                 className="hidden h-8 w-8 items-center justify-center rounded-full text-sm text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground md:flex"
               >
-                <span className="group-hover:hidden">{i + 1}</span>
+                <span className="group-hover:hidden">{paged.start + i + 1}</span>
                 <Play className="hidden h-3.5 w-3.5 group-hover:block" />
               </button>
               <div className="flex min-w-0 items-center gap-3">
@@ -263,6 +266,7 @@ export function EscucharPage() {
           ))}
         </div>
       )}
+      <Pager page={paged.page} pages={paged.pages} onChange={paged.setPage} />
 
       {modal ? <UploadModal onClose={() => setModal(false)} onSave={addSong} /> : null}
       {editing ? (

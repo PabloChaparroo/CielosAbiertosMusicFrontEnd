@@ -62,7 +62,7 @@ export function EscucharPage() {
 
   return (
     <AppLayout
-      title="Escuchar y Subir"
+      title="Canciones"
       subtitle={`${songs.length} canciones en el repertorio`}
       actions={
         can("editSongs") ? (

@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { SongsService } from "@/features/canciones/services/songs.service";
-import { Check, Layers, Link2, Music4, Pencil, Play, Plus, Search } from "lucide-react";
+import {
+  Check,
+  LayoutGrid,
+  Layers,
+  Link2,
+  List,
+  Music4,
+  Pencil,
+  Play,
+  Plus,
+  Search,
+} from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, EmptyState, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
@@ -21,6 +32,22 @@ const filterSelectClass = (active: boolean) =>
 export function EscucharPage() {
   const { songs, play, current, can, addSong, updateSong } = useApp();
   const [query, setQuery] = useState("");
+  // vista lista (con todos los datos) o tarjetas (portada, título y artista); se recuerda
+  const [view, setView] = useState<"list" | "cards">(() => {
+    try {
+      return localStorage.getItem("escuchar-view") === "cards" ? "cards" : "list";
+    } catch {
+      return "list";
+    }
+  });
+  const changeView = (next: "list" | "cards") => {
+    setView(next);
+    try {
+      localStorage.setItem("escuchar-view", next);
+    } catch {
+      // sin almacenamiento: solo dura esta visita
+    }
+  };
   const [tag, setTag] = useState<Tag | null>(null);
   const [tipo, setTipo] = useState<string | null>(null);
   // secuencia (multitracks): todas / con / sin
@@ -126,6 +153,34 @@ export function EscucharPage() {
               </option>
             ))}
           </select>
+          <div
+            className="ml-auto flex rounded-full border border-border p-0.5"
+            role="group"
+            aria-label="Vista"
+          >
+            {(
+              [
+                ["list", List, "Vista en lista"],
+                ["cards", LayoutGrid, "Vista en tarjetas"],
+              ] as const
+            ).map(([value, Icon, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => changeView(value)}
+                aria-pressed={view === value}
+                aria-label={label}
+                title={label}
+                className={`rounded-full p-1.5 transition-colors ${
+                  view === value
+                    ? "gradient-gold text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -135,6 +190,46 @@ export function EscucharPage() {
           title="No encontramos canciones"
           description="Probá con otro nombre o quitá el filtro de tema."
         />
+      ) : view === "cards" ? (
+        // tarjetas como en Favoritos: tocar la tarjeta reproduce
+        <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-5 lg:grid-cols-7 2xl:grid-cols-9">
+          {paged.pageItems.map((song) => (
+            <div
+              key={song.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => play(song)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") play(song);
+              }}
+              aria-label={`Reproducir ${song.title}`}
+              className={`surface-card group relative cursor-pointer rounded-lg p-2 hover:-translate-y-1 hover:border-primary/40 ${
+                current?.id === song.id ? "border-primary/60" : ""
+              }`}
+            >
+              <Cover
+                song={song}
+                size="none"
+                className="mb-2 aspect-square w-full rounded-md shadow-none"
+              />
+              <p
+                className={`truncate text-sm font-semibold ${current?.id === song.id ? "text-primary" : ""}`}
+              >
+                {song.title}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">{song.artist}</p>
+              <div className="mt-1.5 flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  {song.key} · {formatDuration(song.duration)}
+                </span>
+                {/* el corazón no reproduce */}
+                <span onClick={(e) => e.stopPropagation()}>
+                  <FavButton songId={song.id} />
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="surface-card overflow-x-auto">
           <div className="hidden grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_210px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_210px] gap-4 border-b border-border/60 px-4 py-3 text-[11px] tracking-widest text-muted-foreground uppercase md:grid">

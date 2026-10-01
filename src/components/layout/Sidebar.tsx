@@ -139,6 +139,12 @@ export function SidebarContent({
   );
 }
 
+/**
+ * Cada página monta su propio AppLayout: al tocar un módulo en el menú del celular, la página
+ * nueva arranca con el menú abierto y lo cierra con animación (ver AppLayout).
+ */
+export const mobileNav = { closeOnMount: false };
+
 export function MobileSidebar({
   open,
   onClose,
@@ -158,13 +164,13 @@ export function MobileSidebar({
       <div
         onClick={onClose}
         className={cn(
-          "absolute inset-0 bg-black/70 transition-opacity",
+          "absolute inset-0 bg-black/70 transition-opacity duration-200",
           open ? "opacity-100" : "opacity-0",
         )}
       />
       <div
         className={cn(
-          "absolute top-0 left-0 h-full w-[280px] border-r border-sidebar-border transition-transform duration-300",
+          "absolute top-0 left-0 h-full w-[280px] border-r border-sidebar-border transition-transform duration-200 ease-out",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -176,7 +182,10 @@ export function MobileSidebar({
           <X className="h-4 w-4" />
         </button>
         <SidebarContent
-          onNavigate={onClose}
+          onNavigate={() => {
+            mobileNav.closeOnMount = true;
+            onClose();
+          }}
           onOpenPerfil={() => {
             onClose();
             onOpenPerfil();

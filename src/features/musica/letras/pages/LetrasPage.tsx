@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
+  Columns2,
   FileDown,
   ImageIcon,
   Maximize2,
   Pause,
   Pencil,
   Play,
+  RectangleVertical,
   Search,
   Type as TypeIcon,
   Upload,
@@ -341,21 +343,53 @@ function SongLyricsDetail({
   const [lyricsSize, setLyricsSize] = useState(20);
   const pinch = usePinchZoom(lyricsSize, setLyricsSize, 12, 56);
 
-  const renderLyrics = (className: string, fontSize?: number) => (
-    <div className={className} style={fontSize ? { fontSize } : undefined}>
-      {displayLyricsLines(song.chordpro).map((line, index) =>
-        line.kind === "section" ? (
-          <div key={index} className="mt-6 mb-3 text-xl font-semibold tracking-widest text-primary">
-            {line.value}
+  // En vivo: una columna o dos (como el PDF). Se recuerda.
+  const [twoColumns, setTwoColumns] = useState(() => {
+    try {
+      return localStorage.getItem("letras-columns") === "2";
+    } catch {
+      return false;
+    }
+  });
+  const toggleColumns = () =>
+    setTwoColumns((v) => {
+      try {
+        localStorage.setItem("letras-columns", v ? "1" : "2");
+      } catch {
+        // sin almacenamiento: solo dura esta visita
+      }
+      return !v;
+    });
+
+  /** Letra agrupada por sección: en dos columnas, cada sección va entera en una columna */
+  const renderLyrics = (className: string, fontSize?: number) => {
+    const blocks: Array<{ title: string | null; lines: string[] }> = [];
+    displayLyricsLines(song.chordpro).forEach((line) => {
+      if (line.kind === "section") blocks.push({ title: line.value, lines: [] });
+      else {
+        if (!blocks.length) blocks.push({ title: null, lines: [] });
+        blocks[blocks.length - 1]!.lines.push(line.value);
+      }
+    });
+    return (
+      <div className={className} style={fontSize ? { fontSize } : undefined}>
+        {blocks.map((block, b) => (
+          <div key={b} className="break-inside-avoid">
+            {block.title ? (
+              <div className="mt-6 mb-3 text-xl font-semibold tracking-widest text-primary">
+                {block.title}
+              </div>
+            ) : null}
+            {block.lines.map((line, i) => (
+              <div key={i} className="min-h-[1.5em]">
+                {line || " "}
+              </div>
+            ))}
           </div>
-        ) : (
-          <div key={index} className="min-h-[1.5em]">
-            {line.value || " "}
-          </div>
-        ),
-      )}
-    </div>
-  );
+        ))}
+      </div>
+    );
+  };
 
   if (fullscreen) {
     return (
@@ -374,6 +408,21 @@ function SongLyricsDetail({
         >
           <X className="h-5 w-5" />
         </button>
+        {mode === "texto" ? (
+          <button
+            type="button"
+            onClick={toggleColumns}
+            aria-label={twoColumns ? "Ver en una columna" : "Ver en dos columnas"}
+            title={twoColumns ? "Ver en una columna" : "Ver en dos columnas"}
+            className="fixed top-4 right-16 rounded-full border border-border bg-card p-2 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {twoColumns ? (
+              <RectangleVertical className="h-5 w-5" />
+            ) : (
+              <Columns2 className="h-5 w-5" />
+            )}
+          </button>
+        ) : null}
         {/* Bloque centrado en la pantalla (horizontal, y vertical si la letra es corta), con el
             texto alineado a la izquierda adentro */}
         <div className="flex min-h-full flex-col">
@@ -383,7 +432,10 @@ function SongLyricsDetail({
               <h2 className="font-display text-3xl font-semibold">{song.title}</h2>
             </div>
             {mode === "texto" ? (
-              renderLyrics("leading-relaxed", lyricsSize)
+              renderLyrics(
+                twoColumns ? "leading-relaxed columns-2 gap-x-16" : "leading-relaxed",
+                lyricsSize,
+              )
             ) : resolvedUrl ? (
               <img
                 src={resolvedUrl}

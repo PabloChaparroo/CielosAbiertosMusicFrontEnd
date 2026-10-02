@@ -82,6 +82,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { name: "theme-color", content: "#17171a" },
       { name: "apple-mobile-web-app-title", content: "Cielos Abiertos" },
+      // que Chrome no traduzca la app: cambiaba "Acordes" por "Acuerdos", y tocaría letras y acordes
+      { name: "google", content: "notranslate" },
       { title: "Cielos Abiertos — Ministerio de Adoración" },
       {
         name: "description",
@@ -117,7 +119,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="es" translate="no">
       <head>
         <HeadContent />
       </head>

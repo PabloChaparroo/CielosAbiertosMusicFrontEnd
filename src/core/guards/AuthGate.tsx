@@ -63,10 +63,18 @@ export function AuthGate() {
   );
 }
 
+/** Lo primero que se ve al abrir la app (mientras se confirma la sesión): el logo del ministerio */
 function LoadingScreen() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+    <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-background">
+      <img
+        src="/icon-512.png"
+        alt="Cielos Abiertos"
+        width={160}
+        height={160}
+        className="glow h-40 w-40 animate-pulse rounded-full"
+      />
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
     </div>
   );
 }

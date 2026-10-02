@@ -282,8 +282,8 @@ function barPairs(bar: string): ChordPair[] {
   return chords.map((chord, k) => ({ chord, text: k < chords.length - 1 ? "-" : "" }));
 }
 
-/** Una vuelta de varias filas tiene que tener al menos esto para escribirse con ":]" */
-const MIN_REPEAT_BARS = 4;
+/** Una vuelta tiene que tener al menos esto para escribirse con ":]" / "x3" (un solo acorde, no) */
+const MIN_REPEAT_BARS = 2;
 
 /**
  * Desde el compás `start`: la vuelta que se repite seguida cubriendo más compases (de
@@ -309,7 +309,7 @@ function repeatAt(bars: string[], start: number): { period: number; times: numbe
  * "Solo acordes" como hoja de ensayo (pedido de Pablo): cada acorde es un compás — dos acordes
  * van juntos solo si el texto tiene un "-" escrito entre ellos — y los compases de una sección se
  * acomodan corridos en filas de 4, sin importar cuántos acordes tenga cada línea de la letra.
- * Si una vuelta (de 4 compases o más) se repite seguida, se escribe una vez —en sus filas de 4— con
+ * Si una vuelta (de 2 compases o más) se repite seguida, se escribe una vez —en sus filas de 4— con
  * ":]" al final (2 veces) o "x3", "x4"…; después sigue lo que viene.
  *
  * El tramo lo cortan las secciones y las líneas que no son "simples" (notas "(…)", marcas como

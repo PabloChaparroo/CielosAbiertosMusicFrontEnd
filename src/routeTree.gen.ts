@@ -19,6 +19,7 @@ import { Route as LetrasRouteImport } from './routes/letras'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as RolesPermisosRouteImport } from './routes/roles-permisos'
 import { Route as SetlistsRouteImport } from './routes/setlists'
+import { Route as TransportadorRouteImport } from './routes/transportador'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -70,6 +71,11 @@ const SetlistsRoute = SetlistsRouteImport.update({
   path: '/setlists',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TransportadorRoute = TransportadorRouteImport.update({
+  id: '/transportador',
+  path: '/transportador',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/roles-permisos': typeof RolesPermisosRoute
   '/setlists': typeof SetlistsRoute
+  '/transportador': typeof TransportadorRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/roles-permisos': typeof RolesPermisosRoute
   '/setlists': typeof SetlistsRoute
+  '/transportador': typeof TransportadorRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -107,6 +115,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/roles-permisos': typeof RolesPermisosRoute
   '/setlists': typeof SetlistsRoute
+  '/transportador': typeof TransportadorRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/roles-permisos'
     | '/setlists'
+    | '/transportador'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -133,6 +143,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/roles-permisos'
     | '/setlists'
+    | '/transportador'
   id:
     | '__root__'
     | '/'
@@ -145,6 +156,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/roles-permisos'
     | '/setlists'
+    | '/transportador'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -158,6 +170,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   RolesPermisosRoute: typeof RolesPermisosRoute
   SetlistsRoute: typeof SetlistsRoute
+  TransportadorRoute: typeof TransportadorRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -232,6 +245,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SetlistsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/transportador': {
+      id: '/transportador'
+      path: '/transportador'
+      fullPath: '/transportador'
+      preLoaderRoute: typeof TransportadorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -246,6 +266,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   RolesPermisosRoute: RolesPermisosRoute,
   SetlistsRoute: SetlistsRoute,
+  TransportadorRoute: TransportadorRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

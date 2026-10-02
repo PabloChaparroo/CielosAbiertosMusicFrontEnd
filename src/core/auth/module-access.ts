@@ -12,6 +12,7 @@ export const MODULE_READ_PERMISSION: Record<string, string | null> = {
   "/letras": "cancion:read",
   "/acordes": "cancion:read",
   "/favoritos": "cancion:read",
+  "/transportador": "transportador:read",
   "/setlists": "setlist:read",
   "/equipo": "equipo:read",
   "/estadisticas": "estadisticas:read",

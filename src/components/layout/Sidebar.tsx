@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
+  ArrowRightLeft,
   BarChart3,
   Cloud,
   Guitar,
@@ -32,6 +33,7 @@ const groups = [
       { to: "/acordes", label: "Acordes", icon: Guitar },
       { to: "/setlists", label: "Setlists", icon: ListMusic },
       { to: "/favoritos", label: "Favoritos", icon: Heart },
+      { to: "/transportador", label: "Transportador", icon: ArrowRightLeft },
     ],
   },
   {

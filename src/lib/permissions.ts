@@ -16,6 +16,7 @@ const resourceLabels: Record<string, string> = {
   estadisticas: "Estadísticas",
   rol: "Roles y permisos",
   "cancion-definitiva": "Canciones: eliminar definitivamente (solo cuenta Eliminar)",
+  transportador: "Transportador de acordes (solo cuenta Ver)",
 };
 
 export function resourceLabel(resource: string): string {

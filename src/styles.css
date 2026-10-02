@@ -105,6 +105,19 @@
     border-color: var(--color-border);
   }
 
+  /* la app es solo oscura: así los controles nativos (la lista de un <select>, barras de scroll,
+     calendario) también se dibujan oscuros y no en blanco */
+  html {
+    color-scheme: dark;
+  }
+
+  /* opciones de los desplegables: fondo de tarjeta y texto normal, aunque el <select> esté dorado
+     por tener un filtro elegido */
+  option {
+    background-color: var(--color-card);
+    color: var(--color-foreground);
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);

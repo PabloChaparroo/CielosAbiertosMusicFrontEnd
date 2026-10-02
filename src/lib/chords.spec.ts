@@ -8,6 +8,7 @@ import {
   parseChordPro,
   semitonesBetween,
   transposeChord,
+  transposeChordPro,
   transposeKey,
   type ParsedLine,
 } from "./chords";
@@ -160,7 +161,7 @@ describe("mergeRepeatedChartLines — Solo acordes: líneas seguidas con los mis
   const chart = (body: string) => mergeRepeatedChartLines(chordsOnly(parseChordPro(body, 0, "D")));
   const barsOf = (line: ParsedLine) => (line.kind === "line" ? chartBars(line.pairs) : []);
 
-  it("el verso de 'A quién iré' (3 veces | D | Bm | G | D - A |) queda en una sola línea", () => {
+  it("el verso de 'A quién iré' (3 veces | D - Bm | G - D - A |) queda en una sola línea", () => {
     const lines = chart(
       [
         "{Verso}",
@@ -173,10 +174,11 @@ describe("mergeRepeatedChartLines — Solo acordes: líneas seguidas con los mis
       ].join("\n"),
     );
     expect(lines).toHaveLength(2);
+    // cada línea con letra es un compás
     expect(barsOf(lines[1]!)).toEqual([
-      ...["D", "Bm", "G", "D - A"],
-      ...["D", "Bm", "G", "D - A"],
-      ...["D", "Bm", "G", "D - A"],
+      ...["D - Bm", "G - D - A"],
+      ...["D - Bm", "G - D - A"],
+      ...["D - Bm", "G - D - A"],
     ]);
   });
 
@@ -201,9 +203,59 @@ describe("mergeRepeatedChartLines — Solo acordes: líneas seguidas con los mis
     ]);
   });
 
-  it("una sección o una línea vacía cortan el tramo", () => {
+  it("una sección corta el tramo; una línea vacía dentro de la sección no", () => {
     expect(chart("[D] [A]\n{Coro}\n[D] [A]")).toHaveLength(3);
-    expect(chart("[D] [A]\n\n[D] [A]")).toHaveLength(3);
+    expect(chart("[D] [A]\n\n[D] [A]")).toHaveLength(1);
+  });
+
+  it("el coro de 'Al estar ante ti': dos vueltas iguales separadas por un renglón vacío → :]", () => {
+    const vuelta = (a: string[]) => a.join("\n");
+    const lines = chart(
+      [
+        "{Coro}",
+        vuelta([
+          "[D/F#]- Digno es el co[G]rdero de[D/F#] Dios",
+          "El que fue i[G]nmolad - [A/C#]o en la cru[Bm]z -",
+          "Dig[A]no de l[G]a - h[A/C#]onra y el[D] poder",
+          "La sa[Em]biduria suya [A] es",
+        ]),
+        "",
+        "",
+        vuelta([
+          "Y a[D/F#]l - que esta en el t[G]rono sea el[D/F#] honor",
+          "Santo santo sa[G]nto -[A/C#] es el se[Bm]ñor -",
+          "Rein[A]a por l[G]os - sigl[A/C#]os con[D] poder",
+          "Todo l[Em]o que exi[A]ste",
+        ]),
+        "",
+        "[C] [A4]",
+      ].join("\n"),
+    );
+    // cada línea con letra es un compás: la vuelta son 4 compases, en una fila con ":]"
+    const una = ["D/F# - G - D/F#", "G - A/C# - Bm", "A - G - A/C# - D", "Em - A"];
+    expect(lines.map(barsOf)).toEqual([[], [...una, ...una], [], ["C", "A4"]]);
+  });
+
+  it("el verso de Pablo: | A | D | A/C# - F#m | D | dos veces", () => {
+    const vuelta = [
+      "[A]Tu eres el principio",
+      "[D]Tuya es la eternidad",
+      "[A/C#]Llamaste el mundo a e[F#m]xistencia",
+      "Me acerco a [D]ti",
+    ].join("\n");
+    const lines = chart(["{Verso}", vuelta, "", vuelta].join("\n"));
+    const una = ["A", "D", "A/C# - F#m", "D"];
+    expect(lines.map(barsOf)).toEqual([[], [...una, ...una]]);
+  });
+
+  it("una vuelta larga repetida 3 veces lleva x3 al final", () => {
+    const lines = chart(
+      "[D] [A] [Em]\n[G] [Bm] [C]\n\n[D] [A] [Em]\n[G] [Bm] [C]\n[D] [A] [Em]\n[G] [Bm] [C]",
+    );
+    expect(lines.map(barsOf)).toEqual([
+      ["D", "A", "Em"],
+      ["G", "Bm", "C", "x3"],
+    ]);
   });
 
   it("las líneas con ':]', marcas o notas se respetan y no se juntan", () => {
@@ -220,9 +272,9 @@ describe("joinShortChartLines — Solo acordes: dos líneas de 2 compases en un 
     );
   const barsOf = (line: ParsedLine) => (line.kind === "line" ? chartBars(line.pairs) : []);
 
-  it("| Em | % | + | G | A | → | Em | % | G | A |", () => {
+  it("| Em | % | + | G - A | → | Em | % | G - A | (el % no se une; la línea con letra es un compás)", () => {
     expect(chart("[Em]Solo Tú tienes pa[%]labras", "[G]de vida [A]eterna").map(barsOf)).toEqual([
-      ["Em", "%", "G", "A"],
+      ["Em", "%", "G - A"],
     ]);
   });
 
@@ -256,5 +308,32 @@ describe("joinShortChartLines — Solo acordes: dos líneas de 2 compases en un 
 
   it("una línea con notas o marcas no se junta", () => {
     expect(chart("[D] (suave) [A]", "[G] [A]")).toHaveLength(2);
+  });
+});
+
+describe("transposeChordPro", () => {
+  it("pasa los acordes al tono nuevo y deja la letra igual", () => {
+    expect(transposeChordPro("[C]Al esta[G]r ante ti\nEn[G/B]tre [Am]la", 2, "D")).toBe(
+      "[D]Al esta[A]r ante ti\nEn[A/C#]tre [Bm]la",
+    );
+  });
+
+  it("no toca secciones ni marcas (Baja Tono empieza con B)", () => {
+    expect(
+      transposeChordPro("{Coro}\n[Intro]\n[G] [%] :] [x3] [Sube Tono] [Baja Tono]", 2, "A"),
+    ).toBe("{Coro}\n[Intro]\n[A] [%] :] [x3] [Sube Tono] [Baja Tono]");
+  });
+
+  it("acordes con extensiones y entre paréntesis", () => {
+    expect(transposeChordPro("[Am7b5] [G4] [C9] [(E)]", -2, "Bb")).toBe("[Gm7b5] [F4] [Bb9] [(D)]");
+  });
+
+  it("bemoles o sostenidos según el tono de destino", () => {
+    expect(transposeChordPro("[C] [F] [G]", 3, "Eb")).toBe("[Eb] [Ab] [Bb]");
+    expect(transposeChordPro("[C] [F] [G]", 4, "E")).toBe("[E] [A] [B]");
+  });
+
+  it("sin cambio de tono (0 o 12 semitonos) devuelve el texto tal cual", () => {
+    expect(transposeChordPro("[Db] [C#]", 12, "C")).toBe("[Db] [C#]");
   });
 });

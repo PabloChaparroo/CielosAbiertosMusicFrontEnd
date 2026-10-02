@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowRightLeft,
   Check,
   FileDown,
   Maximize2,
@@ -16,7 +17,14 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, FavButton, Skeletons } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import { Pager, usePaged } from "@/components/common/Pager";
-import { chordsOnly, diatonicChords, KEYS, parseChordPro, transposeKey } from "@/lib/chords";
+import {
+  chordsOnly,
+  diatonicChords,
+  KEYS,
+  parseChordPro,
+  transposeChordPro,
+  transposeKey,
+} from "@/lib/chords";
 import { exportChordsPdf } from "@/lib/pdf";
 import { SongsService } from "@/features/canciones/services/songs.service";
 import { Annotations } from "../components/Annotations";
@@ -60,6 +68,9 @@ export function AcordesPage() {
   }, []);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+  // tono en que está escrito el borrador si se lo pasó a otro tono ("Pasar el texto a…");
+  // null = el de la canción. Al guardar, la canción queda con este tono.
+  const [draftKey, setDraftKey] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const chordInputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -88,6 +99,7 @@ export function AcordesPage() {
   useEffect(() => {
     setEditing(false);
     setDraft("");
+    setDraftKey(null);
     setSaveError(null);
   }, [songId]);
 
@@ -108,7 +120,9 @@ export function AcordesPage() {
   // canciones" se aplica recién en el return, después de todos los hooks.
   const ready = songsLoadState === "ready" && availableSongs.length > 0;
   const song = availableSongs.find((s) => s.id === songId) ?? availableSongs[0];
-  const targetKey = song ? transposeKey(song.key, semitones) : "C";
+  // tono de partida: el del borrador si ya se lo pasó a otro tono, si no el de la canción
+  const baseKey = editing && draftKey ? draftKey : song?.key;
+  const targetKey = baseKey ? transposeKey(baseKey, semitones) : "C";
 
   useEffect(() => {
     setSemitones(0);
@@ -201,9 +215,19 @@ export function AcordesPage() {
   };
 
   const handleCancelEditing = () => {
+    // si se había pasado el texto a otro tono, la vista vuelve al tono guardado
+    if (draftKey) setSemitones(0);
     setEditing(false);
     setDraft("");
+    setDraftKey(null);
     setSaveError(null);
+  };
+
+  // reescribe los acordes del borrador en el tono elegido; ese pasa a ser el tono de partida
+  const handleTransposeDraft = () => {
+    setDraft((current) => transposeChordPro(current, semitones, targetKey));
+    setDraftKey(targetKey);
+    setSemitones(0);
   };
 
   const handleSaveChords = async () => {
@@ -211,10 +235,15 @@ export function AcordesPage() {
     setSaving(true);
     setSaveError(null);
     try {
-      const updated = await SongsService.updateSong(song.id, { chordpro: draft });
+      const newKey = draftKey && draftKey !== song.key ? draftKey : null;
+      const updated = await SongsService.updateSong(song.id, {
+        chordpro: draft,
+        ...(newKey ? { key: newKey } : {}),
+      });
       updateSong(updated);
       setEditing(false);
       setDraft("");
+      setDraftKey(null);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "No se pudieron guardar los acordes");
     } finally {
@@ -471,6 +500,18 @@ export function AcordesPage() {
             {/* Guardar/Cancelar arriba, a mano sin importar lo larga que sea la canción */}
             {editing ? (
               <>
+                {/* el selector de tono solo cambia la vista: esto reescribe el texto para guardarlo así */}
+                {((semitones % 12) + 12) % 12 ? (
+                  <button
+                    type="button"
+                    onClick={handleTransposeDraft}
+                    disabled={saving}
+                    title="Reescribe los acordes del texto en este tono; al guardar, la canción queda en este tono"
+                    className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105 disabled:opacity-50"
+                  >
+                    <ArrowRightLeft className="h-4 w-4" /> Pasar el texto a {targetKey}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={handleCancelEditing}

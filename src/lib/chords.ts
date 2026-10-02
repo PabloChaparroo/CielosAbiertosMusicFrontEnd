@@ -1,3 +1,5 @@
+import { isChord } from "./chords-over-lyrics";
+
 const SHARP = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 const FLAT = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
 
@@ -271,13 +273,18 @@ export function isSimpleChartLine(pairs: ChordPair[]): boolean {
   );
 }
 
-/** true si los compases son un mismo grupo repetido 2 o más veces */
-function isRepeated(bars: string[]): boolean {
+/** Largo del grupo de compases que se repite (el más corto); bars.length si no se repite */
+function smallestPeriod(bars: string[]): number {
   for (let period = 1; period <= bars.length / 2; period += 1) {
     if (bars.length % period !== 0) continue;
-    if (bars.every((bar, i) => bar === bars[i % period])) return true;
+    if (bars.every((bar, i) => bar === bars[i % period])) return period;
   }
-  return false;
+  return bars.length;
+}
+
+/** true si los compases son un mismo grupo repetido 2 o más veces */
+function isRepeated(bars: string[]): boolean {
+  return bars.length > 0 && smallestPeriod(bars) < bars.length;
 }
 
 /**
@@ -285,7 +292,9 @@ function isRepeated(bars: string[]): boolean {
  * sola línea (que después se escribe una vez con ":]" / "x3]" / "x4]"). Ej. un verso con
  * "| D | Bm |" / "| G | D - A |" tres veces → una línea "| D | Bm | G | D - A |x3]".
  * El grupo empieza y termina en líneas enteras; se toma el tramo más largo posible. Las líneas
- * que no son "simples" (ver isSimpleChartLine), las secciones y las vacías cortan el tramo.
+ * que no son "simples" (ver isSimpleChartLine) y las secciones cortan el tramo; las líneas vacías
+ * no (un coro con un renglón en blanco entre las dos vueltas también es una repetición) y, si
+ * quedan adentro de lo que se juntó, desaparecen.
  */
 export function mergeRepeatedChartLines(lines: ParsedLine[]): ParsedLine[] {
   const out: ParsedLine[] = [];
@@ -297,40 +306,75 @@ export function mergeRepeatedChartLines(lines: ParsedLine[]): ParsedLine[] {
       i += 1;
       continue;
     }
-    // hasta dónde llegan las líneas simples seguidas
-    let runEnd = i;
-    while (runEnd + 1 < lines.length) {
-      const next = lines[runEnd + 1]!;
+    // las líneas simples del tramo (saltando las vacías), hasta una sección o una línea no simple
+    const run = [i];
+    for (let j = i + 1; j < lines.length; j += 1) {
+      const next = lines[j]!;
+      if (next.kind === "blank") continue;
       if (next.kind !== "line" || !isSimpleChartLine(next.pairs)) break;
-      runEnd += 1;
+      run.push(j);
     }
-    let mergedUntil = i;
-    for (let end = runEnd; end > i; end -= 1) {
-      const bars = lines
-        .slice(i, end + 1)
-        .flatMap((l) => (l.kind === "line" ? chartBars(l.pairs) : []));
+    let mergedCount = 1;
+    for (let count = run.length; count > 1; count -= 1) {
+      const bars = run
+        .slice(0, count)
+        .flatMap((j) => (lines[j]!.kind === "line" ? chartBars(lines[j]!.pairs) : []));
       if (isRepeated(bars)) {
-        mergedUntil = end;
+        mergedCount = count;
         break;
       }
     }
-    if (mergedUntil === i) {
+    if (mergedCount === 1) {
       out.push(line);
       i += 1;
       continue;
     }
+    // una vuelta larga (más de 4 compases) que termina justo al final de una línea: se deja la
+    // primera vuelta con sus líneas (así se ve en renglones, no en una fila que no entra) y la
+    // última lleva la repetición (":]" o "x3"…)
+    const lineBars = run
+      .slice(0, mergedCount)
+      .map((j) => (lines[j]!.kind === "line" ? chartBars(lines[j]!.pairs).length : 0));
+    const allBars = run
+      .slice(0, mergedCount)
+      .flatMap((j) => (lines[j]!.kind === "line" ? chartBars(lines[j]!.pairs) : []));
+    const period = smallestPeriod(allBars);
+    let linesInPeriod = 0;
+    for (let sum = 0; linesInPeriod < lineBars.length && sum < period; linesInPeriod += 1) {
+      sum += lineBars[linesInPeriod]!;
+    }
+    const fitsLines =
+      lineBars.slice(0, linesInPeriod).reduce((a, b) => a + b, 0) === period &&
+      linesInPeriod < mergedCount;
+    if (period > 4 && fitsLines) {
+      const times = allBars.length / period;
+      run.slice(0, linesInPeriod).forEach((j, n) => {
+        const l = lines[j]! as Extract<ParsedLine, { kind: "line" }>;
+        if (n < linesInPeriod - 1) {
+          out.push(l);
+          return;
+        }
+        const pairs = l.pairs.map((p, k) =>
+          k === l.pairs.length - 1 && p.text.trim() === "-" ? { ...p, text: "" } : { ...p },
+        );
+        if (times === 2) pairs[pairs.length - 1] = { ...pairs[pairs.length - 1]!, text: ":]" };
+        else pairs.push({ chord: `x${times}`, text: "" });
+        out.push({ kind: "line", pairs });
+      });
+      i = run[mergedCount - 1]! + 1;
+      continue;
+    }
     // se unen los pares; cada línea abre compás nuevo (un "-" colgando al final no la pega a la siguiente)
-    const pairs = lines
-      .slice(i, mergedUntil + 1)
-      .flatMap((l) =>
-        l.kind === "line"
-          ? l.pairs.map((p, j) =>
-              j === l.pairs.length - 1 && p.text.trim() === "-" ? { ...p, text: "" } : { ...p },
-            )
-          : [],
-      );
+    const pairs = run.slice(0, mergedCount).flatMap((j) => {
+      const l = lines[j]!;
+      return l.kind === "line"
+        ? l.pairs.map((p, k) =>
+            k === l.pairs.length - 1 && p.text.trim() === "-" ? { ...p, text: "" } : { ...p },
+          )
+        : [];
+    });
     out.push({ kind: "line", pairs });
-    i = mergedUntil + 1;
+    i = run[mergedCount - 1]! + 1;
   }
   return out;
 }
@@ -376,20 +420,47 @@ export function joinShortChartLines(lines: ParsedLine[]): ParsedLine[] {
   return out;
 }
 
+/**
+ * "Solo acordes": deja de cada par solo el acorde y la notación (":]", "-"). En una línea con
+ * letra, la línea entera es UN compás (pedido de Pablo): sus acordes van unidos con "-"
+ * ("[A/C#]Llamaste el mundo a e[F#m]xistencia" → "| A/C# - F#m |"). Las líneas que ya son solo
+ * acordes ("[D] [A] [Em]") están escritas compás por compás y quedan como están; las marcas
+ * ("%", "x3", "Sube Tono") nunca se unen.
+ */
 export function chordsOnly(lines: ParsedLine[]): ParsedLine[] {
-  return lines.map((l) =>
-    l.kind === "line"
-      ? {
-          ...l,
-          pairs: l.pairs.map((p) =>
-            p.note
-              ? p
-              : {
-                  chord: p.chord,
-                  text: p.text.includes(":]") ? ":]" : p.text.includes("-") ? "-" : "",
-                },
-          ),
-        }
-      : l,
-  );
+  const isBarChord = (chord: string | null) =>
+    !!chord && chord.trim() !== "%" && !isChartMarker(chord);
+  return lines.map((l) => {
+    if (l.kind !== "line") return l;
+    const hasLyrics = l.pairs.some((p) => !p.note && /[^\s\-:\]]/.test(p.text));
+    return {
+      ...l,
+      pairs: l.pairs.map((p, j) => {
+        if (p.note) return p;
+        const notation = p.text.includes(":]") ? ":]" : p.text.includes("-") ? "-" : "";
+        // se une con "-" al acorde siguiente de la línea, salvo que sea una marca
+        const nextChord = l.pairs.slice(j + 1).find((q) => !q.note && q.chord)?.chord ?? null;
+        const joinsNext = hasLyrics && isBarChord(p.chord) && isBarChord(nextChord);
+        return { chord: p.chord, text: notation === ":]" ? ":]" : joinsNext ? "-" : notation };
+      }),
+    };
+  });
+}
+
+/**
+ * Reescribe los acordes del texto del cancionero en otro tono ("[G]Santo" → "[A]Santo" con +2),
+ * para guardarlo así. Solo toca lo que entre corchetes es un acorde: secciones ("[Intro]"),
+ * marcas ("[%]", "[x3]", "[Baja Tono]") y el resto del texto quedan igual.
+ */
+export function transposeChordPro(body: string, semitones: number, targetKey: string): string {
+  if (!(((semitones % 12) + 12) % 12)) return body;
+  return body.replace(/\[([^\]]+)\]/g, (match, inner: string) => {
+    const value = inner.trim();
+    if (!isChord(value)) return match;
+    // "(G)" (acorde entre paréntesis) conserva los paréntesis
+    const wrapped = /^\((.+)\)$/.exec(value);
+    const chord = wrapped ? wrapped[1]! : value;
+    const moved = transposeChord(chord, semitones, targetKey);
+    return `[${wrapped ? `(${moved})` : moved}]`;
+  });
 }

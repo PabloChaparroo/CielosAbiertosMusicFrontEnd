@@ -61,13 +61,19 @@ function chordChartSegments(pairs: ChordPair[]): ChartSegment[] {
       return;
     }
     const notation = pair.text.trim();
-    if (pair.chord && isChartMarker(pair.chord)) {
+    if (pair.chord && /^x\d+$/i.test(pair.chord.trim()) && barOpen) {
+      // repetición (x2, x3, x4…): cierra el compás y va afuera, como ":]" → "| Bm - A/C# |x4]"
+      buffer += ` |${pair.chord.trim().toLowerCase()}]`;
+      barOpen = false;
+      joinsNextChord = false;
+      applyNotation(notation);
+    } else if (pair.chord && isChartMarker(pair.chord)) {
       buffer += started ? ` ${pair.chord}` : pair.chord;
       applyNotation(notation);
     } else if (pair.chord) {
       buffer += joinsNextChord
         ? ` ${pair.chord}`
-        : started
+        : started || buffer
           ? ` | ${pair.chord}`
           : `| ${pair.chord}`;
       started = true;
@@ -105,11 +111,17 @@ function barColumnWidths(bases: string[]): number[] {
   return widths;
 }
 
-/** Rellena cada compás hasta el ancho de su columna */
+/** Centra el compás en el ancho de su columna ("%" en una columna de 6 → "  %   ") */
+function centerCell(cell: string, width: number): string {
+  const left = Math.floor(Math.max(0, width - cell.length) / 2);
+  return (" ".repeat(left) + cell).padEnd(width);
+}
+
+/** Rellena cada compás hasta el ancho de su columna, centrado (los "|" siguen alineados) */
 function alignBars(base: string, widths: number[]): string {
   const bars = splitBars(base);
   if (!bars || !widths.length) return base;
-  return `| ${bars.cells.map((cell, c) => cell.padEnd(widths[c] ?? 0)).join(" | ")} ${bars.end}`;
+  return `| ${bars.cells.map((cell, c) => centerCell(cell, widths[c] ?? 0)).join(" | ")} ${bars.end}`;
 }
 
 /** Texto de compases de una línea de "Solo acordes" sin notas "(…)"; null si tiene notas o no tiene acordes */

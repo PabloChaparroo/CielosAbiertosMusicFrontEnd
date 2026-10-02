@@ -15,6 +15,7 @@ import { Route as EquipoRouteImport } from './routes/equipo'
 import { Route as EscucharRouteImport } from './routes/escuchar'
 import { Route as EstadisticasRouteImport } from './routes/estadisticas'
 import { Route as FavoritosRouteImport } from './routes/favoritos'
+import { Route as InstalarRouteImport } from './routes/instalar'
 import { Route as LetrasRouteImport } from './routes/letras'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as RolesPermisosRouteImport } from './routes/roles-permisos'
@@ -51,6 +52,11 @@ const FavoritosRoute = FavoritosRouteImport.update({
   path: '/favoritos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InstalarRoute = InstalarRouteImport.update({
+  id: '/instalar',
+  path: '/instalar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LetrasRoute = LetrasRouteImport.update({
   id: '/letras',
   path: '/letras',
@@ -84,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/escuchar': typeof EscucharRoute
   '/estadisticas': typeof EstadisticasRoute
   '/favoritos': typeof FavoritosRoute
+  '/instalar': typeof InstalarRoute
   '/letras': typeof LetrasRoute
   '/login': typeof LoginRoute
   '/roles-permisos': typeof RolesPermisosRoute
@@ -97,6 +104,7 @@ export interface FileRoutesByTo {
   '/escuchar': typeof EscucharRoute
   '/estadisticas': typeof EstadisticasRoute
   '/favoritos': typeof FavoritosRoute
+  '/instalar': typeof InstalarRoute
   '/letras': typeof LetrasRoute
   '/login': typeof LoginRoute
   '/roles-permisos': typeof RolesPermisosRoute
@@ -111,6 +119,7 @@ export interface FileRoutesById {
   '/escuchar': typeof EscucharRoute
   '/estadisticas': typeof EstadisticasRoute
   '/favoritos': typeof FavoritosRoute
+  '/instalar': typeof InstalarRoute
   '/letras': typeof LetrasRoute
   '/login': typeof LoginRoute
   '/roles-permisos': typeof RolesPermisosRoute
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
     | '/escuchar'
     | '/estadisticas'
     | '/favoritos'
+    | '/instalar'
     | '/letras'
     | '/login'
     | '/roles-permisos'
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/escuchar'
     | '/estadisticas'
     | '/favoritos'
+    | '/instalar'
     | '/letras'
     | '/login'
     | '/roles-permisos'
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/escuchar'
     | '/estadisticas'
     | '/favoritos'
+    | '/instalar'
     | '/letras'
     | '/login'
     | '/roles-permisos'
@@ -166,6 +178,7 @@ export interface RootRouteChildren {
   EscucharRoute: typeof EscucharRoute
   EstadisticasRoute: typeof EstadisticasRoute
   FavoritosRoute: typeof FavoritosRoute
+  InstalarRoute: typeof InstalarRoute
   LetrasRoute: typeof LetrasRoute
   LoginRoute: typeof LoginRoute
   RolesPermisosRoute: typeof RolesPermisosRoute
@@ -217,6 +230,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FavoritosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/instalar': {
+      id: '/instalar'
+      path: '/instalar'
+      fullPath: '/instalar'
+      preLoaderRoute: typeof InstalarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/letras': {
       id: '/letras'
       path: '/letras'
@@ -262,6 +282,7 @@ const rootRouteChildren: RootRouteChildren = {
   EscucharRoute: EscucharRoute,
   EstadisticasRoute: EstadisticasRoute,
   FavoritosRoute: FavoritosRoute,
+  InstalarRoute: InstalarRoute,
   LetrasRoute: LetrasRoute,
   LoginRoute: LoginRoute,
   RolesPermisosRoute: RolesPermisosRoute,

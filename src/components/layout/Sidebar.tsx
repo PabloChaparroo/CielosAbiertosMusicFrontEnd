@@ -10,6 +10,7 @@ import {
   LogOut,
   Music4,
   ShieldCheck,
+  Smartphone,
   Type,
   Users,
   X,
@@ -23,7 +24,10 @@ import { canOpenModule } from "@/core/auth/module-access";
 const groups = [
   {
     label: "Principal",
-    items: [{ to: "/", label: "Inicio", icon: Home }],
+    items: [
+      { to: "/", label: "Inicio", icon: Home },
+      { to: "/instalar", label: "Instalar app", icon: Smartphone },
+    ],
   },
   {
     label: "Música",

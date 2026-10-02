@@ -8,6 +8,7 @@
  */
 export const MODULE_READ_PERMISSION: Record<string, string | null> = {
   "/": null,
+  "/instalar": null,
   "/escuchar": "cancion:read",
   "/letras": "cancion:read",
   "/acordes": "cancion:read",

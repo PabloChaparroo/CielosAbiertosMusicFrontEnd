@@ -11,6 +11,8 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+// escucha el botón "Instalar" nativo desde que carga la app (llega una sola vez)
+import "../lib/install-prompt";
 import { AuthGate } from "@/core/guards/AuthGate";
 
 function NotFoundComponent() {
@@ -78,6 +80,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "theme-color", content: "#17171a" },
+      { name: "apple-mobile-web-app-title", content: "Cielos Abiertos" },
       { title: "Cielos Abiertos — Ministerio de Adoración" },
       {
         name: "description",
@@ -98,6 +102,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap",
       },
       { rel: "icon", href: "/music-favicon.svg", type: "image/svg+xml" },
+      // instalable en el celular (módulo Instalar app)
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
     ],
   }),
   shellComponent: RootShell,

@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
+  ArrowRightLeft,
   BarChart3,
   Cloud,
   Guitar,
@@ -9,6 +10,7 @@ import {
   LogOut,
   Music4,
   ShieldCheck,
+  Smartphone,
   Type,
   Users,
   X,
@@ -22,7 +24,10 @@ import { canOpenModule } from "@/core/auth/module-access";
 const groups = [
   {
     label: "Principal",
-    items: [{ to: "/", label: "Inicio", icon: Home }],
+    items: [
+      { to: "/", label: "Inicio", icon: Home },
+      { to: "/instalar", label: "Instalar app", icon: Smartphone },
+    ],
   },
   {
     label: "Música",
@@ -32,6 +37,7 @@ const groups = [
       { to: "/acordes", label: "Acordes", icon: Guitar },
       { to: "/setlists", label: "Setlists", icon: ListMusic },
       { to: "/favoritos", label: "Favoritos", icon: Heart },
+      { to: "/transportador", label: "Transportador", icon: ArrowRightLeft },
     ],
   },
   {

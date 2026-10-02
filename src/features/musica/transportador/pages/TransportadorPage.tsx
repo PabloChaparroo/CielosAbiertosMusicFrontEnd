@@ -63,7 +63,10 @@ export function TransportadorPage() {
               className="flex items-center gap-1.5 rounded-full gradient-gold px-4 py-1.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
             >
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              {copied ? "Copiado" : "Copiar"}
+              {/* texto en su propio <span> con key: si el traductor de Chrome cambió el texto,
+                  React reemplaza el elemento entero en vez de editar un texto que ya no existe
+                  (eso tiraba la página abajo) */}
+              <span key={copied ? "copiado" : "copiar"}>{copied ? "Copiado" : "Copiar"}</span>
             </button>
           </div>
           <textarea

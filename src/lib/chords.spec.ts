@@ -3,8 +3,7 @@ import {
   chartBars,
   chordsOnly,
   diatonicChords,
-  joinShortChartLines,
-  mergeRepeatedChartLines,
+  packChartRows,
   parseChordPro,
   semitonesBetween,
   transposeChord,
@@ -157,153 +156,89 @@ describe("parseChordPro — transposición y robustez", () => {
   });
 });
 
-describe("mergeRepeatedChartLines — Solo acordes: líneas seguidas con los mismos compases", () => {
-  const chart = (body: string) => mergeRepeatedChartLines(chordsOnly(parseChordPro(body, 0, "D")));
+describe("packChartRows — Solo acordes: filas de 4 compases, repeticiones con :]", () => {
+  const chart = (...rows: string[]) =>
+    packChartRows(chordsOnly(parseChordPro(rows.join("\n"), 0, "D")));
   const barsOf = (line: ParsedLine) => (line.kind === "line" ? chartBars(line.pairs) : []);
+  const endOf = (line: ParsedLine) =>
+    line.kind === "line" ? line.pairs.at(-1)!.text || line.pairs.at(-1)!.chord : null;
 
-  it("el verso de 'A quién iré' (3 veces | D | Bm | G | D - A |) queda en una sola línea", () => {
+  it("el verso de Pablo: el '-' solo donde está escrito; filas de 4; dos filas iguales → :]", () => {
     const lines = chart(
-      [
-        "{Verso}",
-        "[D]¿A quién iré en necesi[Bm]dad?",
-        "[G]¿A quién iré en busca de [D]paz? - [A]",
-        "[D]¿Y quién podrá mi vida sa[Bm]ciar de verdad?",
-        "[G]¿Quién más tendrá de mí compa[D]sión? - [A]",
-        "[D]¿Y entenderá mi cora[Bm]zón?",
-        "[G]¿Quién cambiará mi eterni[D]dad? sino - [A]Tú, Jesús.",
-      ].join("\n"),
+      "{Verso}",
+      "[A]Tu eres el principio[D] Tuya es la eternidad",
+      "[A/C#]- Llamaste el mundo a existe[F#m]cia Me acerco a [D]ti",
+      "[A]Moriste por mis fracasos [D]Llevaste mi culpa en la cruz",
+      "[A/C#]- Cargaste en tus h[F#m]ombros mi carga [D]Me acerco a [A]ti",
+      "¿[D]Que puedo hace[Bm]r? ¿que puedo [F#m]decir?",
     );
-    expect(lines).toHaveLength(2);
-    expect(barsOf(lines[1]!)).toEqual([
-      ...["D", "Bm", "G", "D - A"],
-      ...["D", "Bm", "G", "D - A"],
-      ...["D", "Bm", "G", "D - A"],
+    expect(lines.map(barsOf)).toEqual([[], ["A", "D", "A/C# - F#m", "D"], ["A", "D", "Bm", "F#m"]]);
+    expect(endOf(lines[1]!)).toBe(":]");
+  });
+
+  it("sin '-' escrito, dos acordes de una línea son dos compases", () => {
+    expect(chart("[A]Tu eres el principio[D] Tuya es").map(barsOf)).toEqual([["A", "D"]]);
+  });
+
+  it("líneas de distinto largo se acomodan corridas de a 4", () => {
+    expect(chart("[D] [A]", "[G]", "[Bm] [G] [Em]", "[A]").map(barsOf)).toEqual([
+      ["D", "A", "G", "Bm"],
+      ["G", "Em", "A"],
     ]);
   });
 
-  it("dos líneas iguales seguidas se juntan", () => {
-    const lines = chart("[F] [C] [G]\n[F] [C] [G]");
-    expect(lines).toHaveLength(1);
-    expect(barsOf(lines[0]!)).toEqual(["F", "C", "G", "F", "C", "G"]);
-  });
-
-  it("si la última vuelta es distinta, solo se junta lo que se repite", () => {
-    const lines = chart("[D] [Bm]\n[D] [Bm]\n[G] [A]");
-    expect(lines.map(barsOf)).toEqual([
-      ["D", "Bm", "D", "Bm"],
-      ["G", "A"],
-    ]);
-  });
-
-  it("líneas distintas quedan como están", () => {
-    expect(chart("[D] [Bm]\n[G] [A]").map(barsOf)).toEqual([
-      ["D", "Bm"],
-      ["G", "A"],
-    ]);
-  });
-
-  it("una sección corta el tramo; una línea vacía dentro de la sección no", () => {
-    expect(chart("[D] [A]\n{Coro}\n[D] [A]")).toHaveLength(3);
-    expect(chart("[D] [A]\n\n[D] [A]")).toHaveLength(1);
-  });
-
-  it("el coro de 'Al estar ante ti': dos vueltas iguales separadas por un renglón vacío → :]", () => {
-    const vuelta = (a: string[]) => a.join("\n");
+  it("tres filas iguales → x3; los renglones vacíos en el medio no cortan", () => {
     const lines = chart(
-      [
-        "{Coro}",
-        vuelta([
-          "[D/F#]- Digno es el co[G]rdero de[D/F#] Dios",
-          "El que fue i[G]nmolad - [A/C#]o en la cru[Bm]z -",
-          "Dig[A]no de l[G]a - h[A/C#]onra y el[D] poder",
-          "La sa[Em]biduria suya [A] es",
-        ]),
-        "",
-        "",
-        vuelta([
-          "Y a[D/F#]l - que esta en el t[G]rono sea el[D/F#] honor",
-          "Santo santo sa[G]nto -[A/C#] es el se[Bm]ñor -",
-          "Rein[A]a por l[G]os - sigl[A/C#]os con[D] poder",
-          "Todo l[Em]o que exi[A]ste",
-        ]),
-        "",
-        "[C] [A4]",
-      ].join("\n"),
+      "[D] [Bm] [G] [D] - [A]",
+      "",
+      "[D] [Bm] [G] [D] - [A]",
+      "[D] [Bm] [G] [D] - [A]",
     );
-    // la vuelta (9 compases) no entra en una fila: queda en sus 4 líneas y la última lleva ":]"
+    expect(lines.map(barsOf)).toEqual([["D", "Bm", "G", "D - A", "x3"]]);
+  });
+
+  it("el coro de 'Al estar ante ti': las dos vueltas → filas con :]", () => {
+    const vuelta = [
+      "[D/F#]- Digno es el co[G]rdero de[D/F#] Dios",
+      "El que fue i[G]nmolad - [A/C#]o en la cru[Bm]z -",
+      "Dig[A]no de l[G]a - h[A/C#]onra y el[D] poder",
+      "La sa[Em]biduria suya [A] es",
+    ];
+    const lines = chart("{Coro}", ...vuelta, "", ...vuelta, "[C] [A4]");
+    // la vuelta (9 compases) va una vez, en filas de 4, con ":]" al final; después sigue el resto
     expect(lines.map(barsOf)).toEqual([
       [],
-      ["D/F# - G", "D/F#"],
-      ["G - A/C#", "Bm"],
-      ["A", "G - A/C#", "D"],
-      ["Em", "A"],
-      [],
+      ["D/F# - G", "D/F#", "G - A/C#", "Bm"],
+      ["A", "G - A/C#", "D", "Em"],
+      ["A"],
       ["C", "A4"],
     ]);
-    const ultima = lines[4]!;
-    expect(ultima.kind === "line" && ultima.pairs.at(-1)!.text).toBe(":]");
+    expect(endOf(lines[3]!)).toBe(":]");
   });
 
-  it("una vuelta larga repetida 3 veces lleva x3 al final", () => {
-    const lines = chart(
-      "[D] [A] [Em]\n[G] [Bm] [C]\n\n[D] [A] [Em]\n[G] [Bm] [C]\n[D] [A] [Em]\n[G] [Bm] [C]",
-    );
-    expect(lines.map(barsOf)).toEqual([
-      ["D", "A", "Em"],
-      ["G", "Bm", "C", "x3"],
+  it("una vuelta de 4 compases repetida 2 veces en medio de otras", () => {
+    const lines = chart("[E] [F#m] [D] [A]", "[D] [Bm] [G] [A]", "[D] [Bm] [G] [A]", "[E]");
+    expect(lines.map(barsOf)).toEqual([["E", "F#m", "D", "A"], ["D", "Bm", "G", "A"], ["E"]]);
+    expect(endOf(lines[1]!)).toBe(":]");
+  });
+
+  it("una sección corta el tramo", () => {
+    expect(chart("[D] [A]", "{Coro}", "[D] [A]").map(barsOf)).toEqual([["D", "A"], [], ["D", "A"]]);
+  });
+
+  it("las líneas con ':]', marcas o notas se respetan tal cual", () => {
+    expect(chart("[D] [A] :]", "[G] [A]").map(barsOf)).toEqual([
+      ["D", "A"],
+      ["G", "A"],
     ]);
+    expect(chart("[D] [A] [x3]", "[G]")).toHaveLength(2);
+    expect(chart("[D] (suave) [A]", "[G]")).toHaveLength(2);
   });
 
-  it("las líneas con ':]', marcas o notas se respetan y no se juntan", () => {
-    expect(chart("[D] [A] :]\n[D] [A] :]")).toHaveLength(2);
-    expect(chart("[D] [A] [x3]\n[D] [A] [x3]")).toHaveLength(2);
-    expect(chart("[D] (suave) [A]\n[D] (suave) [A]")).toHaveLength(2);
-  });
-});
-
-describe("joinShortChartLines — Solo acordes: dos líneas de 2 compases en un renglón", () => {
-  const chart = (...rows: string[]) =>
-    joinShortChartLines(
-      mergeRepeatedChartLines(chordsOnly(parseChordPro(rows.join("\n"), 0, "D"))),
-    );
-  const barsOf = (line: ParsedLine) => (line.kind === "line" ? chartBars(line.pairs) : []);
-
-  it("| Em | % | + | G | A | → | Em | % | G | A |", () => {
+  it("el % es un compás más", () => {
     expect(chart("[Em]Solo Tú tienes pa[%]labras", "[G]de vida [A]eterna").map(barsOf)).toEqual([
       ["Em", "%", "G", "A"],
     ]);
-  });
-
-  it("se juntan de a dos: cuatro líneas cortas → dos renglones", () => {
-    expect(chart("[D] [A]", "[G] [A]", "[Bm] [G]", "[Em] [A]").map(barsOf)).toEqual([
-      ["D", "A", "G", "A"],
-      ["Bm", "G", "Em", "A"],
-    ]);
-  });
-
-  it("líneas de 1 compás: | Bm - A | + | G - A/C# | → | Bm - A | G - A/C# |", () => {
-    expect(chart("[Bm] - [A]", "[G] - [A/C#]").map(barsOf)).toEqual([["Bm - A", "G - A/C#"]]);
-  });
-
-  it("se suman líneas cortas hasta 4 compases: 1 + 1 + 2 → un renglón; la siguiente abre otro", () => {
-    expect(chart("[D]", "[A]", "[G] [A]", "[Bm] [G]").map(barsOf)).toEqual([
-      ["D", "A", "G", "A"],
-      ["Bm", "G"],
-    ]);
-  });
-
-  it("una línea de 2 junto a una de 3 no se junta (pasaría de 4)", () => {
-    expect(chart("[D] [A]", "[G] [A] [D]")).toHaveLength(2);
-  });
-
-  it("dos líneas iguales siguen siendo una repetición, no un renglón de 4", () => {
-    const lines = chart("[D] [A]", "[D] [A]");
-    expect(lines).toHaveLength(1);
-    expect(barsOf(lines[0]!)).toEqual(["D", "A", "D", "A"]);
-  });
-
-  it("una línea con notas o marcas no se junta", () => {
-    expect(chart("[D] (suave) [A]", "[G] [A]")).toHaveLength(2);
   });
 });
 

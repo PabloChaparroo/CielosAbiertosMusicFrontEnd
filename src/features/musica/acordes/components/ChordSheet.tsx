@@ -2,8 +2,7 @@ import {
   chartBars,
   isChartMarker,
   isSimpleChartLine,
-  joinShortChartLines,
-  mergeRepeatedChartLines,
+  packChartRows,
   type ChordPair,
   type ParsedLine,
 } from "@/lib/chords";
@@ -215,9 +214,8 @@ export function ChordSheet({
   /** Fondo negro (modo En vivo): texto en blanco */
   dark?: boolean;
 }) {
-  // en Solo acordes, las líneas seguidas que repiten los mismos compases se juntan en una,
-  // y dos líneas seguidas de 2 compases van en un mismo renglón
-  const shown = mode === "chords" ? joinShortChartLines(mergeRepeatedChartLines(lines)) : lines;
+  // en Solo acordes, los compases van en filas de 4 y las filas repetidas con ":]"
+  const shown = mode === "chords" ? packChartRows(lines) : lines;
   const barWidths =
     mode === "chords"
       ? barColumnWidths(shown.map(plainChartBase).filter((b): b is string => b !== null))

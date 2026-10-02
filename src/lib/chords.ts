@@ -273,30 +273,50 @@ export function isSimpleChartLine(pairs: ChordPair[]): boolean {
   );
 }
 
-/** Largo del grupo de compases que se repite (el más corto); bars.length si no se repite */
-function smallestPeriod(bars: string[]): number {
-  for (let period = 1; period <= bars.length / 2; period += 1) {
-    if (bars.length % period !== 0) continue;
-    if (bars.every((bar, i) => bar === bars[i % period])) return period;
-  }
-  return bars.length;
+/** Compases por fila en "Solo acordes" */
+const BARS_PER_ROW = 4;
+
+/** "A/C# - F#m" → pares { A/C#, "-" } { F#m, "" } (un compás armado de nuevo como línea) */
+function barPairs(bar: string): ChordPair[] {
+  const chords = bar.split(" - ");
+  return chords.map((chord, k) => ({ chord, text: k < chords.length - 1 ? "-" : "" }));
 }
 
-/** true si los compases son un mismo grupo repetido 2 o más veces */
-function isRepeated(bars: string[]): boolean {
-  return bars.length > 0 && smallestPeriod(bars) < bars.length;
+/** Una vuelta de varias filas tiene que tener al menos esto para escribirse con ":]" */
+const MIN_REPEAT_BARS = 4;
+
+/**
+ * Desde el compás `start`: la vuelta que se repite seguida cubriendo más compases (de
+ * MIN_REPEAT_BARS o más) y cuántas veces; si no hay, una fila común (hasta 4 compases, 1 vez).
+ */
+function repeatAt(bars: string[], start: number): { period: number; times: number } {
+  let best = { period: Math.min(BARS_PER_ROW, bars.length - start), times: 1 };
+  for (let period = MIN_REPEAT_BARS; start + period * 2 <= bars.length; period += 1) {
+    let times = 1;
+    while (
+      start + period * (times + 1) <= bars.length &&
+      bars
+        .slice(start + period * times, start + period * (times + 1))
+        .every((bar, k) => bar === bars[start + k])
+    )
+      times += 1;
+    if (times > 1 && period * times > best.period * best.times) best = { period, times };
+  }
+  return best;
 }
 
 /**
- * "Solo acordes": si varias líneas seguidas repiten el mismo grupo de compases, se juntan en una
- * sola línea (que después se escribe una vez con ":]" / "x3]" / "x4]"). Ej. un verso con
- * "| D | Bm |" / "| G | D - A |" tres veces → una línea "| D | Bm | G | D - A |x3]".
- * El grupo empieza y termina en líneas enteras; se toma el tramo más largo posible. Las líneas
- * que no son "simples" (ver isSimpleChartLine) y las secciones cortan el tramo; las líneas vacías
- * no (un coro con un renglón en blanco entre las dos vueltas también es una repetición) y, si
- * quedan adentro de lo que se juntó, desaparecen.
+ * "Solo acordes" como hoja de ensayo (pedido de Pablo): cada acorde es un compás — dos acordes
+ * van juntos solo si el texto tiene un "-" escrito entre ellos — y los compases de una sección se
+ * acomodan corridos en filas de 4, sin importar cuántos acordes tenga cada línea de la letra.
+ * Si una vuelta (de 4 compases o más) se repite seguida, se escribe una vez —en sus filas de 4— con
+ * ":]" al final (2 veces) o "x3", "x4"…; después sigue lo que viene.
+ *
+ * El tramo lo cortan las secciones y las líneas que no son "simples" (notas "(…)", marcas como
+ * "x3" o "Sube Tono", o un ":]" escrito a mano): esas se respetan tal cual. Las líneas vacías
+ * no cortan (un coro con un renglón en blanco entre las dos vueltas sigue siendo uno).
  */
-export function mergeRepeatedChartLines(lines: ParsedLine[]): ParsedLine[] {
+export function packChartRows(lines: ParsedLine[]): ParsedLine[] {
   const out: ParsedLine[] = [];
   let i = 0;
   while (i < lines.length) {
@@ -306,116 +326,31 @@ export function mergeRepeatedChartLines(lines: ParsedLine[]): ParsedLine[] {
       i += 1;
       continue;
     }
-    // las líneas simples del tramo (saltando las vacías), hasta una sección o una línea no simple
-    const run = [i];
-    for (let j = i + 1; j < lines.length; j += 1) {
+    // compases de las líneas simples del tramo (saltando las vacías)
+    const bars: string[] = [];
+    let last = i;
+    for (let j = i; j < lines.length; j += 1) {
       const next = lines[j]!;
       if (next.kind === "blank") continue;
       if (next.kind !== "line" || !isSimpleChartLine(next.pairs)) break;
-      run.push(j);
+      bars.push(...chartBars(next.pairs));
+      last = j;
     }
-    let mergedCount = 1;
-    for (let count = run.length; count > 1; count -= 1) {
-      const bars = run
-        .slice(0, count)
-        .flatMap((j) => (lines[j]!.kind === "line" ? chartBars(lines[j]!.pairs) : []));
-      if (isRepeated(bars)) {
-        mergedCount = count;
-        break;
-      }
-    }
-    if (mergedCount === 1) {
-      out.push(line);
-      i += 1;
-      continue;
-    }
-    // una vuelta larga (más de 4 compases) que termina justo al final de una línea: se deja la
-    // primera vuelta con sus líneas (así se ve en renglones, no en una fila que no entra) y la
-    // última lleva la repetición (":]" o "x3"…)
-    const lineBars = run
-      .slice(0, mergedCount)
-      .map((j) => (lines[j]!.kind === "line" ? chartBars(lines[j]!.pairs).length : 0));
-    const allBars = run
-      .slice(0, mergedCount)
-      .flatMap((j) => (lines[j]!.kind === "line" ? chartBars(lines[j]!.pairs) : []));
-    const period = smallestPeriod(allBars);
-    let linesInPeriod = 0;
-    for (let sum = 0; linesInPeriod < lineBars.length && sum < period; linesInPeriod += 1) {
-      sum += lineBars[linesInPeriod]!;
-    }
-    const fitsLines =
-      lineBars.slice(0, linesInPeriod).reduce((a, b) => a + b, 0) === period &&
-      linesInPeriod < mergedCount;
-    if (period > 4 && fitsLines) {
-      const times = allBars.length / period;
-      run.slice(0, linesInPeriod).forEach((j, n) => {
-        const l = lines[j]! as Extract<ParsedLine, { kind: "line" }>;
-        if (n < linesInPeriod - 1) {
-          out.push(l);
-          return;
-        }
-        const pairs = l.pairs.map((p, k) =>
-          k === l.pairs.length - 1 && p.text.trim() === "-" ? { ...p, text: "" } : { ...p },
-        );
-        if (times === 2) pairs[pairs.length - 1] = { ...pairs[pairs.length - 1]!, text: ":]" };
-        else pairs.push({ chord: `x${times}`, text: "" });
+    for (let s = 0; s < bars.length;) {
+      const { period, times } = repeatAt(bars, s);
+      const block = bars.slice(s, s + period);
+      for (let k = 0; k < block.length; k += BARS_PER_ROW) {
+        const pairs = block.slice(k, k + BARS_PER_ROW).flatMap(barPairs);
+        // la repetición va al final de la última fila de la vuelta
+        if (k + BARS_PER_ROW >= block.length && times === 2)
+          pairs[pairs.length - 1] = { ...pairs[pairs.length - 1]!, text: ":]" };
+        else if (k + BARS_PER_ROW >= block.length && times > 2)
+          pairs.push({ chord: `x${times}`, text: "" });
         out.push({ kind: "line", pairs });
-      });
-      i = run[mergedCount - 1]! + 1;
-      continue;
+      }
+      s += period * times;
     }
-    // se unen los pares; cada línea abre compás nuevo (un "-" colgando al final no la pega a la siguiente)
-    const pairs = run.slice(0, mergedCount).flatMap((j) => {
-      const l = lines[j]!;
-      return l.kind === "line"
-        ? l.pairs.map((p, k) =>
-            k === l.pairs.length - 1 && p.text.trim() === "-" ? { ...p, text: "" } : { ...p },
-          )
-        : [];
-    });
-    out.push({ kind: "line", pairs });
-    i = run[mergedCount - 1]! + 1;
-  }
-  return out;
-}
-
-/**
- * "Solo acordes": líneas cortas seguidas (1 o 2 compases; lo que está entre "|" es un compás,
- * aunque sea "Bm - A") van en un mismo renglón de hasta 4 compases:
- * "| Em | % |" + "| G | A |" → "| Em | % | G | A |"; "| Bm - A |" + "| G - A/C# |" →
- * "| Bm - A | G - A/C# |". Solo líneas "simples" que no sean una repetición (esas ya se
- * escriben con ":]").
- */
-export function joinShortChartLines(lines: ParsedLine[]): ParsedLine[] {
-  // compases de una línea corta (1 o 2, sin ser repetición); 0 si no se puede juntar
-  const shortBars = (line: ParsedLine | undefined): number => {
-    if (!line || line.kind !== "line" || !isSimpleChartLine(line.pairs)) return 0;
-    const bars = chartBars(line.pairs);
-    return bars.length <= 2 && !isRepeated(bars) ? bars.length : 0;
-  };
-  // un "-" colgando al final no pega la línea al primer compás de la siguiente
-  const closed = (line: Extract<ParsedLine, { kind: "line" }>) =>
-    line.pairs.map((p, j) =>
-      j === line.pairs.length - 1 && p.text.trim() === "-" ? { ...p, text: "" } : p,
-    );
-  const out: ParsedLine[] = [];
-  let i = 0;
-  while (i < lines.length) {
-    const line = lines[i]!;
-    let total = shortBars(line);
-    let end = i;
-    // se suman líneas cortas seguidas mientras el renglón no pase de 4 compases
-    while (total > 0 && shortBars(lines[end + 1]) > 0 && total + shortBars(lines[end + 1]) <= 4) {
-      end += 1;
-      total += shortBars(lines[end]);
-    }
-    if (end === i) {
-      out.push(line);
-    } else {
-      const pairs = lines.slice(i, end + 1).flatMap((l) => (l.kind === "line" ? closed(l) : []));
-      out.push({ kind: "line", pairs });
-    }
-    i = end + 1;
+    i = last + 1;
   }
   return out;
 }

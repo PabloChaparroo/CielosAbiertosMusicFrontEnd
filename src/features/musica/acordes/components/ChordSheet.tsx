@@ -105,11 +105,17 @@ function barColumnWidths(bases: string[]): number[] {
   return widths;
 }
 
-/** Rellena cada compás hasta el ancho de su columna */
+/** Centra el compás en el ancho de su columna ("%" en una columna de 6 → "  %   ") */
+function centerCell(cell: string, width: number): string {
+  const left = Math.floor(Math.max(0, width - cell.length) / 2);
+  return (" ".repeat(left) + cell).padEnd(width);
+}
+
+/** Rellena cada compás hasta el ancho de su columna, centrado (los "|" siguen alineados) */
 function alignBars(base: string, widths: number[]): string {
   const bars = splitBars(base);
   if (!bars || !widths.length) return base;
-  return `| ${bars.cells.map((cell, c) => cell.padEnd(widths[c] ?? 0)).join(" | ")} ${bars.end}`;
+  return `| ${bars.cells.map((cell, c) => centerCell(cell, widths[c] ?? 0)).join(" | ")} ${bars.end}`;
 }
 
 /** Texto de compases de una línea de "Solo acordes" sin notas "(…)"; null si tiene notas o no tiene acordes */

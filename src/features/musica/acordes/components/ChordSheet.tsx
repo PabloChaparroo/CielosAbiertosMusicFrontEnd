@@ -117,7 +117,9 @@ function plainChartBase(line: ParsedLine): string | null {
   if (line.kind !== "line") return null;
   const pairs = line.pairs.filter((pair) => pair.chord || pair.note || pair.text.trim());
   if (!pairs.some((p) => p.chord) || pairs.some((p) => p.note)) return null;
-  return chordChartSegments(pairs).map((s) => s.value).join("");
+  return chordChartSegments(pairs)
+    .map((s) => s.value)
+    .join("");
 }
 
 /**

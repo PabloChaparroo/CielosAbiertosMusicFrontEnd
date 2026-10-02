@@ -146,9 +146,10 @@ export function useFloatingWindow() {
 
 /**
  * Tamaños: YouTube exige que el reproductor embebido mida al menos 200×200px, así que el chico es
- * 260×200 (el video queda con franjas negras arriba y abajo); el grande, 16:9 hasta 640px de ancho.
+ * 200×200, justo el mínimo (el video queda con franjas negras arriba y abajo); el grande, 16:9
+ * hasta 640px de ancho.
  */
-export const FLOAT_SMALL = { width: 260, height: 200 };
+export const FLOAT_SMALL = { width: 200, height: 200 };
 export const floatLargeStyle: React.CSSProperties = {
   width: "min(640px, calc(100vw - 16px))",
   aspectRatio: "16 / 9",

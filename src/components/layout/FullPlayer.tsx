@@ -420,6 +420,9 @@ export function FullPlayer({
             {/* controles: fijos abajo mientras se recorre la lista */}
             <div className="sticky bottom-0 rounded-b-3xl border-t border-border/60 bg-card/95 px-4 pt-3 pb-4 backdrop-blur md:px-8">
               <div className="flex items-center justify-between gap-2">
+                {/* en celular el volumen no está: este hueco iguala al de aleatorio para que
+                    anterior / play / siguiente queden centrados */}
+                <div className="w-10 md:hidden" aria-hidden />
                 <div className="hidden w-40 items-center gap-2 md:flex">
                   <Volume2 className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <input

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { AlertCircle, Cloud, Eye, EyeOff, LogIn, UserRound } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, LogIn, UserRound } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
 import { useAuth } from "@/core/auth/useAuth";
 
@@ -54,9 +54,13 @@ export function LoginPage() {
 
       <div className="relative w-full max-w-sm">
         <div className="mb-10 flex flex-col items-center gap-4 text-center">
-          <div className="glow flex h-16 w-16 items-center justify-center rounded-2xl gradient-gold text-primary-foreground">
-            <Cloud className="h-8 w-8" />
-          </div>
+          <img
+            src="/icon-192.png"
+            alt="Cielos Abiertos"
+            width={96}
+            height={96}
+            className="glow h-24 w-24 rounded-full"
+          />
           <div>
             <h1 className="font-display text-3xl font-bold sm:text-4xl">
               Cielos <span className="text-gradient-gold">Abiertos</span>

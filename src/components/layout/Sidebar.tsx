@@ -2,7 +2,6 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   ArrowRightLeft,
   BarChart3,
-  Cloud,
   Guitar,
   Heart,
   Home,
@@ -78,9 +77,13 @@ export function SidebarContent({
         onClick={onNavigate}
         className="flex items-center gap-3 px-6 py-6 transition-opacity hover:opacity-80"
       >
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-gold text-primary-foreground">
-          <Cloud className="h-5 w-5" />
-        </div>
+        <img
+          src="/icon-192.png"
+          alt=""
+          width={40}
+          height={40}
+          className="h-10 w-10 shrink-0 rounded-full"
+        />
         <div className="leading-tight">
           <p className="font-display text-lg font-semibold">Cielos Abiertos</p>
           <p className="text-[11px] tracking-widest text-muted-foreground uppercase">Adoración</p>

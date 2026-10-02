@@ -69,9 +69,8 @@ export function UploadModal({
   const [compas, setCompas] = useState(song?.compas ?? "4/4");
   const [durationMinutes, setDurationMinutes] = useState(Math.floor((song?.duration ?? 240) / 60));
   const [durationSeconds, setDurationSeconds] = useState((song?.duration ?? 240) % 60);
-  const [chordpro, setChordpro] = useState(
-    song?.chordpro ?? "{estrofa 1}\n[G]Nueva canción del minis[D]terio",
-  );
+  // en alta arranca vacía (el ejemplo va de placeholder, no hay que borrarlo a mano)
+  const [chordpro, setChordpro] = useState(song?.chordpro ?? "");
   const [tags, setTags] = useState<Tag[]>(song?.tags ?? []);
   // tipo obligatorio: en alta arranca sin elegir, para que se decida a propósito
   const [tipoId, setTipoId] = useState(song?.tipoId ?? "");
@@ -396,6 +395,7 @@ export function UploadModal({
               className={`${inputCls} min-h-[120px] font-mono whitespace-pre`}
               value={chordpro}
               onChange={(e) => setChordpro(e.target.value)}
+              placeholder={"{estrofa 1}\n[G]Nueva canción del minis[D]terio"}
             />
           </Field>
 

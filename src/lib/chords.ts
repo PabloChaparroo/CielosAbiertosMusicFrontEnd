@@ -1,3 +1,5 @@
+import { isChord } from "./chords-over-lyrics";
+
 const SHARP = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 const FLAT = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
 
@@ -392,4 +394,22 @@ export function chordsOnly(lines: ParsedLine[]): ParsedLine[] {
         }
       : l,
   );
+}
+
+/**
+ * Reescribe los acordes del texto del cancionero en otro tono ("[G]Santo" → "[A]Santo" con +2),
+ * para guardarlo así. Solo toca lo que entre corchetes es un acorde: secciones ("[Intro]"),
+ * marcas ("[%]", "[x3]", "[Baja Tono]") y el resto del texto quedan igual.
+ */
+export function transposeChordPro(body: string, semitones: number, targetKey: string): string {
+  if (!(((semitones % 12) + 12) % 12)) return body;
+  return body.replace(/\[([^\]]+)\]/g, (match, inner: string) => {
+    const value = inner.trim();
+    if (!isChord(value)) return match;
+    // "(G)" (acorde entre paréntesis) conserva los paréntesis
+    const wrapped = /^\((.+)\)$/.exec(value);
+    const chord = wrapped ? wrapped[1]! : value;
+    const moved = transposeChord(chord, semitones, targetKey);
+    return `[${wrapped ? `(${moved})` : moved}]`;
+  });
 }

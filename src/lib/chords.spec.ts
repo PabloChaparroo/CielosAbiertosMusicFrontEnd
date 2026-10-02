@@ -8,6 +8,7 @@ import {
   parseChordPro,
   semitonesBetween,
   transposeChord,
+  transposeChordPro,
   transposeKey,
   type ParsedLine,
 } from "./chords";
@@ -256,5 +257,32 @@ describe("joinShortChartLines — Solo acordes: dos líneas de 2 compases en un 
 
   it("una línea con notas o marcas no se junta", () => {
     expect(chart("[D] (suave) [A]", "[G] [A]")).toHaveLength(2);
+  });
+});
+
+describe("transposeChordPro", () => {
+  it("pasa los acordes al tono nuevo y deja la letra igual", () => {
+    expect(transposeChordPro("[C]Al esta[G]r ante ti\nEn[G/B]tre [Am]la", 2, "D")).toBe(
+      "[D]Al esta[A]r ante ti\nEn[A/C#]tre [Bm]la",
+    );
+  });
+
+  it("no toca secciones ni marcas (Baja Tono empieza con B)", () => {
+    expect(
+      transposeChordPro("{Coro}\n[Intro]\n[G] [%] :] [x3] [Sube Tono] [Baja Tono]", 2, "A"),
+    ).toBe("{Coro}\n[Intro]\n[A] [%] :] [x3] [Sube Tono] [Baja Tono]");
+  });
+
+  it("acordes con extensiones y entre paréntesis", () => {
+    expect(transposeChordPro("[Am7b5] [G4] [C9] [(E)]", -2, "Bb")).toBe("[Gm7b5] [F4] [Bb9] [(D)]");
+  });
+
+  it("bemoles o sostenidos según el tono de destino", () => {
+    expect(transposeChordPro("[C] [F] [G]", 3, "Eb")).toBe("[Eb] [Ab] [Bb]");
+    expect(transposeChordPro("[C] [F] [G]", 4, "E")).toBe("[E] [A] [B]");
+  });
+
+  it("sin cambio de tono (0 o 12 semitonos) devuelve el texto tal cual", () => {
+    expect(transposeChordPro("[Db] [C#]", 12, "C")).toBe("[Db] [C#]");
   });
 });

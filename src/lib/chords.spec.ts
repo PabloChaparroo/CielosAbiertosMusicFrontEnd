@@ -202,9 +202,56 @@ describe("mergeRepeatedChartLines — Solo acordes: líneas seguidas con los mis
     ]);
   });
 
-  it("una sección o una línea vacía cortan el tramo", () => {
+  it("una sección corta el tramo; una línea vacía dentro de la sección no", () => {
     expect(chart("[D] [A]\n{Coro}\n[D] [A]")).toHaveLength(3);
-    expect(chart("[D] [A]\n\n[D] [A]")).toHaveLength(3);
+    expect(chart("[D] [A]\n\n[D] [A]")).toHaveLength(1);
+  });
+
+  it("el coro de 'Al estar ante ti': dos vueltas iguales separadas por un renglón vacío → :]", () => {
+    const vuelta = (a: string[]) => a.join("\n");
+    const lines = chart(
+      [
+        "{Coro}",
+        vuelta([
+          "[D/F#]- Digno es el co[G]rdero de[D/F#] Dios",
+          "El que fue i[G]nmolad - [A/C#]o en la cru[Bm]z -",
+          "Dig[A]no de l[G]a - h[A/C#]onra y el[D] poder",
+          "La sa[Em]biduria suya [A] es",
+        ]),
+        "",
+        "",
+        vuelta([
+          "Y a[D/F#]l - que esta en el t[G]rono sea el[D/F#] honor",
+          "Santo santo sa[G]nto -[A/C#] es el se[Bm]ñor -",
+          "Rein[A]a por l[G]os - sigl[A/C#]os con[D] poder",
+          "Todo l[Em]o que exi[A]ste",
+        ]),
+        "",
+        "[C] [A4]",
+      ].join("\n"),
+    );
+    // la vuelta (9 compases) no entra en una fila: queda en sus 4 líneas y la última lleva ":]"
+    expect(lines.map(barsOf)).toEqual([
+      [],
+      ["D/F# - G", "D/F#"],
+      ["G - A/C#", "Bm"],
+      ["A", "G - A/C#", "D"],
+      ["Em", "A"],
+      [],
+      ["C", "A4"],
+    ]);
+    const ultima = lines[4]!;
+    expect(ultima.kind === "line" && ultima.pairs.at(-1)!.text).toBe(":]");
+  });
+
+  it("una vuelta larga repetida 3 veces lleva x3 al final", () => {
+    const lines = chart(
+      "[D] [A] [Em]\n[G] [Bm] [C]\n\n[D] [A] [Em]\n[G] [Bm] [C]\n[D] [A] [Em]\n[G] [Bm] [C]",
+    );
+    expect(lines.map(barsOf)).toEqual([
+      ["D", "A", "Em"],
+      ["G", "Bm", "C", "x3"],
+    ]);
   });
 
   it("las líneas con ':]', marcas o notas se respetan y no se juntan", () => {

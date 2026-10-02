@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
-import { youtubeVideoIdOf } from "@/features/canciones/services/songs.service";
+import { SongsService, youtubeVideoIdOf } from "@/features/canciones/services/songs.service";
+import { readYoutubeDuration } from "@/lib/youtube-duration";
 import { looksLikeYoutube, parseYoutubeVideoId } from "@/lib/youtube";
 import { YoutubeIcon } from "@/components/common/YoutubeEmbed";
 import { ExternalLink, Link2, Plus, Trash2, X } from "lucide-react";
@@ -39,7 +40,26 @@ export function SongLinksModal({ song, onClose }: { song: Song; onClose: () => v
   const syncCover = (next: SongLink[]) => {
     // por ref: después de un await, la lista de canciones de este render puede estar vieja
     const latest = songsRef.current.find((s) => s.id === song.id) ?? song;
-    updateSong({ ...latest, youtubeVideoId: youtubeVideoIdOf(next) });
+    const videoId = youtubeVideoIdOf(next);
+    updateSong({ ...latest, youtubeVideoId: videoId });
+    // cambió el video principal: la duración de la canción pasa a ser la del video
+    if (videoId && videoId !== latest.youtubeVideoId) void syncYoutubeDuration(song.id, videoId);
+  };
+
+  const syncYoutubeDuration = async (songId: string, videoId: string) => {
+    const seconds = await readYoutubeDuration(videoId);
+    const latest = songsRef.current.find((s) => s.id === songId);
+    if (!seconds || !latest || latest.youtubeVideoId !== videoId || latest.duration === seconds)
+      return;
+    try {
+      await SongsService.updateSong(songId, { duration: seconds });
+      updateSong({
+        ...(songsRef.current.find((s) => s.id === songId) ?? latest),
+        duration: seconds,
+      });
+    } catch {
+      // queda la duración anterior
+    }
   };
 
   const handleCreate = async () => {

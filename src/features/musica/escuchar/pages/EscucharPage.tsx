@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { SongsService } from "@/features/canciones/services/songs.service";
 import {
   Check,
+  Clock,
   LayoutGrid,
   Layers,
   Link2,
@@ -16,6 +17,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, EmptyState, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import { Pager, usePaged } from "@/components/common/Pager";
+import { readYoutubeDuration } from "@/lib/youtube-duration";
 import type { Song, Tag } from "@/types";
 import { AudioTracksModal } from "../components/AudioTracksModal";
 import { SongLinksModal } from "../components/SongLinksModal";
@@ -87,18 +89,53 @@ export function EscucharPage() {
   // 30 por página; la búsqueda y los filtros miran todas las canciones
   const paged = usePaged(filtered, 30, `${query}|${tag}|${tipo}|${secuencia}`);
 
+  // duración de cada canción = la de su video principal de YouTube (se guarda en la base)
+  const [durationSync, setDurationSync] = useState<{ done: number; total: number } | null>(null);
+  const syncYoutubeDurations = async () => {
+    const withVideo = songs.filter((s) => s.youtubeVideoId);
+    setDurationSync({ done: 0, total: withVideo.length });
+    for (const [i, song] of withVideo.entries()) {
+      const seconds = await readYoutubeDuration(song.youtubeVideoId!);
+      if (seconds && seconds !== song.duration) {
+        try {
+          await SongsService.updateSong(song.id, { duration: seconds });
+          updateSong({ ...song, duration: seconds });
+        } catch {
+          // queda la duración anterior
+        }
+      }
+      setDurationSync({ done: i + 1, total: withVideo.length });
+    }
+    setDurationSync(null);
+  };
+
   return (
     <AppLayout
       title="Canciones"
       subtitle={`${songs.length} canciones en el repertorio`}
       actions={
         can("editSongs") ? (
-          <button
-            onClick={() => setModal(true)}
-            className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
-          >
-            <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Subir canción</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => void syncYoutubeDurations()}
+              disabled={durationSync !== null}
+              title="Toma la duración del video principal de YouTube de cada canción"
+              className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground disabled:opacity-70"
+            >
+              <Clock className="h-4 w-4" />
+              <span className="hidden sm:inline">
+                {durationSync
+                  ? `Duraciones ${durationSync.done}/${durationSync.total}`
+                  : "Duraciones de YouTube"}
+              </span>
+            </button>
+            <button
+              onClick={() => setModal(true)}
+              className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
+            >
+              <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Subir canción</span>
+            </button>
+          </div>
         ) : null
       }
     >
@@ -232,7 +269,7 @@ export function EscucharPage() {
         </div>
       ) : (
         <div className="surface-card overflow-x-auto">
-          <div className="hidden grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_210px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_210px] gap-4 border-b border-border/60 px-4 py-3 text-[11px] tracking-widest text-muted-foreground uppercase md:grid">
+          <div className="hidden grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_56px_140px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_56px_140px] gap-4 border-b border-border/60 px-4 py-3 text-[11px] tracking-widest text-muted-foreground uppercase md:grid">
             <span>#</span>
             <span>Título</span>
             <span className="hidden 2xl:block">Temas</span>
@@ -240,12 +277,13 @@ export function EscucharPage() {
             <span className="text-center">Secuencia</span>
             <span>Tono / Compás / BPM</span>
             <span className="text-right">Duración</span>
+            <span className="text-right">Acciones</span>
           </div>
           {paged.pageItems.map((song, i) => (
             <div
               key={song.id}
               onClick={() => play(song)}
-              className={`group grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-2.5 transition-colors hover:bg-elevated/70 md:grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_210px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_210px] ${
+              className={`group grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-2.5 transition-colors hover:bg-elevated/70 md:grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_56px_140px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_56px_140px] ${
                 current?.id === song.id ? "bg-elevated/60" : ""
               }`}
             >
@@ -293,11 +331,11 @@ export function EscucharPage() {
               <span className="hidden whitespace-nowrap text-sm text-muted-foreground md:block">
                 {song.key} · {song.compas} · {song.bpm} BPM
               </span>
+              <span className="hidden text-right text-sm text-muted-foreground tabular-nums md:block">
+                {formatDuration(song.duration)}
+              </span>
               <div className="flex items-center justify-end gap-1 whitespace-nowrap">
                 <FavButton songId={song.id} />
-                <span className="hidden w-12 text-right text-sm text-muted-foreground md:inline">
-                  {formatDuration(song.duration)}
-                </span>
                 <button
                   onClick={(event) => {
                     event.stopPropagation();

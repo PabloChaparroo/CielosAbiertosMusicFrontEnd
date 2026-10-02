@@ -61,13 +61,19 @@ function chordChartSegments(pairs: ChordPair[]): ChartSegment[] {
       return;
     }
     const notation = pair.text.trim();
-    if (pair.chord && isChartMarker(pair.chord)) {
+    if (pair.chord && /^x\d+$/i.test(pair.chord.trim()) && barOpen) {
+      // repetición (x2, x3, x4…): cierra el compás y va afuera, como ":]" → "| Bm - A/C# |x4]"
+      buffer += ` |${pair.chord.trim().toLowerCase()}]`;
+      barOpen = false;
+      joinsNextChord = false;
+      applyNotation(notation);
+    } else if (pair.chord && isChartMarker(pair.chord)) {
       buffer += started ? ` ${pair.chord}` : pair.chord;
       applyNotation(notation);
     } else if (pair.chord) {
       buffer += joinsNextChord
         ? ` ${pair.chord}`
-        : started
+        : started || buffer
           ? ` | ${pair.chord}`
           : `| ${pair.chord}`;
       started = true;

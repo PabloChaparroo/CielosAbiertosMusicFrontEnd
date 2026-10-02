@@ -420,31 +420,22 @@ export function joinShortChartLines(lines: ParsedLine[]): ParsedLine[] {
   return out;
 }
 
-/**
- * "Solo acordes": deja de cada par solo el acorde y la notación (":]", "-"). En una línea con
- * letra, la línea entera es UN compás (pedido de Pablo): sus acordes van unidos con "-"
- * ("[A/C#]Llamaste el mundo a e[F#m]xistencia" → "| A/C# - F#m |"). Las líneas que ya son solo
- * acordes ("[D] [A] [Em]") están escritas compás por compás y quedan como están; las marcas
- * ("%", "x3", "Sube Tono") nunca se unen.
- */
 export function chordsOnly(lines: ParsedLine[]): ParsedLine[] {
-  const isBarChord = (chord: string | null) =>
-    !!chord && chord.trim() !== "%" && !isChartMarker(chord);
-  return lines.map((l) => {
-    if (l.kind !== "line") return l;
-    const hasLyrics = l.pairs.some((p) => !p.note && /[^\s\-:\]]/.test(p.text));
-    return {
-      ...l,
-      pairs: l.pairs.map((p, j) => {
-        if (p.note) return p;
-        const notation = p.text.includes(":]") ? ":]" : p.text.includes("-") ? "-" : "";
-        // se une con "-" al acorde siguiente de la línea, salvo que sea una marca
-        const nextChord = l.pairs.slice(j + 1).find((q) => !q.note && q.chord)?.chord ?? null;
-        const joinsNext = hasLyrics && isBarChord(p.chord) && isBarChord(nextChord);
-        return { chord: p.chord, text: notation === ":]" ? ":]" : joinsNext ? "-" : notation };
-      }),
-    };
-  });
+  return lines.map((l) =>
+    l.kind === "line"
+      ? {
+          ...l,
+          pairs: l.pairs.map((p) =>
+            p.note
+              ? p
+              : {
+                  chord: p.chord,
+                  text: p.text.includes(":]") ? ":]" : p.text.includes("-") ? "-" : "",
+                },
+          ),
+        }
+      : l,
+  );
 }
 
 /**

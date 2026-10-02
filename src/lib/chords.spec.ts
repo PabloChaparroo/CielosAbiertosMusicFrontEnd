@@ -161,7 +161,7 @@ describe("mergeRepeatedChartLines — Solo acordes: líneas seguidas con los mis
   const chart = (body: string) => mergeRepeatedChartLines(chordsOnly(parseChordPro(body, 0, "D")));
   const barsOf = (line: ParsedLine) => (line.kind === "line" ? chartBars(line.pairs) : []);
 
-  it("el verso de 'A quién iré' (3 veces | D - Bm | G - D - A |) queda en una sola línea", () => {
+  it("el verso de 'A quién iré' (3 veces | D | Bm | G | D - A |) queda en una sola línea", () => {
     const lines = chart(
       [
         "{Verso}",
@@ -174,11 +174,10 @@ describe("mergeRepeatedChartLines — Solo acordes: líneas seguidas con los mis
       ].join("\n"),
     );
     expect(lines).toHaveLength(2);
-    // cada línea con letra es un compás
     expect(barsOf(lines[1]!)).toEqual([
-      ...["D - Bm", "G - D - A"],
-      ...["D - Bm", "G - D - A"],
-      ...["D - Bm", "G - D - A"],
+      ...["D", "Bm", "G", "D - A"],
+      ...["D", "Bm", "G", "D - A"],
+      ...["D", "Bm", "G", "D - A"],
     ]);
   });
 
@@ -231,21 +230,18 @@ describe("mergeRepeatedChartLines — Solo acordes: líneas seguidas con los mis
         "[C] [A4]",
       ].join("\n"),
     );
-    // cada línea con letra es un compás: la vuelta son 4 compases, en una fila con ":]"
-    const una = ["D/F# - G - D/F#", "G - A/C# - Bm", "A - G - A/C# - D", "Em - A"];
-    expect(lines.map(barsOf)).toEqual([[], [...una, ...una], [], ["C", "A4"]]);
-  });
-
-  it("el verso de Pablo: | A | D | A/C# - F#m | D | dos veces", () => {
-    const vuelta = [
-      "[A]Tu eres el principio",
-      "[D]Tuya es la eternidad",
-      "[A/C#]Llamaste el mundo a e[F#m]xistencia",
-      "Me acerco a [D]ti",
-    ].join("\n");
-    const lines = chart(["{Verso}", vuelta, "", vuelta].join("\n"));
-    const una = ["A", "D", "A/C# - F#m", "D"];
-    expect(lines.map(barsOf)).toEqual([[], [...una, ...una]]);
+    // la vuelta (9 compases) no entra en una fila: queda en sus 4 líneas y la última lleva ":]"
+    expect(lines.map(barsOf)).toEqual([
+      [],
+      ["D/F# - G", "D/F#"],
+      ["G - A/C#", "Bm"],
+      ["A", "G - A/C#", "D"],
+      ["Em", "A"],
+      [],
+      ["C", "A4"],
+    ]);
+    const ultima = lines[4]!;
+    expect(ultima.kind === "line" && ultima.pairs.at(-1)!.text).toBe(":]");
   });
 
   it("una vuelta larga repetida 3 veces lleva x3 al final", () => {
@@ -272,9 +268,9 @@ describe("joinShortChartLines — Solo acordes: dos líneas de 2 compases en un 
     );
   const barsOf = (line: ParsedLine) => (line.kind === "line" ? chartBars(line.pairs) : []);
 
-  it("| Em | % | + | G - A | → | Em | % | G - A | (el % no se une; la línea con letra es un compás)", () => {
+  it("| Em | % | + | G | A | → | Em | % | G | A |", () => {
     expect(chart("[Em]Solo Tú tienes pa[%]labras", "[G]de vida [A]eterna").map(barsOf)).toEqual([
-      ["Em", "%", "G - A"],
+      ["Em", "%", "G", "A"],
     ]);
   });
 

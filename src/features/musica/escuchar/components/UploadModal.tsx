@@ -227,7 +227,7 @@ export function UploadModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="w-full max-w-lg animate-in slide-in-from-bottom-6 overflow-y-auto rounded-t-3xl border border-border bg-card p-6 sm:max-h-[85vh] sm:rounded-2xl">
+      <div className="w-full max-w-lg animate-in slide-in-from-bottom-6 max-h-[92dvh] overflow-y-auto overscroll-contain rounded-t-3xl border border-border bg-card p-6 sm:max-h-[85vh] sm:rounded-2xl">
         <div className="mb-5 flex items-start justify-between">
           <div>
             <h2 className="font-display text-xl font-semibold">

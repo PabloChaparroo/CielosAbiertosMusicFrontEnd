@@ -1,10 +1,13 @@
-import { CalendarCheck, CalendarX } from "lucide-react";
+import { BookmarkPlus, CalendarCheck, CalendarX } from "lucide-react";
 import { Avatar } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import type { EventType, Setlist } from "@/types";
 
 const eventColor: Record<EventType, string> = {
-  "Culto Domingo": "bg-primary/15 text-primary border-primary/40",
+  "Culto Domingo a la mañana": "bg-primary/15 text-primary border-primary/40",
+  "Culto Domingo a la tarde": "bg-primary/15 text-primary border-primary/40",
+  "Culto Miércoles": "bg-primary/15 text-primary border-primary/40",
+  "Culto Sábado Jóvenes": "bg-primary/15 text-primary border-primary/40",
   Ensayo: "bg-sky/15 text-sky border-sky/40",
   "Evento Especial": "bg-secondary text-foreground border-border",
 };
@@ -13,11 +16,14 @@ export function SetlistCard({
   s,
   onClick,
   onToggleUpcoming,
+  onSaveTemplate,
   muted,
 }: {
   s: Setlist;
   onClick: () => void;
-  onToggleUpcoming?: () => void;
+  onToggleUpcoming?: (() => void) | undefined;
+  /** Guarda sus canciones como lista predefinida */
+  onSaveTemplate?: (() => void) | undefined;
   muted?: boolean;
 }) {
   const { users, songs } = useApp();
@@ -55,6 +61,20 @@ export function SetlistCard({
             <p className="font-semibold text-foreground">{s.items.length}</p>
             canciones
           </div>
+          {onSaveTemplate ? (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onSaveTemplate();
+              }}
+              title="Guardar como lista predefinida"
+              aria-label="Guardar como lista predefinida"
+              className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
+            >
+              <BookmarkPlus className="h-4 w-4" />
+            </button>
+          ) : null}
           {onToggleUpcoming ? (
             <button
               type="button"

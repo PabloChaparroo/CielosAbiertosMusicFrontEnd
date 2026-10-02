@@ -1,4 +1,4 @@
-import type { Song } from "@/types";
+import type { Setlist, Song } from "@/types";
 
 /**
  * Cálculos de Estadísticas, como funciones puras (sin React) para poder testearlos. Se sacaron
@@ -64,4 +64,32 @@ export function historicRanking(songs: Song[], limit = 10) {
     .map((song) => ({ song, plays: totalPlays(song) }))
     .sort((a, b) => b.plays - a.plays)
     .slice(0, limit);
+}
+
+/**
+ * Veces que se tocó una canción en los setlists entre dos fechas ("AAAA-MM-DD", inclusive):
+ * una por setlist que la incluye, de la más reciente a la más vieja, con quiénes tocaron.
+ */
+export function songPlaysInRange(setlists: Setlist[], songId: string, from: string, to: string) {
+  return setlists
+    .filter((s) => {
+      const day = toLocalDay(s.date);
+      return day >= from && day <= to && s.items.some((it) => it.songId === songId);
+    })
+    .map((s) => ({
+      setlistId: s.id,
+      title: s.title,
+      type: s.type,
+      date: s.date,
+      key: s.items.find((it) => it.songId === songId)!.key,
+      teamIds: s.teamIds,
+    }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+/** "AAAA-MM-DD" en hora local */
+export function toLocalDay(iso: string | Date): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }

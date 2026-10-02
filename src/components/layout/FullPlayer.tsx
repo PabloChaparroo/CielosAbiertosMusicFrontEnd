@@ -353,9 +353,12 @@ export function FullPlayer({
                 const isCurrent = song.id === current.id;
                 return (
                   <li
-                    key={song.id}
+                    // la key incluye el filtro: al cambiar de pestaña las filas entran de nuevo,
+                    // una tras otra
+                    key={`${filter ?? "todas"}-${song.id}`}
                     ref={isCurrent ? currentRowRef : undefined}
-                    className="border-b border-border/40 last:border-0"
+                    className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both border-b border-border/40 duration-300 ease-out last:border-0"
+                    style={{ animationDelay: `${Math.min(index, 10) * 35}ms` }}
                   >
                     <div
                       className={`group flex items-center gap-3 rounded-2xl px-2 py-2.5 transition-colors md:gap-4 ${

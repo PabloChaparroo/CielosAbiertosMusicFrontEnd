@@ -15,12 +15,14 @@ import { useSearch } from "@tanstack/react-router";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, FavButton, Skeletons } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
+import { Pager, usePaged } from "@/components/common/Pager";
 import { chordsOnly, diatonicChords, KEYS, parseChordPro, transposeKey } from "@/lib/chords";
 import { exportChordsPdf } from "@/lib/pdf";
 import { SongsService } from "@/features/canciones/services/songs.service";
 import { Annotations } from "../components/Annotations";
 import { ChordSheet } from "../components/ChordSheet";
 import { useFitFontSize } from "../hooks/useFitFontSize";
+import { usePinchZoom } from "@/hooks/usePinchZoom";
 import { useAuth } from "@/core/auth/useAuth";
 import { ChordProEditor } from "../../components/ChordProEditor";
 import {
@@ -125,9 +127,10 @@ export function AcordesPage() {
     return mode === "chords" ? chordsOnly(parsed) : parsed;
   }, [editing, draft, semitones, targetKey, mode]);
 
-  // Tamaño que entra en el ancho de la pantalla (25px en computadora, menos en celular)
+  // Tamaño que entra en el ancho de la pantalla (25px en computadora, 16px o menos en celular)
+  // en celular arranca más chica (16px) para que entren los compases encolumnados
   const { boxRef: sheetBoxRef, fitted: fittedFontSize } = useFitFontSize(
-    25,
+    typeof window !== "undefined" && window.innerWidth < 640 ? 16 : 25,
     12,
     manualFontSize === null,
     [song?.id, mode, semitones, editing, live],
@@ -135,6 +138,8 @@ export function AcordesPage() {
   const fontSize = manualFontSize ?? fittedFontSize;
   const changeFontSize = (delta: number, max: number) =>
     setManualFontSize(Math.max(12, Math.min(max, fontSize + delta)));
+  // en pantalla completa, pellizcar con dos dedos agranda o achica la letra
+  const pinch = usePinchZoom(fontSize, setManualFontSize, 12, 60);
 
   useEffect(() => {
     setManualFontSize(null);
@@ -147,6 +152,8 @@ export function AcordesPage() {
   const visibleSongs = query
     ? filtered
     : [...filtered].sort((a, b) => Number(b.id === song?.id) - Number(a.id === song?.id));
+  // el buscador muestra de a 15: con muchas canciones no dibuja la lista entera
+  const pagedList = usePaged(visibleSongs, 15, query);
 
   const sectionShortcuts = [
     "INTRO",
@@ -225,7 +232,7 @@ export function AcordesPage() {
 
   if (live) {
     return (
-      <div className="fixed inset-0 z-50 overflow-y-auto bg-black px-5 py-10 sm:px-10">
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-black px-5 py-10 sm:px-10" {...pinch}>
         <button
           onClick={() => {
             setLive(false);
@@ -267,32 +274,7 @@ export function AcordesPage() {
   }
 
   return (
-    <AppLayout
-      title="Acordes"
-      subtitle="Transposición, zoom y modo en vivo"
-      actions={
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              void enterBrowserFullscreen();
-              setLive(true);
-            }}
-            className="flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm hover:bg-secondary"
-          >
-            <Maximize2 className="h-4 w-4" /> <span className="hidden sm:inline">En vivo</span>
-          </button>
-          <button
-            // el PDF no depende del ancho de la pantalla: tamaño de siempre, salvo que se haya elegido a mano
-            onClick={() =>
-              exportChordsPdf(song, { semitones, targetKey, mode, fontSize: manualFontSize ?? 25 })
-            }
-            className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
-          >
-            <FileDown className="h-4 w-4" /> <span className="hidden sm:inline">PDF</span>
-          </button>
-        </div>
-      }
-    >
+    <AppLayout title="Acordes" subtitle="Transposición, zoom y modo en vivo">
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <aside
           ref={searchPanelRef}
@@ -320,7 +302,7 @@ export function AcordesPage() {
               {filtered.length === 0 ? (
                 <p className="p-4 text-center text-sm text-muted-foreground">Sin resultados</p>
               ) : (
-                visibleSongs.map((s) => (
+                pagedList.pageItems.map((s) => (
                   <div
                     key={s.id}
                     onClick={() => {
@@ -374,6 +356,12 @@ export function AcordesPage() {
                   </div>
                 ))
               )}
+              <Pager
+                page={pagedList.page}
+                pages={pagedList.pages}
+                onChange={pagedList.setPage}
+                compact
+              />
             </div>
           </div>
         </aside>
@@ -389,6 +377,33 @@ export function AcordesPage() {
               <p className="truncate text-sm text-muted-foreground">
                 {song.artist} · original {song.key} · {song.compas} · {song.bpm} BPM
               </p>
+            </div>
+
+            {/* "En vivo" y PDF en la tarjeta de la canción, igual que en Letras */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  void enterBrowserFullscreen();
+                  setLive(true);
+                }}
+                className="flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm hover:bg-secondary"
+              >
+                <Maximize2 className="h-4 w-4" /> <span className="hidden sm:inline">En vivo</span>
+              </button>
+              <button
+                // el PDF no depende del ancho de la pantalla: tamaño de siempre, salvo que se haya elegido a mano
+                onClick={() =>
+                  exportChordsPdf(song, {
+                    semitones,
+                    targetKey,
+                    mode,
+                    fontSize: manualFontSize ?? 25,
+                  })
+                }
+                className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
+              >
+                <FileDown className="h-4 w-4" /> <span className="hidden sm:inline">PDF</span>
+              </button>
             </div>
 
             <div className="flex items-center gap-1 rounded-full border border-border p-1">

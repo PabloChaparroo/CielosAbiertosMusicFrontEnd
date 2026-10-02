@@ -1,17 +1,53 @@
 import { useEffect, useMemo, useState } from "react";
 import { SongsService } from "@/features/canciones/services/songs.service";
-import { Check, Layers, Link2, Music4, Pencil, Play, Plus, Search } from "lucide-react";
+import {
+  Check,
+  LayoutGrid,
+  Layers,
+  Link2,
+  List,
+  Music4,
+  Pencil,
+  Play,
+  Plus,
+  Search,
+} from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, EmptyState, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
+import { Pager, usePaged } from "@/components/common/Pager";
 import type { Song, Tag } from "@/types";
 import { AudioTracksModal } from "../components/AudioTracksModal";
 import { SongLinksModal } from "../components/SongLinksModal";
 import { UploadModal } from "../components/UploadModal";
 
+/** Desplegable de filtro: dorado si tiene algo elegido */
+const filterSelectClass = (active: boolean) =>
+  `h-9 rounded-full border px-3 text-sm font-semibold outline-none transition-colors focus:border-primary/60 ${
+    active
+      ? "border-primary/50 bg-primary/15 text-primary"
+      : "border-border bg-card text-muted-foreground hover:text-foreground"
+  }`;
+
 export function EscucharPage() {
   const { songs, play, current, can, addSong, updateSong } = useApp();
   const [query, setQuery] = useState("");
+  // vista lista (con todos los datos) o tarjetas (portada, título y artista); se recuerda
+  const [view, setView] = useState<"list" | "cards">(() => {
+    try {
+      return localStorage.getItem("escuchar-view") === "cards" ? "cards" : "list";
+    } catch {
+      return "list";
+    }
+  });
+  const changeView = (next: "list" | "cards") => {
+    setView(next);
+    try {
+      localStorage.setItem("escuchar-view", next);
+    } catch {
+      // sin almacenamiento: solo dura esta visita
+    }
+  };
   const [tag, setTag] = useState<Tag | null>(null);
   const [tipo, setTipo] = useState<string | null>(null);
   // secuencia (multitracks): todas / con / sin
@@ -48,10 +84,12 @@ export function EscucharPage() {
       ),
     [songs, query, tag, tipo, secuencia],
   );
+  // 30 por página; la búsqueda y los filtros miran todas las canciones
+  const paged = usePaged(filtered, 30, `${query}|${tag}|${tipo}|${secuencia}`);
 
   return (
     <AppLayout
-      title="Escuchar y Subir"
+      title="Canciones"
       subtitle={`${songs.length} canciones en el repertorio`}
       actions={
         can("editSongs") ? (
@@ -64,72 +102,49 @@ export function EscucharPage() {
         ) : null
       }
     >
-      <div className="mb-6 space-y-4">
-        <div className="relative max-w-md">
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <div className="relative w-full sm:w-72">
           <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar canción o artista…"
-            className="w-full rounded-full border border-border bg-card py-2.5 pr-4 pl-10 text-sm outline-none transition-colors focus:border-primary/60"
+            className="h-9 w-full rounded-full border border-border bg-card pr-4 pl-10 text-sm outline-none transition-colors focus:border-primary/60"
           />
         </div>
-        {/* tipo (rápida / lenta): botones más marcados que los temas, para no confundir el
-            tipo "Adoración" con el tema "Adoración" */}
-        {tipos.length ? (
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por tipo">
-            {[null, ...tipos].map((t) => (
-              <button
-                key={t ?? "todos"}
-                type="button"
-                onClick={() => setTipo(t)}
-                aria-pressed={tipo === t}
-                className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
-                  tipo === t
-                    ? "gradient-gold text-primary-foreground"
-                    : "border border-border bg-card text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {t ?? "Todos los tipos"}
-              </button>
-            ))}
-          </div>
-        ) : null}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por secuencia">
-            {(
-              [
-                [null, "Con y sin secuencia"],
-                ["con", "Con secuencia"],
-                ["sin", "Sin secuencia"],
-              ] as const
-            ).map(([value, label]) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => setSecuencia(value)}
-                aria-pressed={secuencia === value}
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-                  secuencia === value
-                    ? "bg-primary/15 text-primary ring-1 ring-primary/50"
-                    : "border border-border bg-card text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {value === "con" ? <Check className="h-3.5 w-3.5" /> : null}
-                {label}
-              </button>
-            ))}
-          </div>
+        {/* tipo, secuencia y temas al lado del buscador (abajo en celular) */}
+        <div className="contents">
+          {tipos.length ? (
+            <select
+              value={tipo ?? ""}
+              onChange={(e) => setTipo(e.target.value || null)}
+              aria-label="Filtrar por tipo"
+              className={filterSelectClass(tipo !== null)}
+            >
+              <option value="">Todos los tipos</option>
+              {tipos.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          ) : null}
+          <select
+            value={secuencia ?? ""}
+            onChange={(e) => setSecuencia((e.target.value || null) as "con" | "sin" | null)}
+            aria-label="Filtrar por secuencia"
+            className={filterSelectClass(secuencia !== null)}
+          >
+            <option value="">Con y sin secuencia</option>
+            <option value="con">Con secuencia</option>
+            <option value="sin">Sin secuencia</option>
+          </select>
           {/* temas: son muchos (catálogo del backend), van en un desplegable */}
           <select
             value={tag ?? ""}
             onChange={(e) => setTag(e.target.value || null)}
             aria-label="Filtrar por tema"
-            className={`rounded-full border px-3 py-1 text-xs font-semibold outline-none transition-colors focus:border-primary/60 ${
-              tag
-                ? "border-primary/50 bg-primary/15 text-primary"
-                : "border-border bg-card text-muted-foreground hover:text-foreground"
-            }`}
+            className={filterSelectClass(tag !== null)}
           >
             <option value="">Todos los temas</option>
             {allTags.map((t) => (
@@ -138,6 +153,34 @@ export function EscucharPage() {
               </option>
             ))}
           </select>
+          <div
+            className="ml-auto flex rounded-full border border-border p-0.5"
+            role="group"
+            aria-label="Vista"
+          >
+            {(
+              [
+                ["list", List, "Vista en lista"],
+                ["cards", LayoutGrid, "Vista en tarjetas"],
+              ] as const
+            ).map(([value, Icon, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => changeView(value)}
+                aria-pressed={view === value}
+                aria-label={label}
+                title={label}
+                className={`rounded-full p-1.5 transition-colors ${
+                  view === value
+                    ? "gradient-gold text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -147,6 +190,46 @@ export function EscucharPage() {
           title="No encontramos canciones"
           description="Probá con otro nombre o quitá el filtro de tema."
         />
+      ) : view === "cards" ? (
+        // tarjetas como en Favoritos: tocar la tarjeta reproduce
+        <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-5 lg:grid-cols-7 2xl:grid-cols-9">
+          {paged.pageItems.map((song) => (
+            <div
+              key={song.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => play(song)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") play(song);
+              }}
+              aria-label={`Reproducir ${song.title}`}
+              className={`surface-card group relative cursor-pointer rounded-lg p-2 hover:-translate-y-1 hover:border-primary/40 ${
+                current?.id === song.id ? "border-primary/60" : ""
+              }`}
+            >
+              <Cover
+                song={song}
+                size="none"
+                className="mb-2 aspect-square w-full rounded-md shadow-none"
+              />
+              <p
+                className={`truncate text-sm font-semibold ${current?.id === song.id ? "text-primary" : ""}`}
+              >
+                {song.title}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">{song.artist}</p>
+              <div className="mt-1.5 flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  {song.key} · {formatDuration(song.duration)}
+                </span>
+                {/* el corazón no reproduce */}
+                <span onClick={(e) => e.stopPropagation()}>
+                  <FavButton songId={song.id} />
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="surface-card overflow-x-auto">
           <div className="hidden grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_210px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_210px] gap-4 border-b border-border/60 px-4 py-3 text-[11px] tracking-widest text-muted-foreground uppercase md:grid">
@@ -158,7 +241,7 @@ export function EscucharPage() {
             <span>Tono / Compás / BPM</span>
             <span className="text-right">Duración</span>
           </div>
-          {filtered.map((song, i) => (
+          {paged.pageItems.map((song, i) => (
             <div
               key={song.id}
               onClick={() => play(song)}
@@ -171,7 +254,7 @@ export function EscucharPage() {
                 aria-label={`Reproducir ${song.title}`}
                 className="hidden h-8 w-8 items-center justify-center rounded-full text-sm text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground md:flex"
               >
-                <span className="group-hover:hidden">{i + 1}</span>
+                <span className="group-hover:hidden">{paged.start + i + 1}</span>
                 <Play className="hidden h-3.5 w-3.5 group-hover:block" />
               </button>
               <div className="flex min-w-0 items-center gap-3">
@@ -263,6 +346,7 @@ export function EscucharPage() {
           ))}
         </div>
       )}
+      <Pager page={paged.page} pages={paged.pages} onChange={paged.setPage} />
 
       {modal ? <UploadModal onClose={() => setModal(false)} onSave={addSong} /> : null}
       {editing ? (

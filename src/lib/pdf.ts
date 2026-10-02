@@ -5,14 +5,16 @@ import type { Setlist, Song } from "@/types";
 const CHURCH = "Cielos Abiertos";
 
 function header(doc: jsPDF, title: string, subtitle: string) {
-  doc.setFillColor(18, 18, 18);
-  doc.rect(0, 0, 210, 26, "F");
-  doc.setTextColor(240, 190, 100);
+  // sin fondo negro (gasta mucha tinta al imprimir): texto y una línea fina
+  doc.setTextColor(190, 130, 30);
   doc.setFontSize(13);
-  doc.text(CHURCH, 14, 12);
-  doc.setTextColor(235, 235, 235);
+  doc.text(CHURCH, 14, 14);
+  doc.setTextColor(110, 110, 110);
   doc.setFontSize(9);
-  doc.text(new Date().toLocaleDateString("es-AR"), 196, 12, { align: "right" });
+  doc.text(new Date().toLocaleDateString("es-AR"), 196, 14, { align: "right" });
+  doc.setDrawColor(210, 210, 210);
+  doc.setLineWidth(0.3);
+  doc.line(14, 19, 196, 19);
   doc.setTextColor(20, 20, 20);
   doc.setFontSize(18);
   doc.text(title, 14, 40);
@@ -37,22 +39,64 @@ export function exportLyricsPdf(song: Song) {
     song.title,
     `${song.artist} · Tonalidad ${song.key} · Compás ${song.compas} · ${song.tags.join(", ")}`,
   );
-  let y = 60;
+  // Dos columnas: cada sección (título + sus líneas) entra entera en una columna; si no entra en
+  // lo que queda, pasa a la columna de la derecha y, si ya estaba ahí, a la hoja siguiente.
+  const COLS = [14, 108];
+  const COL_WIDTH = 88;
+  const BOTTOM = 285;
+  const SECTION_GAP = 8;
+  const LINE = 5.5;
+  type Block = { title: string | null; lines: string[] };
+  const blocks: Block[] = [];
   displayLyricsLines(song.chordpro).forEach((line) => {
-    y = ensure(doc, y);
-    if (line.kind === "section") {
+    if (line.kind === "section") blocks.push({ title: line.value, lines: [] });
+    else {
+      if (!blocks.length) blocks.push({ title: null, lines: [] });
+      blocks[blocks.length - 1]!.lines.push(line.value);
+    }
+  });
+
+  let col = 0;
+  let top = 58;
+  let y = top;
+  const nextColumn = () => {
+    if (col === 0) col = 1;
+    else {
+      doc.addPage();
+      col = 0;
+      top = 20;
+    }
+    y = top;
+  };
+
+  blocks.forEach((block) => {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    // las líneas largas se parten al ancho de la columna; sin líneas vacías al final
+    const lines = [...block.lines];
+    while (lines.length && !lines[lines.length - 1]!.trim()) lines.pop();
+    const rows = lines.flatMap((l) =>
+      l.trim() ? (doc.splitTextToSize(l, COL_WIDTH) as string[]) : [""],
+    );
+    const height = (block.title ? SECTION_GAP : 0) + rows.length * LINE;
+    if (y > top && y + height > BOTTOM) nextColumn();
+    const x = COLS[col]!;
+    if (block.title) {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(13);
       doc.setTextColor(190, 130, 30);
-      doc.text(line.value, 14, y);
+      doc.text(block.title, x, y);
       doc.setTextColor(20, 20, 20);
-      y += 8;
-      return;
+      y += 7;
     }
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
-    doc.text(line.value || " ", 14, y);
-    y += 6;
+    rows.forEach((row) => {
+      if (y > BOTTOM) nextColumn();
+      doc.text(row || " ", COLS[col]!, y);
+      y += row ? LINE : LINE * 0.6;
+    });
+    y += SECTION_GAP - 4;
   });
   doc.save(`${song.title} - letra.pdf`);
 }
@@ -102,7 +146,7 @@ export function exportChordsPdf(
   lines.forEach((line) => {
     y = ensure(doc, y);
     if (line.kind === "blank") {
-      y += size * 0.5;
+      y += size * 0.3;
       return;
     }
     if (line.kind === "section") {
@@ -111,7 +155,7 @@ export function exportChordsPdf(
       doc.text(line.label, 14, y);
       drawNotes(doc, line.notes, 14 + doc.getTextWidth(line.label), y, size);
       doc.setTextColor(20, 20, 20);
-      y += size * 0.8;
+      y += size * 0.55;
       return;
     }
     doc.setFont("courier", "bold");
@@ -163,13 +207,14 @@ export function exportChordsPdf(
     notes.forEach((n) =>
       drawNoteAt(doc, n.text, 14 + doc.getTextWidth(" ".repeat(n.col)), y, size),
     );
-    y += size * 0.75;
+    // interlineado: el acorde pegado a su letra, y un poco más de aire hasta el renglón siguiente
+    y += opts.mode === "both" ? size * 0.42 : size * 0.55;
     y = ensure(doc, y);
     if (opts.mode === "both") {
       doc.setFont("courier", "normal");
       doc.setTextColor(20, 20, 20);
       doc.text(lyricLine, 14, y);
-      y += size * 0.75;
+      y += size * 0.55;
     }
   });
 

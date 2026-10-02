@@ -8,7 +8,7 @@ const raw: RawSetlist = {
   date: "2026-09-27T10:00:00.000Z",
   isUpcoming: true,
   fechaHoraAlta: "2026-09-20T12:00:00.000Z",
-  type: "Culto Domingo",
+  type: "Culto Domingo a la mañana",
   leader: { id: "lider" },
   team: [{ id: "lider" }, { id: "bajista" }],
   items: [
@@ -44,7 +44,7 @@ describe("mapSetlist — setlist del backend → setlist de la UI", () => {
       id: "s1",
       title: "Culto del domingo",
       date: "2026-09-27T10:00:00.000Z",
-      type: "Culto Domingo",
+      type: "Culto Domingo a la mañana",
       isUpcoming: true,
       createdAt: "2026-09-20T12:00:00.000Z",
     });

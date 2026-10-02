@@ -84,6 +84,44 @@ function chordChartSegments(pairs: ChordPair[]): ChartSegment[] {
   return segments;
 }
 
+/** "| G | A | D - A/C# |:]" → ["G", "A", "D - A/C#"] y el cierre ("|", "|:]", "|x3]"); null si no es así */
+function splitBars(base: string): { cells: string[]; end: string } | null {
+  const m = /^\| (.*?) (\||\|:\]|\|x\d+\])$/.exec(base);
+  if (!m) return null;
+  return { cells: m[1]!.split(" | "), end: m[2]! };
+}
+
+/**
+ * Ancho de cada columna de compases en toda la hoja, para que los "|" de un renglón queden
+ * justo debajo de los del renglón de arriba (como una hoja de ensayo).
+ */
+function barColumnWidths(bases: string[]): number[] {
+  const widths: number[] = [];
+  bases.forEach((base) => {
+    splitBars(base)?.cells.forEach((cell, c) => {
+      widths[c] = Math.max(widths[c] ?? 0, cell.length);
+    });
+  });
+  return widths;
+}
+
+/** Rellena cada compás hasta el ancho de su columna */
+function alignBars(base: string, widths: number[]): string {
+  const bars = splitBars(base);
+  if (!bars || !widths.length) return base;
+  return `| ${bars.cells.map((cell, c) => cell.padEnd(widths[c] ?? 0)).join(" | ")} ${bars.end}`;
+}
+
+/** Texto de compases de una línea de "Solo acordes" sin notas "(…)"; null si tiene notas o no tiene acordes */
+function plainChartBase(line: ParsedLine): string | null {
+  if (line.kind !== "line") return null;
+  const pairs = line.pairs.filter((pair) => pair.chord || pair.note || pair.text.trim());
+  if (!pairs.some((p) => p.chord) || pairs.some((p) => p.note)) return null;
+  return chordChartSegments(pairs)
+    .map((s) => s.value)
+    .join("");
+}
+
 /**
  * Línea con acordes pero sin letra (ej. "[A]" o "[D] [A] - [Em]"): en "Letra + acordes" se
  * muestra como compases, "| A |", igual que en "Solo acordes". Solo cuenta como letra el texto
@@ -165,6 +203,14 @@ export function ChordSheet({
   /** Fondo negro (modo En vivo): texto en blanco */
   dark?: boolean;
 }) {
+  // en Solo acordes, las líneas seguidas que repiten los mismos compases se juntan en una,
+  // y dos líneas seguidas de 2 compases van en un mismo renglón
+  const shown = mode === "chords" ? joinShortChartLines(mergeRepeatedChartLines(lines)) : lines;
+  const barWidths =
+    mode === "chords"
+      ? barColumnWidths(shown.map(plainChartBase).filter((b): b is string => b !== null))
+      : [];
+
   const renderLine = (line: ParsedLine, i: number) => {
     if (line.kind === "blank") return <div key={i} style={{ height: fontSize }} />;
     if (line.kind === "section")
@@ -207,6 +253,8 @@ export function ChordSheet({
       });
       // una línea que es solo una nota ("(repetir intro)") se muestra como línea normal
       const notesAbove = base.trim() !== "";
+      // en Solo acordes los compases se encolumnan con los de los otros renglones
+      if (mode === "chords" && hasChords && !notes.length) base = alignBars(base, barWidths);
       return (
         <div key={i} style={{ marginBottom: `${fontSize * 0.18}px` }}>
           {notesAbove && notes.length ? (
@@ -277,10 +325,6 @@ export function ChordSheet({
     );
   };
 
-  // en Solo acordes, las líneas seguidas que repiten los mismos compases se juntan en una,
-  // y dos líneas seguidas de 2 compases van en un mismo renglón
-  const shown = mode === "chords" ? joinShortChartLines(mergeRepeatedChartLines(lines)) : lines;
-
   return (
     <div
       data-chord-sheet
@@ -292,9 +336,9 @@ export function ChordSheet({
         // derecha ("Intro:   | Em | G | D | A |"). Las líneas vacías no suman renglones.
         <div
           // del ancho del contenido: si no entra, la hoja se desborda y el ajuste automático del
-          // tamaño de letra (useFitFontSize) la achica. En celular no entran dos columnas: la
-          // sección va arriba de sus compases
-          className="grid grid-cols-1 items-start gap-x-6 sm:w-max sm:grid-cols-[auto_auto]"
+          // tamaño de letra (useFitFontSize) la achica. También en celular: sección a la
+          // izquierda y compases encolumnados a la derecha
+          className="grid w-max grid-cols-[auto_auto] items-start gap-x-6"
           style={{ rowGap: fontSize * 0.55 }}
         >
           {groupBySection(shown).map((group, g) => (

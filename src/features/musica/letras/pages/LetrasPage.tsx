@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
+  Columns2,
   FileDown,
   ImageIcon,
   Maximize2,
   Pause,
   Pencil,
   Play,
+  RectangleVertical,
   Search,
   Type as TypeIcon,
   Upload,
@@ -14,7 +16,9 @@ import {
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, FavButton } from "@/components/common/ui-bits";
+import { usePinchZoom } from "@/hooks/usePinchZoom";
 import { useApp } from "@/hooks/useApp";
+import { Pager, usePaged } from "@/components/common/Pager";
 import { displayLyricsLines } from "@/lib/chords";
 import { exportLyricsPdf } from "@/lib/pdf";
 import { StorageClient } from "@/lib/storage-client";
@@ -70,6 +74,8 @@ export function LetrasPage() {
         : [...filtered].sort((a, b) => Number(b.id === selected) - Number(a.id === selected)),
     [filtered, query, selected],
   );
+  // el buscador muestra de a 15: con muchas canciones no dibuja la lista entera
+  const pagedList = usePaged(visibleSongs, 15, query);
 
   const song = availableSongs.find((s) => s.id === selected) ?? null;
 
@@ -102,7 +108,7 @@ export function LetrasPage() {
               {filtered.length === 0 ? (
                 <p className="p-4 text-center text-sm text-muted-foreground">Sin resultados</p>
               ) : (
-                visibleSongs.map((item) => (
+                pagedList.pageItems.map((item) => (
                   <div
                     key={item.id}
                     onClick={() => {
@@ -156,6 +162,12 @@ export function LetrasPage() {
                   </div>
                 ))
               )}
+              <Pager
+                page={pagedList.page}
+                pages={pagedList.pages}
+                onChange={pagedList.setPage}
+                compact
+              />
             </div>
           </div>
         </aside>
@@ -336,25 +348,64 @@ function SongLyricsDetail({
 
   const uploading = uploadPct !== null;
 
-  const renderLyrics = (className: string) => (
-    <div className={className}>
-      {displayLyricsLines(song.chordpro).map((line, index) =>
-        line.kind === "section" ? (
-          <div key={index} className="mt-6 mb-3 text-xl font-semibold tracking-widest text-primary">
-            {line.value}
+  // tamaño de la letra en pantalla completa: se cambia pellizcando con dos dedos
+  const [lyricsSize, setLyricsSize] = useState(20);
+  const pinch = usePinchZoom(lyricsSize, setLyricsSize, 12, 56);
+
+  // En vivo: una columna o dos (como el PDF). Se recuerda.
+  const [twoColumns, setTwoColumns] = useState(() => {
+    try {
+      return localStorage.getItem("letras-columns") === "2";
+    } catch {
+      return false;
+    }
+  });
+  const toggleColumns = () =>
+    setTwoColumns((v) => {
+      try {
+        localStorage.setItem("letras-columns", v ? "1" : "2");
+      } catch {
+        // sin almacenamiento: solo dura esta visita
+      }
+      return !v;
+    });
+
+  /** Letra agrupada por sección: en dos columnas, cada sección va entera en una columna */
+  const renderLyrics = (className: string, fontSize?: number) => {
+    const blocks: Array<{ title: string | null; lines: string[] }> = [];
+    displayLyricsLines(song.chordpro).forEach((line) => {
+      if (line.kind === "section") blocks.push({ title: line.value, lines: [] });
+      else {
+        if (!blocks.length) blocks.push({ title: null, lines: [] });
+        blocks[blocks.length - 1]!.lines.push(line.value);
+      }
+    });
+    return (
+      <div className={className} style={fontSize ? { fontSize } : undefined}>
+        {blocks.map((block, b) => (
+          <div key={b} className="break-inside-avoid">
+            {block.title ? (
+              <div className="mt-6 mb-3 text-xl font-semibold tracking-widest text-primary">
+                {block.title}
+              </div>
+            ) : null}
+            {block.lines.map((line, i) => (
+              <div key={i} className="min-h-[1.5em]">
+                {line || " "}
+              </div>
+            ))}
           </div>
-        ) : (
-          <div key={index} className="min-h-[1.5em]">
-            {line.value || " "}
-          </div>
-        ),
-      )}
-    </div>
-  );
+        ))}
+      </div>
+    );
+  };
 
   if (fullscreen) {
     return (
-      <div className="fixed inset-0 z-50 overflow-y-auto bg-background px-5 py-8 sm:px-10 sm:py-10">
+      <div
+        className="fixed inset-0 z-50 overflow-y-auto bg-background px-5 py-8 sm:px-10 sm:py-10"
+        {...pinch}
+      >
         <button
           type="button"
           onClick={() => {
@@ -366,6 +417,21 @@ function SongLyricsDetail({
         >
           <X className="h-5 w-5" />
         </button>
+        {mode === "texto" ? (
+          <button
+            type="button"
+            onClick={toggleColumns}
+            aria-label={twoColumns ? "Ver en una columna" : "Ver en dos columnas"}
+            title={twoColumns ? "Ver en una columna" : "Ver en dos columnas"}
+            className="fixed top-4 right-16 rounded-full border border-border bg-card p-2 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {twoColumns ? (
+              <RectangleVertical className="h-5 w-5" />
+            ) : (
+              <Columns2 className="h-5 w-5" />
+            )}
+          </button>
+        ) : null}
         {/* Bloque centrado en la pantalla (horizontal, y vertical si la letra es corta), con el
             texto alineado a la izquierda adentro */}
         <div className="flex min-h-full flex-col">
@@ -375,7 +441,10 @@ function SongLyricsDetail({
               <h2 className="font-display text-3xl font-semibold">{song.title}</h2>
             </div>
             {mode === "texto" ? (
-              renderLyrics("text-lg leading-relaxed sm:text-xl sm:leading-relaxed")
+              renderLyrics(
+                twoColumns ? "leading-relaxed columns-2 gap-x-16" : "leading-relaxed",
+                lyricsSize,
+              )
             ) : resolvedUrl ? (
               <img
                 src={resolvedUrl}
@@ -408,11 +477,22 @@ function SongLyricsDetail({
             </p>
           </div>
         </div>
-        <div className="flex flex-col items-stretch gap-2">
+        {/* "En vivo" y PDF, igual que en Acordes */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              void enterBrowserFullscreen();
+              setFullscreen(true);
+            }}
+            className="flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm hover:bg-secondary"
+          >
+            <Maximize2 className="h-4 w-4" /> <span className="hidden sm:inline">En vivo</span>
+          </button>
           {mode === "texto" ? (
             <button
               onClick={() => exportLyricsPdf(song)}
-              className="flex items-center justify-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
+              className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
             >
               <FileDown className="h-4 w-4" /> <span className="hidden sm:inline">PDF</span>
             </button>
@@ -436,17 +516,6 @@ function SongLyricsDetail({
           >
             Imagen
           </ModeBtn>
-          <button
-            type="button"
-            onClick={() => {
-              void enterBrowserFullscreen();
-              setFullscreen(true);
-            }}
-            className="flex items-center gap-2 rounded-full border border-border px-4 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
-          >
-            <Maximize2 className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Pantalla completa</span>
-          </button>
         </div>
         {/* La letra se edita en Acordes: editar acá solo la letra y guardarla como chordpro
             borraba todos los acordes de la canción (ver docs/estado-actual.md del backend) */}

@@ -66,7 +66,12 @@ export function SidebarContent({
 
   return (
     <div className="flex h-full flex-col bg-sidebar">
-      <div className="flex items-center gap-3 px-6 py-6">
+      {/* el logo lleva a Inicio */}
+      <Link
+        to="/"
+        onClick={onNavigate}
+        className="flex items-center gap-3 px-6 py-6 transition-opacity hover:opacity-80"
+      >
         <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-gold text-primary-foreground">
           <Cloud className="h-5 w-5" />
         </div>
@@ -74,7 +79,7 @@ export function SidebarContent({
           <p className="font-display text-lg font-semibold">Cielos Abiertos</p>
           <p className="text-[11px] tracking-widest text-muted-foreground uppercase">Adoración</p>
         </div>
-      </div>
+      </Link>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 pb-6">
         {visibleGroups.map((group) => (
@@ -139,6 +144,12 @@ export function SidebarContent({
   );
 }
 
+/**
+ * Cada página monta su propio AppLayout: al tocar un módulo en el menú del celular, la página
+ * nueva arranca con el menú abierto y lo cierra con animación (ver AppLayout).
+ */
+export const mobileNav = { closeOnMount: false };
+
 export function MobileSidebar({
   open,
   onClose,
@@ -158,13 +169,13 @@ export function MobileSidebar({
       <div
         onClick={onClose}
         className={cn(
-          "absolute inset-0 bg-black/70 transition-opacity",
+          "absolute inset-0 bg-black/70 transition-opacity duration-200",
           open ? "opacity-100" : "opacity-0",
         )}
       />
       <div
         className={cn(
-          "absolute top-0 left-0 h-full w-[280px] border-r border-sidebar-border transition-transform duration-300",
+          "absolute top-0 left-0 h-full w-[280px] border-r border-sidebar-border transition-transform duration-200 ease-out",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -176,7 +187,10 @@ export function MobileSidebar({
           <X className="h-4 w-4" />
         </button>
         <SidebarContent
-          onNavigate={onClose}
+          onNavigate={() => {
+            mobileNav.closeOnMount = true;
+            onClose();
+          }}
           onOpenPerfil={() => {
             onClose();
             onOpenPerfil();

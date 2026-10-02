@@ -1,6 +1,6 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Menu } from "lucide-react";
-import { MobileSidebar, SidebarContent } from "./Sidebar";
+import { MobileSidebar, mobileNav, SidebarContent } from "./Sidebar";
 import { useApp } from "@/hooks/useApp";
 import { MiPerfilModal } from "@/features/perfil/components/MiPerfilModal";
 
@@ -17,7 +17,16 @@ export function AppLayout({
   children: ReactNode;
   bleed?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  // si se llegó tocando un módulo del menú, arranca abierto y se cierra con animación
+  const [open, setOpen] = useState(() => mobileNav.closeOnMount);
+  useEffect(() => {
+    if (!mobileNav.closeOnMount) return;
+    const id = requestAnimationFrame(() => {
+      mobileNav.closeOnMount = false;
+      setOpen(false);
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
   const [showPerfil, setShowPerfil] = useState(false);
   const { current } = useApp();
 
@@ -53,7 +62,12 @@ export function AppLayout({
         </header>
 
         <div
-          className={(bleed ? "" : "px-4 py-6 sm:px-8 sm:py-8 ") + (current ? "pb-32" : "pb-16")}
+          // entrada del módulo: aparece subiendo un poco
+          className={
+            "animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out " +
+            (bleed ? "" : "px-4 py-6 sm:px-8 sm:py-8 ") +
+            (current ? "pb-32" : "pb-16")
+          }
         >
           {children}
         </div>

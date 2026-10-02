@@ -1,4 +1,12 @@
-export type EventType = "Culto Domingo" | "Ensayo" | "Evento Especial";
+export const EVENT_TYPES = [
+  "Culto Domingo a la mañana",
+  "Culto Domingo a la tarde",
+  "Culto Miércoles",
+  "Culto Sábado Jóvenes",
+  "Ensayo",
+  "Evento Especial",
+] as const;
+export type EventType = (typeof EVENT_TYPES)[number];
 
 export interface SetlistItem {
   songId: string;

@@ -161,12 +161,8 @@ export function UploadModal({
     void readFileDuration(file).then((seconds) => applyAudioDuration(seconds, requestId));
   };
 
-  const canSave =
-    title.trim() !== "" &&
-    artist.trim() !== "" &&
-    chordpro.trim() !== "" &&
-    tipoId !== "" &&
-    !saving;
+  // la letra es opcional: se puede crear la canción y cargarla después (desde acá o en Acordes)
+  const canSave = title.trim() !== "" && artist.trim() !== "" && tipoId !== "" && !saving;
 
   const handleSave = async () => {
     setSaving(true);
@@ -388,8 +384,8 @@ export function UploadModal({
           </Field>
 
           <Field
-            label="Letra en formato ChordPro"
-            help="Los acordes van entre corchetes antes de la sílaba, ej: [G]Tú me lla[D]mas. Las secciones van entre llaves, ej: {estrofa 1}."
+            label="Letra en formato ChordPro (opcional)"
+            help="Se puede cargar después. Los acordes van entre corchetes antes de la sílaba, ej: [G]Tú me lla[D]mas. Las secciones van entre llaves, ej: {estrofa 1}."
           >
             <textarea
               className={`${inputCls} min-h-[120px] font-mono whitespace-pre`}

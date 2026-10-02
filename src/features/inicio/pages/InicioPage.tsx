@@ -57,6 +57,9 @@ export function InicioPage() {
             <br />
             <span className="text-gradient-gold">Abiertos</span>
           </h2>
+          <p className="mt-3 text-xs tracking-[0.3em] text-foreground/70 uppercase sm:text-sm">
+            Ministerio de Adoración
+          </p>
           <p className="mt-4 max-w-md text-base text-foreground/80 sm:text-lg">
             Adorando en espíritu y en verdad. Todo el repertorio del ministerio, listo para el
             próximo servicio.

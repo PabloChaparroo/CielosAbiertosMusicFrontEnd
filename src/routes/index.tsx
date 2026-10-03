@@ -8,7 +8,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Letras, acordes con transposición, setlists, equipo y estadísticas para el ministerio de alabanza.",
+          "Letras, acordes con transposición, listas de canciones, equipo y estadísticas para el ministerio de alabanza.",
       },
       { property: "og:title", content: "Cielos Abiertos — Plataforma del equipo de adoración" },
       {

@@ -7,12 +7,15 @@ import {
   FileDown,
   GripVertical,
   Music2,
+  Pencil,
   Trash2,
   Type,
 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Avatar, Cover } from "@/components/common/ui-bits";
+import { InstrumentPicker } from "@/components/common/InstrumentPicker";
+import { INSTRUMENTS } from "@/lib/instruments";
 import { useApp } from "@/hooks/useApp";
 import { roleNames } from "@/lib/user-roles";
 import { KEYS } from "@/lib/chords";
@@ -37,6 +40,8 @@ export function SetlistDetail({
   const setlistSongIds = setlist.items.map((item) => item.songId).join(",");
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"acordes" | "letras">("acordes");
+  // miembro del equipo al que se le está cambiando qué toca en esta lista
+  const [editingInstrumentsOf, setEditingInstrumentsOf] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Cada cambio (mover, cambiar tonalidad, sacar una canción) persiste ya
@@ -105,7 +110,7 @@ export function SetlistDetail({
         onClick={onBack}
         className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="h-4 w-4" /> Volver a setlists
+        <ArrowLeft className="h-4 w-4" /> Volver a listas de canciones
       </button>
 
       {saveError ? (
@@ -236,7 +241,7 @@ export function SetlistDetail({
             </p>
           ) : (
             <div className="p-3">
-              <LockedHint>Solo líderes pueden modificar este setlist</LockedHint>
+              <LockedHint>Solo líderes pueden modificar esta lista</LockedHint>
             </div>
           )}
         </div>
@@ -248,17 +253,58 @@ export function SetlistDetail({
               const u = users.find((x) => x.id === id);
               if (!u) return null;
               return (
-                <li key={id} className="flex items-center gap-3">
+                <li key={id} className="flex items-start gap-3">
                   <Avatar
                     user={u}
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-background"
                   />
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{u.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {u.fechaHoraBaja ? "Dado de baja" : roleNames(u.roles)}
-                    </p>
+                    {/* lo que toca en esta lista; si no tiene nada asignado, su rol */}
+                    {setlist.teamInstruments[id]?.length ? (
+                      <p className="truncate text-xs text-primary">
+                        {setlist.teamInstruments[id]!.join(" · ")}
+                      </p>
+                    ) : (
+                      <p className="truncate text-xs text-muted-foreground">
+                        {u.fechaHoraBaja ? "Dado de baja" : roleNames(u.roles)}
+                      </p>
+                    )}
+                    {editingInstrumentsOf === id ? (
+                      <div className="mt-2">
+                        <InstrumentPicker
+                          size="sm"
+                          options={u.instruments?.length ? u.instruments : INSTRUMENTS}
+                          value={setlist.teamInstruments[id] ?? []}
+                          onChange={(next) =>
+                            persist({
+                              ...setlist,
+                              teamInstruments: { ...setlist.teamInstruments, [id]: next },
+                            })
+                          }
+                        />
+                      </div>
+                    ) : null}
                   </div>
+                  {canEdit ? (
+                    <button
+                      type="button"
+                      onClick={() => setEditingInstrumentsOf((cur) => (cur === id ? null : id))}
+                      aria-label={`Qué toca ${u.name} en esta lista`}
+                      title="Qué toca en esta lista"
+                      className={`shrink-0 self-start rounded-full p-1.5 transition-colors ${
+                        editingInstrumentsOf === id
+                          ? "bg-primary/15 text-primary"
+                          : "text-muted-foreground hover:text-primary"
+                      }`}
+                    >
+                      {editingInstrumentsOf === id ? (
+                        <Check className="h-3.5 w-3.5" />
+                      ) : (
+                        <Pencil className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  ) : null}
                 </li>
               );
             })}

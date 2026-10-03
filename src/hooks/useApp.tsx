@@ -202,6 +202,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           type: s.type,
           leaderId: s.leaderId,
           teamIds: s.teamIds,
+          teamInstruments: s.teamInstruments,
           items: s.items.map((item) => ({
             songId: item.songId,
             key: item.key,

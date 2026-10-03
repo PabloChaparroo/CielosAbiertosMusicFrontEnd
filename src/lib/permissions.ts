@@ -9,7 +9,7 @@
 
 const resourceLabels: Record<string, string> = {
   cancion: "Canciones",
-  setlist: "Setlists",
+  setlist: "Listas de canciones",
   equipo: "Equipo",
   anotacion: "Anotaciones",
   "anotacion-propia": "Anotaciones propias",

@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { GripVertical, ListMusic, Search, X } from "lucide-react";
 import { Cover } from "@/components/common/ui-bits";
+import { InstrumentPicker } from "@/components/common/InstrumentPicker";
+import { INSTRUMENTS } from "@/lib/instruments";
 import { useApp } from "@/hooks/useApp";
 import { SetlistsService } from "../services/setlists.service";
 import { EVENT_TYPES, type EventType, type Setlist, type SetlistItem } from "@/types";
@@ -26,11 +28,18 @@ function nextWeekday(weekday: number, weeksLater: number, time: string): string 
   return toLocalInput(d);
 }
 
+/** Desplegable de fechas: los próximos 4 de cada uno (el primero es el de esta semana, o hoy) */
+/** Título por defecto a partir de la fecha del input ("AAAA-MM-DDTHH:mm"): "Domingo 04/10" */
+const DAY_NAMES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+function titleForDate(value: string): string {
+  const [y, mo, d] = value.slice(0, 10).split("-").map(Number);
+  if (!y || !mo || !d) return "";
+  return `${DAY_NAMES[new Date(y, mo - 1, d).getDay()]} ${value.slice(8, 10)}/${value.slice(5, 7)}`;
+}
+
 const DATE_SHORTCUTS = [
-  { label: "Este domingo", weekday: 0, weeksLater: 0 },
-  { label: "Domingo siguiente", weekday: 0, weeksLater: 1 },
-  { label: "Este miércoles", weekday: 3, weeksLater: 0 },
-  { label: "Miércoles siguiente", weekday: 3, weeksLater: 1 },
+  { label: "Domingos", day: "Domingo", weekday: 0 },
+  { label: "Miércoles", day: "Miércoles", weekday: 3 },
 ];
 
 export function NewSetlistModal({
@@ -59,8 +68,19 @@ export function NewSetlistModal({
     });
     return counts;
   }, [setlists]);
-  const [title, setTitle] = useState(initial?.title ?? "");
-  const [date, setDate] = useState(() => nextWeekday(0, 0, "10:30"));
+  const [date, setDateValue] = useState(() => nextWeekday(0, 0, "10:30"));
+  // el título arranca con la fecha ("Domingo 04/10") y la sigue al cambiarla, hasta que el usuario
+  // escribe uno propio (o viene de una lista predefinida); si lo borra entero, vuelve a seguirla
+  const [title, setTitleValue] = useState(() => initial?.title ?? titleForDate(date));
+  const [titleEdited, setTitleEdited] = useState(Boolean(initial?.title));
+  const setTitle = (value: string) => {
+    setTitleValue(value);
+    setTitleEdited(value.trim() !== "");
+  };
+  const setDate = (value: string) => {
+    setDateValue(value);
+    if (!titleEdited) setTitleValue(titleForDate(value));
+  };
   const [type, setType] = useState<EventType>("Culto Domingo a la mañana");
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string[]>(() =>
@@ -73,6 +93,23 @@ export function NewSetlistModal({
   );
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [team, setTeam] = useState<string[]>([currentUser.id]);
+  // qué toca cada miembro en esta lista; si toca un solo instrumento, se marca solo
+  const onlyInstrument = (userId: string): Record<string, string[]> => {
+    const list = users.find((u) => u.id === userId)?.instruments ?? [];
+    return list.length === 1 ? { [userId]: list } : {};
+  };
+  const [teamInstruments, setTeamInstruments] = useState<Record<string, string[]>>(() =>
+    onlyInstrument(currentUser.id),
+  );
+  const toggleMember = (userId: string) => {
+    const on = team.includes(userId);
+    setTeam((prev) => (on ? prev.filter((id) => id !== userId) : [...prev, userId]));
+    setTeamInstruments((prev) => {
+      if (!on) return { ...onlyInstrument(userId), ...prev };
+      const { [userId]: _removed, ...rest } = prev;
+      return rest;
+    });
+  };
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -128,6 +165,7 @@ export function NewSetlistModal({
         type,
         leaderId: currentUser.id,
         teamIds: team,
+        teamInstruments,
         items: picked.map((id) => ({
           songId: id,
           key: initialKeys.get(id) ?? songs.find((s) => s.id === id)?.key ?? "C",
@@ -136,7 +174,7 @@ export function NewSetlistModal({
       onSave(created);
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo crear el setlist");
+      setError(e instanceof Error ? e.message : "No se pudo crear la lista de canciones");
       setSaving(false);
     }
   };
@@ -145,7 +183,7 @@ export function NewSetlistModal({
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-4">
       <div className="flex max-h-[92vh] w-full max-w-xl flex-col rounded-t-3xl border border-border bg-card p-6 sm:rounded-2xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-display text-xl font-semibold">Nuevo setlist</h2>
+          <h2 className="font-display text-xl font-semibold">Nueva lista de canciones</h2>
           <button
             onClick={onClose}
             aria-label="Cerrar"
@@ -180,27 +218,39 @@ export function NewSetlistModal({
                 ))}
               </select>
             </div>
-            {/* accesos directos de fecha: mantienen la hora elegida */}
-            <div className="flex flex-wrap gap-2">
-              {DATE_SHORTCUTS.map((sc) => {
-                const value = nextWeekday(sc.weekday, sc.weeksLater, date.slice(11, 16));
-                const active = value === date;
-                return (
-                  <button
-                    key={sc.label}
-                    type="button"
-                    onClick={() => setDate(value)}
-                    className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
-                      active
-                        ? "border-primary/50 bg-primary/15 text-primary"
-                        : "border-border bg-card text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {sc.label} · {value.slice(8, 10)}/{value.slice(5, 7)}
-                  </button>
-                );
-              })}
-            </div>
+            {/* acceso directo de fecha: los próximos 4 domingos y 4 miércoles (mantiene la hora) */}
+            {(() => {
+              const time = date.slice(11, 16);
+              const groups = DATE_SHORTCUTS.map((g) => ({
+                ...g,
+                dates: [0, 1, 2, 3].map((weeks) => nextWeekday(g.weekday, weeks, time)),
+              }));
+              const picked = groups.some((g) => g.dates.includes(date)) ? date : "";
+              return (
+                <select
+                  aria-label="Elegir un domingo o miércoles próximo"
+                  className={`${inputCls} ${picked ? "border-primary/50 text-primary" : "text-muted-foreground"}`}
+                  value={picked}
+                  onChange={(e) => e.target.value && setDate(e.target.value)}
+                >
+                  <option value="">Elegir un domingo o miércoles próximo…</option>
+                  {groups.map((g) => (
+                    <optgroup key={g.label} label={g.label}>
+                      {g.dates.map((value, weeks) => (
+                        <option key={value} value={value}>
+                          {g.day} {value.slice(8, 10)}/{value.slice(5, 7)}
+                          {weeks === 0
+                            ? g.weekday === new Date().getDay()
+                              ? " (hoy)"
+                              : " (este)"
+                            : ""}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              );
+            })()}
             <div className="relative">
               <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -347,9 +397,7 @@ export function NewSetlistModal({
                   <button
                     key={u.id}
                     type="button"
-                    onClick={() =>
-                      setTeam((prev) => (on ? prev.filter((id) => id !== u.id) : [...prev, u.id]))
-                    }
+                    onClick={() => toggleMember(u.id)}
                     className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
                       on
                         ? "border-primary/50 bg-primary/15 text-primary"
@@ -361,6 +409,26 @@ export function NewSetlistModal({
                 );
               })}
             </div>
+            {/* qué toca cada uno en esta lista (de sus instrumentos; si no tiene cargados, todos) */}
+            {team.length ? (
+              <div className="mt-3 space-y-2">
+                {team.map((id) => {
+                  const u = users.find((x) => x.id === id);
+                  if (!u) return null;
+                  return (
+                    <div key={id} className="rounded-xl border border-border/60 p-2.5">
+                      <p className="mb-1.5 text-xs font-medium">{u.name} toca:</p>
+                      <InstrumentPicker
+                        size="sm"
+                        options={u.instruments?.length ? u.instruments : INSTRUMENTS}
+                        value={teamInstruments[id] ?? []}
+                        onChange={(next) => setTeamInstruments((prev) => ({ ...prev, [id]: next }))}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
           </div>
 
           {error ? (
@@ -383,7 +451,7 @@ export function NewSetlistModal({
             onClick={() => void handleSave()}
             className="rounded-full gradient-gold px-5 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"
           >
-            <ListMusic className="mr-1 inline h-4 w-4" /> {saving ? "Creando…" : "Crear setlist"}
+            <ListMusic className="mr-1 inline h-4 w-4" /> {saving ? "Creando…" : "Crear lista"}
           </button>
         </div>
       </div>

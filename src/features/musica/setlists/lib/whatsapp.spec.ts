@@ -15,6 +15,7 @@ const songs = [
 
 const setlist = (ids: Array<[string, string]>): Setlist => ({
   id: "s",
+  teamInstruments: {},
   title: "Domingo",
   // domingo 4/10/2026 a las 10:30 (hora local)
   date: new Date(2026, 9, 4, 10, 30).toISOString(),

@@ -34,7 +34,7 @@ const groups = [
       { to: "/escuchar", label: "Canciones", icon: Music4 },
       { to: "/letras", label: "Letras", icon: Type },
       { to: "/acordes", label: "Acordes", icon: Guitar },
-      { to: "/setlists", label: "Setlists", icon: ListMusic },
+      { to: "/setlists", label: "Listas de canciones", icon: ListMusic },
       { to: "/favoritos", label: "Favoritos", icon: Heart },
       { to: "/transportador", label: "Transportador", icon: ArrowRightLeft },
     ],

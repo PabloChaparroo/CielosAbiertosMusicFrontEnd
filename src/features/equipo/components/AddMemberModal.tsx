@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { InstrumentPicker } from "@/components/common/InstrumentPicker";
 import { X } from "lucide-react";
 import { useAuth } from "@/core/auth/useAuth";
 import { GUEST_ROLE_NAME } from "@/core/auth/guest";
@@ -28,6 +29,7 @@ export function AddMemberModal({
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [instruments, setInstruments] = useState<string[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [rolesLoadState, setRolesLoadState] = useState<RolesLoadState>("loading");
   // "" = sin rol
@@ -64,6 +66,7 @@ export function AddMemberModal({
         name: name.trim(),
         avatarColor: avatarColorFor(name.trim()),
         initials: initialsFor(name.trim()),
+        instruments,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo crear el integrante");
@@ -117,6 +120,12 @@ export function AddMemberModal({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
+          <div>
+            <p className="mb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+              Instrumentos que toca
+            </p>
+            <InstrumentPicker value={instruments} onChange={setInstruments} />
+          </div>
           {canAssignRole ? (
             rolesLoadState === "error" ? (
               <p className="text-xs text-destructive">

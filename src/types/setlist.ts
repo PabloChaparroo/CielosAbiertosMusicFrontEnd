@@ -24,4 +24,6 @@ export interface Setlist {
   leaderId: string;
   items: SetlistItem[];
   teamIds: string[];
+  /** Qué toca cada miembro del equipo en esta lista: { [userId]: instrumentos } */
+  teamInstruments: Record<string, string[]>;
 }

@@ -23,6 +23,7 @@ export interface RawSetlist {
   type: EventType;
   leader: RawRef;
   team: RawRef[];
+  teamInstruments?: Record<string, string[]>;
   items: RawSetlistItem[];
 }
 
@@ -39,6 +40,7 @@ export interface UpsertSetlistInput {
   type: EventType;
   leaderId: string;
   teamIds: string[];
+  teamInstruments?: Record<string, string[]>;
   items: UpsertSetlistItemInput[];
 }
 
@@ -68,6 +70,7 @@ export function mapSetlist(raw: RawSetlist): Setlist {
     type: raw.type,
     leaderId: raw.leader.id,
     teamIds: raw.team.map((u) => u.id),
+    teamInstruments: raw.teamInstruments ?? {},
     items,
   };
 }

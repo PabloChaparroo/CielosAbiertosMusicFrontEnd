@@ -23,6 +23,8 @@ import { loadYoutubeApi, YT_ENDED, YT_PAUSED, YT_PLAYING, type YTPlayer } from "
 
 export interface YoutubeStageHandle {
   seek(seconds: number): void;
+  /** reanuda (para volver a empezar al repetir, aunque el video ya haya terminado) */
+  play(): void;
   getTime(): number;
   getDuration(): number;
 }
@@ -73,6 +75,7 @@ export const YoutubeStage = forwardRef<
 
   useImperativeHandle(ref, () => ({
     seek: (seconds) => playerRef.current?.seekTo(seconds, true),
+    play: () => playerRef.current?.playVideo(),
     getTime: () => playerRef.current?.getCurrentTime() ?? 0,
     getDuration: () => playerRef.current?.getDuration() ?? 0,
   }));

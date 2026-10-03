@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { InstrumentPicker } from "@/components/common/InstrumentPicker";
 import { AlertTriangle, KeyRound, X } from "lucide-react";
 import { useAuth } from "@/core/auth/useAuth";
 import { GUEST_ROLE_NAME } from "@/core/auth/guest";
@@ -33,6 +34,7 @@ export function EditMemberModal({
   const canRemove = can("removeTeamMember");
 
   const [name, setName] = useState(member.name);
+  const [instruments, setInstruments] = useState<string[]>(member.instruments ?? []);
   const [selectedRoleIds, setSelectedRoleIds] = useState<Set<string>>(
     new Set(member.roles.map((r) => r.id)),
   );
@@ -72,6 +74,7 @@ export function EditMemberModal({
       if (canEditProfile) {
         saved = await EquipoService.updateMember(member.id, {
           name: name.trim(),
+          instruments,
         });
       }
       if (canManageRoles) {
@@ -145,6 +148,17 @@ export function EditMemberModal({
             onChange={(e) => setName(e.target.value)}
             disabled={!canEditProfile}
           />
+
+          <div>
+            <p className="mb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+              Instrumentos que toca
+            </p>
+            <InstrumentPicker
+              value={instruments}
+              onChange={setInstruments}
+              disabled={!canEditProfile}
+            />
+          </div>
 
           <div>
             <p className="mb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">

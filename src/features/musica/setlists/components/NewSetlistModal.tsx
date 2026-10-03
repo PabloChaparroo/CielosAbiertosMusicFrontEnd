@@ -26,11 +26,10 @@ function nextWeekday(weekday: number, weeksLater: number, time: string): string 
   return toLocalInput(d);
 }
 
+/** Desplegable de fechas: los próximos 4 de cada uno (el primero es el de esta semana, o hoy) */
 const DATE_SHORTCUTS = [
-  { label: "Este domingo", weekday: 0, weeksLater: 0 },
-  { label: "Domingo siguiente", weekday: 0, weeksLater: 1 },
-  { label: "Este miércoles", weekday: 3, weeksLater: 0 },
-  { label: "Miércoles siguiente", weekday: 3, weeksLater: 1 },
+  { label: "Domingos", day: "Domingo", weekday: 0 },
+  { label: "Miércoles", day: "Miércoles", weekday: 3 },
 ];
 
 export function NewSetlistModal({
@@ -180,27 +179,39 @@ export function NewSetlistModal({
                 ))}
               </select>
             </div>
-            {/* accesos directos de fecha: mantienen la hora elegida */}
-            <div className="flex flex-wrap gap-2">
-              {DATE_SHORTCUTS.map((sc) => {
-                const value = nextWeekday(sc.weekday, sc.weeksLater, date.slice(11, 16));
-                const active = value === date;
-                return (
-                  <button
-                    key={sc.label}
-                    type="button"
-                    onClick={() => setDate(value)}
-                    className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
-                      active
-                        ? "border-primary/50 bg-primary/15 text-primary"
-                        : "border-border bg-card text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {sc.label} · {value.slice(8, 10)}/{value.slice(5, 7)}
-                  </button>
-                );
-              })}
-            </div>
+            {/* acceso directo de fecha: los próximos 4 domingos y 4 miércoles (mantiene la hora) */}
+            {(() => {
+              const time = date.slice(11, 16);
+              const groups = DATE_SHORTCUTS.map((g) => ({
+                ...g,
+                dates: [0, 1, 2, 3].map((weeks) => nextWeekday(g.weekday, weeks, time)),
+              }));
+              const picked = groups.some((g) => g.dates.includes(date)) ? date : "";
+              return (
+                <select
+                  aria-label="Elegir un domingo o miércoles próximo"
+                  className={`${inputCls} ${picked ? "border-primary/50 text-primary" : "text-muted-foreground"}`}
+                  value={picked}
+                  onChange={(e) => e.target.value && setDate(e.target.value)}
+                >
+                  <option value="">Elegir un domingo o miércoles próximo…</option>
+                  {groups.map((g) => (
+                    <optgroup key={g.label} label={g.label}>
+                      {g.dates.map((value, weeks) => (
+                        <option key={value} value={value}>
+                          {g.day} {value.slice(8, 10)}/{value.slice(5, 7)}
+                          {weeks === 0
+                            ? g.weekday === new Date().getDay()
+                              ? " (hoy)"
+                              : " (este)"
+                            : ""}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              );
+            })()}
             <div className="relative">
               <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input

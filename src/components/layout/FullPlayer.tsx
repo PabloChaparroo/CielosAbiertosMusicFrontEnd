@@ -12,7 +12,9 @@ import {
 import { Cover, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
 import { YoutubeIcon } from "@/components/common/YoutubeEmbed";
 import type { QueueFilter } from "@/lib/queue";
+import type { LoopRange } from "@/lib/time";
 import type { Song } from "@/types";
+import { RepeatControls } from "./RepeatControls";
 
 /** Un audio del tema actual: el video principal, el audio subido, una pista o un video extra */
 export interface AudioOption {
@@ -48,6 +50,10 @@ export function FullPlayer({
   onFilterChange,
   shuffle,
   onShuffleChange,
+  repeatOne,
+  onRepeatOneChange,
+  loop,
+  onLoopChange,
   progress,
   seconds,
   duration,
@@ -74,6 +80,10 @@ export function FullPlayer({
   onFilterChange: (filter: QueueFilter) => void;
   shuffle: boolean;
   onShuffleChange: (shuffle: boolean) => void;
+  repeatOne: boolean;
+  onRepeatOneChange: (on: boolean) => void;
+  loop: LoopRange | null;
+  onLoopChange: (loop: LoopRange | null) => void;
   progress: number;
   seconds: number;
   duration: number;
@@ -475,6 +485,17 @@ export function FullPlayer({
                   className="h-1 flex-1 cursor-pointer appearance-none rounded-full bg-secondary accent-primary"
                 />
                 <span className="w-10">{formatDuration(duration)}</span>
+              </div>
+              {/* abajo de la barra: así no descentran anterior / play / siguiente */}
+              <div className="mt-3 flex justify-center">
+                <RepeatControls
+                  seconds={seconds}
+                  duration={duration}
+                  repeatOne={repeatOne}
+                  onRepeatOneChange={onRepeatOneChange}
+                  loop={loop}
+                  onLoopChange={onLoopChange}
+                />
               </div>
             </div>
           </section>

@@ -21,6 +21,8 @@ import { StorageClient } from "@/lib/storage-client";
 import { loadYoutubeApi } from "@/lib/youtube-api";
 import { YoutubeStage, type YoutubeStageHandle } from "./YoutubeStage";
 import { FullPlayer, type AudioOption } from "./FullPlayer";
+import { RepeatControls } from "./RepeatControls";
+import type { LoopRange } from "@/lib/time";
 import { buildQueue, pickNext, type QueueFilter } from "@/lib/queue";
 
 export function MiniPlayer() {
@@ -48,6 +50,9 @@ export function MiniPlayer() {
   // cola de la pantalla completa: qué tipo se sigue escuchando y si va en aleatorio
   const [filter, setFilter] = useState<QueueFilter>("todas");
   const [shuffle, setShuffle] = useState(false);
+  // repetir la canción al terminar, y repetir un tramo (ej. un solo, para practicarlo)
+  const [repeatOne, setRepeatOne] = useState(false);
+  const [loop, setLoop] = useState<LoopRange | null>(null);
   const shuffleHistoryRef = useRef<string[]>([]);
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
@@ -75,6 +80,7 @@ export function MiniPlayer() {
   useEffect(() => {
     setTracks([]);
     setVideos([]);
+    setLoop(null);
     setSource("auto");
     setYtDuration(0);
     setTracksOpen(false);
@@ -220,9 +226,38 @@ export function MiniPlayer() {
       play(next);
     } else restart();
   };
-  // al terminar un tema sigue con el siguiente de la cola
-  const playAtRef = useRef(playAt);
-  playAtRef.current = playAt;
+  const playMedia = () => {
+    if (useYoutube) stageRef.current?.play();
+    else void localRef.current?.play().catch(() => undefined);
+  };
+  // al terminar: el tramo vuelve a empezar; "repetir" vuelve al principio; si no, sigue la cola
+  const handleEnded = () => {
+    if (loop) {
+      media.seek(loop.start);
+      playMedia();
+    } else if (repeatOne) {
+      media.seek(0);
+      setProgress(0);
+      playMedia();
+    } else playAt(1);
+  };
+  // mientras suena: al llegar al final del tramo, vuelve al principio del tramo
+  const keepInLoop = (time: number) => {
+    if (loop && time >= loop.end) media.seek(loop.start);
+  };
+  // por ref: los eventos del audio y de YouTube llaman siempre a la versión de este render
+  const playbackRef = useRef({ handleEnded, keepInLoop });
+  playbackRef.current = { handleEnded, keepInLoop };
+
+  // elegir un tramo: salta al principio del tramo y, si estaba en pausa, arranca
+  const changeLoop = (next: LoopRange | null) => {
+    setLoop(next);
+    if (!next) return;
+    media.seek(next.start);
+    const limit = media.duration();
+    setProgress(limit ? (next.start / limit) * 100 : 0);
+    if (!isPlaying) toggle();
+  };
 
   // "Atrás": un toque vuelve al principio del tema; dos toques seguidos van a la canción anterior
   const back = () => {
@@ -328,10 +363,11 @@ export function MiniPlayer() {
       <audio
         ref={localRef}
         src={resolvedUrl ?? undefined}
-        onEnded={() => playAtRef.current(1)}
+        onEnded={() => playbackRef.current.handleEnded()}
         onTimeUpdate={(e) => {
           const el = e.currentTarget;
           if (el.duration) setProgress((el.currentTime / el.duration) * 100);
+          playbackRef.current.keepInLoop(el.currentTime);
         }}
       />
       {tracksOpen && hasRelated ? (
@@ -498,6 +534,15 @@ export function MiniPlayer() {
           >
             0
           </button>
+          <RepeatControls
+            compact
+            seconds={seconds}
+            duration={duration}
+            repeatOne={repeatOne}
+            onRepeatOneChange={setRepeatOne}
+            loop={loop}
+            onLoopChange={changeLoop}
+          />
         </div>
 
         <div className="ml-auto hidden items-center gap-2 md:flex">
@@ -539,6 +584,10 @@ export function MiniPlayer() {
               onFilterChange={setFilter}
               shuffle={shuffle}
               onShuffleChange={setShuffle}
+              repeatOne={repeatOne}
+              onRepeatOneChange={setRepeatOne}
+              loop={loop}
+              onLoopChange={changeLoop}
               progress={progress}
               seconds={seconds}
               duration={duration}
@@ -573,12 +622,13 @@ export function MiniPlayer() {
               setYtDuration(Math.round(total));
               setProgress((time / total) * 100);
             }
+            playbackRef.current.keepInLoop(time);
           }}
           onPlayingChange={(playing) => {
             // pausa/play desde los controles propios del video (o la X del flotante)
             if (playing !== isPlayingRef.current) toggle();
           }}
-          onEnded={() => playAtRef.current(1)}
+          onEnded={() => playbackRef.current.handleEnded()}
           onOpenFull={openTitle}
         />
       ) : null}

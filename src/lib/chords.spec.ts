@@ -216,6 +216,22 @@ describe("packChartRows — Solo acordes: filas de 4 compases, repeticiones con 
     expect(endOf(lines[3]!)).toBe(":]");
   });
 
+  it("el coro de Pablo: | D - A | E - F#m | tres veces seguidas → x3, y sigue el final", () => {
+    const lines = chart(
+      "{Coro}",
+      "A[D]qui - esto[A]y con [E]manos - al[F#m]zadas vengo",
+      "[D]Pues - [A]tu tod[E]o lo diste por - [F#m]mi",
+      "[D]Aqui estoy - [A]mi alma a[E] ti - entr[F#m]ego",
+      "[D]Tuyo - s[A]oy s[E]eñor",
+    );
+    expect(lines.map(barsOf)).toEqual([[], ["D - A", "E - F#m", "x3"], ["D - A", "E"]]);
+  });
+
+  it("cuatro veces la misma mitad → x4 (no :] de una fila de 4)", () => {
+    const lines = chart("[D] [A] [D] [A]", "[D] [A] [D] [A]");
+    expect(lines.map(barsOf)).toEqual([["D", "A", "x4"]]);
+  });
+
   it("una vuelta de 4 compases repetida 2 veces en medio de otras", () => {
     const lines = chart("[E] [F#m] [D] [A]", "[D] [Bm] [G] [A]", "[D] [Bm] [G] [A]", "[E]");
     expect(lines.map(barsOf)).toEqual([["E", "F#m", "D", "A"], ["D", "Bm", "G", "A"], ["E"]]);

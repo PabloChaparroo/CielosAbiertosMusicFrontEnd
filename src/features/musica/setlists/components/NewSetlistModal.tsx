@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { GripVertical, ListMusic, Search, X } from "lucide-react";
 import { Cover } from "@/components/common/ui-bits";
+import { InstrumentPicker } from "@/components/common/InstrumentPicker";
+import { INSTRUMENTS } from "@/lib/instruments";
 import { useApp } from "@/hooks/useApp";
 import { SetlistsService } from "../services/setlists.service";
 import { EVENT_TYPES, type EventType, type Setlist, type SetlistItem } from "@/types";
@@ -91,6 +93,23 @@ export function NewSetlistModal({
   );
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [team, setTeam] = useState<string[]>([currentUser.id]);
+  // qué toca cada miembro en esta lista; si toca un solo instrumento, se marca solo
+  const onlyInstrument = (userId: string): Record<string, string[]> => {
+    const list = users.find((u) => u.id === userId)?.instruments ?? [];
+    return list.length === 1 ? { [userId]: list } : {};
+  };
+  const [teamInstruments, setTeamInstruments] = useState<Record<string, string[]>>(() =>
+    onlyInstrument(currentUser.id),
+  );
+  const toggleMember = (userId: string) => {
+    const on = team.includes(userId);
+    setTeam((prev) => (on ? prev.filter((id) => id !== userId) : [...prev, userId]));
+    setTeamInstruments((prev) => {
+      if (!on) return { ...onlyInstrument(userId), ...prev };
+      const { [userId]: _removed, ...rest } = prev;
+      return rest;
+    });
+  };
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -146,6 +165,7 @@ export function NewSetlistModal({
         type,
         leaderId: currentUser.id,
         teamIds: team,
+        teamInstruments,
         items: picked.map((id) => ({
           songId: id,
           key: initialKeys.get(id) ?? songs.find((s) => s.id === id)?.key ?? "C",
@@ -377,9 +397,7 @@ export function NewSetlistModal({
                   <button
                     key={u.id}
                     type="button"
-                    onClick={() =>
-                      setTeam((prev) => (on ? prev.filter((id) => id !== u.id) : [...prev, u.id]))
-                    }
+                    onClick={() => toggleMember(u.id)}
                     className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
                       on
                         ? "border-primary/50 bg-primary/15 text-primary"
@@ -391,6 +409,26 @@ export function NewSetlistModal({
                 );
               })}
             </div>
+            {/* qué toca cada uno en esta lista (de sus instrumentos; si no tiene cargados, todos) */}
+            {team.length ? (
+              <div className="mt-3 space-y-2">
+                {team.map((id) => {
+                  const u = users.find((x) => x.id === id);
+                  if (!u) return null;
+                  return (
+                    <div key={id} className="rounded-xl border border-border/60 p-2.5">
+                      <p className="mb-1.5 text-xs font-medium">{u.name} toca:</p>
+                      <InstrumentPicker
+                        size="sm"
+                        options={u.instruments?.length ? u.instruments : INSTRUMENTS}
+                        value={teamInstruments[id] ?? []}
+                        onChange={(next) => setTeamInstruments((prev) => ({ ...prev, [id]: next }))}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
           </div>
 
           {error ? (

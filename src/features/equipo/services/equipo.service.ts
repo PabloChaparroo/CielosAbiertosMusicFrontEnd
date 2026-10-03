@@ -7,6 +7,7 @@ export interface CreateMemberDto {
   name: string;
   avatarColor: string;
   initials: string;
+  instruments?: string[];
 }
 
 export type UpdateMemberDto = Partial<Omit<CreateMemberDto, "password">> & { password?: string };

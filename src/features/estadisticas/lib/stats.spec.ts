@@ -163,6 +163,7 @@ describe("historicRanking — Top 10 histórico", () => {
 describe("songPlaysInRange", () => {
   const sl = (id: string, date: string, songIds: string[]): Setlist => ({
     id,
+    teamInstruments: {},
     title: id,
     date,
     isUpcoming: false,

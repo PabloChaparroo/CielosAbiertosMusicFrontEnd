@@ -17,4 +17,6 @@ export interface User {
   fechaHoraAlta: string;
   /** null si está activo; con fecha si está dado de baja. Solo viene poblado cuando se pidió incluirBajas. */
   fechaHoraBaja: string | null;
+  /** Instrumentos que toca (puede ser más de uno); puede faltar en respuestas viejas */
+  instruments?: string[];
 }

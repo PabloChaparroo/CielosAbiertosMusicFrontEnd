@@ -102,6 +102,9 @@ export function EquipoPage() {
             <div className="mt-3 flex justify-center">
               <RoleBadge roles={member.roles} />
             </div>
+            {member.instruments?.length ? (
+              <p className="mt-3 text-sm text-primary">{member.instruments.join(" · ")}</p>
+            ) : null}
             {member.fechaHoraBaja ? (
               <p className="mt-2 text-xs font-semibold text-destructive">Dado de baja</p>
             ) : null}

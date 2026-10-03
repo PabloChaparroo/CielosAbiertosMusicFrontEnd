@@ -27,6 +27,14 @@ function nextWeekday(weekday: number, weeksLater: number, time: string): string 
 }
 
 /** Desplegable de fechas: los próximos 4 de cada uno (el primero es el de esta semana, o hoy) */
+/** Título por defecto a partir de la fecha del input ("AAAA-MM-DDTHH:mm"): "Domingo 04/10" */
+const DAY_NAMES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+function titleForDate(value: string): string {
+  const [y, mo, d] = value.slice(0, 10).split("-").map(Number);
+  if (!y || !mo || !d) return "";
+  return `${DAY_NAMES[new Date(y, mo - 1, d).getDay()]} ${value.slice(8, 10)}/${value.slice(5, 7)}`;
+}
+
 const DATE_SHORTCUTS = [
   { label: "Domingos", day: "Domingo", weekday: 0 },
   { label: "Miércoles", day: "Miércoles", weekday: 3 },
@@ -58,8 +66,19 @@ export function NewSetlistModal({
     });
     return counts;
   }, [setlists]);
-  const [title, setTitle] = useState(initial?.title ?? "");
-  const [date, setDate] = useState(() => nextWeekday(0, 0, "10:30"));
+  const [date, setDateValue] = useState(() => nextWeekday(0, 0, "10:30"));
+  // el título arranca con la fecha ("Domingo 04/10") y la sigue al cambiarla, hasta que el usuario
+  // escribe uno propio (o viene de una lista predefinida); si lo borra entero, vuelve a seguirla
+  const [title, setTitleValue] = useState(() => initial?.title ?? titleForDate(date));
+  const [titleEdited, setTitleEdited] = useState(Boolean(initial?.title));
+  const setTitle = (value: string) => {
+    setTitleValue(value);
+    setTitleEdited(value.trim() !== "");
+  };
+  const setDate = (value: string) => {
+    setDateValue(value);
+    if (!titleEdited) setTitleValue(titleForDate(value));
+  };
   const [type, setType] = useState<EventType>("Culto Domingo a la mañana");
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string[]>(() =>

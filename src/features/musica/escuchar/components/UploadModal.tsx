@@ -198,7 +198,8 @@ export function UploadModal({
         duration: durationMinutes * 60 + durationSeconds,
         cover: isEdit ? (song?.cover ?? coverFor(title.trim())) : coverFor(title.trim()),
         chordpro,
-        tags: tags.length ? tags : (["Adoración"] as Tag[]),
+        // sin temas elegidos va vacío (antes se ponía "Adoración", que es un tipo y ya no es tema)
+        tags,
         tipoId,
         ...(audioKey ? { audioKey } : {}),
       };

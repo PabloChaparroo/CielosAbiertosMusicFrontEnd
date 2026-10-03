@@ -67,8 +67,8 @@ export function DeleteSongModal({
           <li>links relacionados, anotaciones, favoritos y estadísticas</li>
           <li>
             {inSetlists.length
-              ? `se saca de ${inSetlists.length === 1 ? "1 setlist" : `${inSetlists.length} setlists`}: ${inSetlists.map((s) => s.title).join(", ")}`
-              : "no está en ningún setlist"}
+              ? `se saca de ${inSetlists.length === 1 ? "1 lista de canciones" : `${inSetlists.length} listas de canciones`}: ${inSetlists.map((s) => s.title).join(", ")}`
+              : "no está en ninguna lista de canciones"}
           </li>
         </ul>
 

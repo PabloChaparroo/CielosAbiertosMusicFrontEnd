@@ -105,7 +105,7 @@ export function SetlistDetail({
         onClick={onBack}
         className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="h-4 w-4" /> Volver a setlists
+        <ArrowLeft className="h-4 w-4" /> Volver a listas de canciones
       </button>
 
       {saveError ? (
@@ -236,7 +236,7 @@ export function SetlistDetail({
             </p>
           ) : (
             <div className="p-3">
-              <LockedHint>Solo líderes pueden modificar este setlist</LockedHint>
+              <LockedHint>Solo líderes pueden modificar esta lista</LockedHint>
             </div>
           )}
         </div>

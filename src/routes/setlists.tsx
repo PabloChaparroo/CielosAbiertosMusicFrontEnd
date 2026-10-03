@@ -4,12 +4,12 @@ import { SetlistsPage } from "@/features/musica/setlists/pages/SetlistsPage";
 export const Route = createFileRoute("/setlists")({
   head: () => ({
     meta: [
-      { title: "Setlists — Cielos Abiertos" },
+      { title: "Listas de canciones — Cielos Abiertos" },
       {
         name: "description",
         content: "Próximos servicios y ensayos con el orden de canciones y su tonalidad del día.",
       },
-      { property: "og:title", content: "Setlists — Cielos Abiertos" },
+      { property: "og:title", content: "Listas de canciones — Cielos Abiertos" },
       { property: "og:description", content: "Organizá el repertorio de cada servicio." },
     ],
   }),

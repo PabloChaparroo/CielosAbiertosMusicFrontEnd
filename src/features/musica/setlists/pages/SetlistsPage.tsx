@@ -55,7 +55,7 @@ export function SetlistsPage() {
 
   if (setlistsLoadState === "loading") {
     return (
-      <AppLayout title="Setlists" subtitle="Servicios, ensayos y eventos especiales">
+      <AppLayout title="Listas de canciones" subtitle="Servicios, ensayos y eventos especiales">
         <Skeletons rows={4} />
       </AppLayout>
     );
@@ -63,10 +63,10 @@ export function SetlistsPage() {
 
   if (setlistsLoadState === "error") {
     return (
-      <AppLayout title="Setlists" subtitle="Servicios, ensayos y eventos especiales">
+      <AppLayout title="Listas de canciones" subtitle="Servicios, ensayos y eventos especiales">
         <EmptyState
           icon={<CalendarDays className="h-6 w-6" />}
-          title="No se pudieron cargar los setlists"
+          title="No se pudieron cargar las listas de canciones"
           description="Revisá tu conexión con el servidor e intentá de nuevo recargando la página."
         />
       </AppLayout>
@@ -124,7 +124,7 @@ export function SetlistsPage() {
 
   return (
     <AppLayout
-      title="Setlists"
+      title="Listas de canciones"
       subtitle="Servicios, ensayos y eventos especiales"
       actions={
         canCreate ? (
@@ -132,10 +132,10 @@ export function SetlistsPage() {
             onClick={() => setModal(true)}
             className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
           >
-            <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Nuevo setlist</span>
+            <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Nueva lista</span>
           </button>
         ) : (
-          <LockedHint>Solo líderes pueden crear setlists</LockedHint>
+          <LockedHint>Solo líderes pueden crear listas de canciones</LockedHint>
         )
       }
     >
@@ -145,7 +145,7 @@ export function SetlistsPage() {
           <EmptyState
             icon={<CalendarDays className="h-6 w-6" />}
             title="No hay servicios agendados"
-            description="Creá el próximo setlist para que el equipo lo tenga a mano."
+            description="Creá la próxima lista de canciones para que el equipo la tenga a mano."
           />
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
@@ -166,13 +166,14 @@ export function SetlistsPage() {
         <h2 className="mb-1 font-display text-xl font-semibold">Listas predefinidas</h2>
         <p className="mb-4 text-sm text-muted-foreground">
           Listas para reutilizar: elegí una y ponele fecha (y equipo, si querés). Para crear una,
-          tocá <BookmarkPlus className="inline h-4 w-4 align-text-bottom" /> en un setlist.
+          tocá <BookmarkPlus className="inline h-4 w-4 align-text-bottom" /> en una lista de
+          canciones.
         </p>
         {templates.length === 0 ? (
           <EmptyState
             icon={<ListMusic className="h-6 w-6" />}
             title="Todavía no hay listas predefinidas"
-            description="Guardá un setlist de Próximos o del Historial para reutilizarlo."
+            description="Guardá una lista de Próximos o del Historial para reutilizarla."
           />
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">

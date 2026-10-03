@@ -76,7 +76,7 @@ export function InicioPage() {
                 to="/setlists"
                 className="rounded-full border border-border bg-background/50 px-6 py-3 text-sm font-semibold backdrop-blur transition-colors hover:bg-secondary"
               >
-                Ver setlists
+                Ver listas
               </Link>
             ) : null}
           </div>
@@ -94,7 +94,7 @@ export function InicioPage() {
             >
               <CalendarDays className="mb-3 h-5 w-5 text-primary" />
               <p className="text-xs tracking-widest text-muted-foreground uppercase">
-                Próximo setlist
+                Próxima lista
               </p>
               <p className="mt-1 font-display text-lg font-semibold">{upcoming.title}</p>
               <p className="text-sm text-muted-foreground">

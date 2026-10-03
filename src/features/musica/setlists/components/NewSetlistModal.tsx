@@ -154,7 +154,7 @@ export function NewSetlistModal({
       onSave(created);
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo crear el setlist");
+      setError(e instanceof Error ? e.message : "No se pudo crear la lista de canciones");
       setSaving(false);
     }
   };
@@ -163,7 +163,7 @@ export function NewSetlistModal({
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-4">
       <div className="flex max-h-[92vh] w-full max-w-xl flex-col rounded-t-3xl border border-border bg-card p-6 sm:rounded-2xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-display text-xl font-semibold">Nuevo setlist</h2>
+          <h2 className="font-display text-xl font-semibold">Nueva lista de canciones</h2>
           <button
             onClick={onClose}
             aria-label="Cerrar"
@@ -413,7 +413,7 @@ export function NewSetlistModal({
             onClick={() => void handleSave()}
             className="rounded-full gradient-gold px-5 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"
           >
-            <ListMusic className="mr-1 inline h-4 w-4" /> {saving ? "Creando…" : "Crear setlist"}
+            <ListMusic className="mr-1 inline h-4 w-4" /> {saving ? "Creando…" : "Crear lista"}
           </button>
         </div>
       </div>

@@ -87,7 +87,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Cielos Abiertos — Ministerio de Adoración" },
       {
         name: "description",
-        content: "Letras, acordes, setlists y equipo del ministerio de alabanza Cielos Abiertos.",
+        content:
+          "Letras, acordes, listas de canciones y equipo del ministerio de alabanza Cielos Abiertos.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

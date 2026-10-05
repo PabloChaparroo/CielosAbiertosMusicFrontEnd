@@ -376,7 +376,7 @@ export function chordsOnly(lines: ParsedLine[]): ParsedLine[] {
               : {
                   chord: p.chord,
                   text: p.text.includes(":]") ? ":]" : p.text.includes("-") ? "-" : "",
-                  above: p.above,
+                  ...(p.above !== undefined ? { above: p.above } : {}),
                 },
           ),
         }

@@ -173,7 +173,13 @@ const noteWidthCh = (note: string) => Math.ceil((note.length + 2) * NOTE_SCALE) 
 function placeNotes(pairs: ChordPair[]): { noteOffset: number[]; chordNudge: number[] } {
   // ancho de cada columna: el acorde (+1ch de margen) o " " arriba; la letra o " " abajo
   const widths = pairs.map((p) =>
-    p.note ? 0 : Math.max(p.chord ? p.chord.length + 1 : 1, displayText(p.text).length || 1),
+    p.note
+      ? 0
+      : Math.max(
+          p.chord ? p.chord.length + 1 : 1,
+          p.above ? p.above.length + 1 : 1,
+          displayText(p.text).length || 1,
+        ),
   );
   const starts: number[] = [];
   widths.reduce((x, w, j) => ((starts[j] = x), x + w), 0);
@@ -187,7 +193,8 @@ function placeNotes(pairs: ChordPair[]): { noteOffset: number[]; chordNudge: num
       if (p.chord) {
         // en cadena: si algo anterior (nota o acorde corrido) todavía ocupa este lugar, se corre
         chordNudge[j] = Math.max(0, occupiedUntil - starts[j]!);
-        occupiedUntil = starts[j]! + chordNudge[j]! + p.chord.length + 1;
+        occupiedUntil =
+          starts[j]! + chordNudge[j]! + Math.max(p.chord.length, p.above?.length ?? 0) + 1;
       }
       return;
     }
@@ -238,7 +245,8 @@ export function ChordSheet({
         </p>
       );
     // en "Letra + acordes", una línea sin letra también va como compases
-    if (mode === "chords" || isChordOnlyLine(line.pairs)) {
+    const hasAboveLabels = line.pairs.some((pair) => pair.above);
+    if ((mode === "chords" && !hasAboveLabels) || isChordOnlyLine(line.pairs)) {
       const pairs = line.pairs.filter((pair) => pair.chord || pair.note || pair.text.trim());
       const hasChords = pairs.some((pair) => pair.chord);
       const segments: ChartSegment[] = hasChords
@@ -284,7 +292,7 @@ export function ChordSheet({
           ) : null}
           <div className="flex flex-nowrap whitespace-pre" style={{ lineHeight: `${fontSize}px` }}>
             {notesAbove ? (
-              <span className={hasChords ? "font-semibold text-primary" : undefined}>{base}</span>
+              <span className={hasChords ? "font-medium text-primary" : undefined}>{base}</span>
             ) : (
               notes.map((note, j) => <NoteMark key={j} note={note.value} fontSize={fontSize} />)
             )}
@@ -312,8 +320,16 @@ export function ChordSheet({
             </span>
           ) : (
             <span key={j} className="inline-flex flex-col">
+              {p.above ? (
+                <span
+                  className="font-normal whitespace-pre text-primary"
+                  style={{ fontSize: fontSize * 0.7, lineHeight: `${fontSize * 0.7}px` }}
+                >
+                  {p.above}
+                </span>
+              ) : null}
               <span
-                className="relative font-semibold whitespace-pre text-primary"
+                className="relative font-medium whitespace-pre text-primary"
                 style={{
                   minHeight: p.chord ? undefined : 1,
                   lineHeight: `${fontSize}px`,

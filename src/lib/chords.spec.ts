@@ -136,6 +136,17 @@ describe("parseChordPro — transposición y robustez", () => {
     ]);
   });
 
+  it("interpreta una marca entre guiones arriba del acorde y la conserva al transponer", () => {
+    const [line] = parseChordPro("[-|||-G] [A]", 2, "A");
+    expect(line).toMatchObject({
+      kind: "line",
+      pairs: [
+        { chord: "A", above: "|||" },
+        { chord: "B" },
+      ],
+    });
+  });
+
   it("no transpone las marcas: [Baja Tono] no se convierte en 'C#aja Tono' (bug ya arreglado)", () => {
     const chords = chordsOf(parseChordPro("[G] [Sube Tono] [A] [Baja Tono] [%] :] [x3]", 2, "A"));
     expect(chords).toEqual(["A", "Sube Tono", "B", "Baja Tono", "%", "x3"]);

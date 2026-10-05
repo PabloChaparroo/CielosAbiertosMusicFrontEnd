@@ -98,6 +98,8 @@ export function diatonicChords(key: string): string[] {
 export interface ChordPair {
   chord: string;
   text: string;
+  /** Texto opcional que se muestra arriba del acorde, ej. "[-|||-G]" → G con "|||" arriba */
+  above?: string;
   /** Anotación "(…)" en esta posición de la línea, ej. "coro 2 | E |" — si está, chord y text van vacíos */
   note?: string;
 }
@@ -231,11 +233,20 @@ export function parseChordPro(body: string, semitones: number, targetKey: string
       const nextMatch = line.slice(next).search(/\[/);
       const text = nextMatch === -1 ? line.slice(next) : line.slice(next, next + nextMatch);
       const raw = match[1]!;
+      const aboveChord =
+        /^-(.*)-([A-G](?:#|b)?(?:m|min|maj|sus|add|dim|aug)?\d*(?:\/[A-G](?:#|b)?)?)$/.exec(
+          raw.trim(),
+        );
+      const chordValue = aboveChord ? aboveChord[2]! : raw;
       const chord =
-        raw.trim() === "%" || isChartMarker(raw)
-          ? raw.trim()
-          : transposeChord(raw, semitones, targetKey);
-      pairs.push(...splitNotes(chord, text));
+        chordValue.trim() === "%" || isChartMarker(chordValue)
+          ? chordValue.trim()
+          : transposeChord(chordValue, semitones, targetKey);
+      const parsedPairs = splitNotes(chord, text);
+      if (aboveChord && parsedPairs.length > 0) {
+        parsedPairs[0]!.above = aboveChord[1]!;
+      }
+      pairs.push(...parsedPairs);
       last = next + (nextMatch === -1 ? line.length : nextMatch);
       regex.lastIndex = last;
     }
@@ -366,6 +377,7 @@ export function chordsOnly(lines: ParsedLine[]): ParsedLine[] {
               : {
                   chord: p.chord,
                   text: p.text.includes(":]") ? ":]" : p.text.includes("-") ? "-" : "",
+                  ...(p.above !== undefined ? { above: p.above } : {}),
                 },
           ),
         }

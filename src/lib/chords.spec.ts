@@ -140,10 +140,7 @@ describe("parseChordPro — transposición y robustez", () => {
     const [line] = parseChordPro("[-|||-G] [A]", 2, "A");
     expect(line).toMatchObject({
       kind: "line",
-      pairs: [
-        { chord: "A", above: "|||" },
-        { chord: "B" },
-      ],
+      pairs: [{ chord: "A", above: "|||" }, { chord: "B" }],
     });
   });
 

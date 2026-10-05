@@ -233,9 +233,10 @@ export function parseChordPro(body: string, semitones: number, targetKey: string
       const nextMatch = line.slice(next).search(/\[/);
       const text = nextMatch === -1 ? line.slice(next) : line.slice(next, next + nextMatch);
       const raw = match[1]!;
-      const aboveChord = /^-(.*)-([A-G](?:#|b)?(?:m|min|maj|sus|add|dim|aug)?\d*(?:\/[A-G](?:#|b)?)?)$/.exec(
-        raw.trim(),
-      );
+      const aboveChord =
+        /^-(.*)-([A-G](?:#|b)?(?:m|min|maj|sus|add|dim|aug)?\d*(?:\/[A-G](?:#|b)?)?)$/.exec(
+          raw.trim(),
+        );
       const chordValue = aboveChord ? aboveChord[2]! : raw;
       const chord =
         chordValue.trim() === "%" || isChartMarker(chordValue)

@@ -25,6 +25,9 @@ import { RepeatControls } from "./RepeatControls";
 import type { LoopRange } from "@/lib/time";
 import { buildQueue, pickNext, type QueueFilter } from "@/lib/queue";
 
+/** Evento para abrir "Pistas relacionadas" desde otra pantalla (ej. el título en Acordes, en celular) */
+export const OPEN_RELATED_TRACKS_EVENT = "miniplayer:open-related";
+
 export function MiniPlayer() {
   const { current, isPlaying, play, toggle, audioRef, songs } = useApp();
   const [expanded, setExpanded] = useState(false);
@@ -103,6 +106,12 @@ export function MiniPlayer() {
 
   useEffect(() => {
     void loadYoutubeApi();
+  }, []);
+
+  useEffect(() => {
+    const open = () => setTracksOpen(true);
+    window.addEventListener(OPEN_RELATED_TRACKS_EVENT, open);
+    return () => window.removeEventListener(OPEN_RELATED_TRACKS_EVENT, open);
   }, []);
 
   // otros videos de YouTube de la canción (el principal ya suena en el reproductor)

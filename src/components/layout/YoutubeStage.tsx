@@ -7,6 +7,7 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
+import { FADE_MS, fadeVolume } from "@/lib/fade";
 import { FloatingVideoFrame } from "@/components/common/FloatingVideoFrame";
 import { loadYoutubeApi, YT_ENDED, YT_PAUSED, YT_PLAYING, type YTPlayer } from "@/lib/youtube-api";
 
@@ -124,15 +125,51 @@ export const YoutubeStage = forwardRef<
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoId, ready]);
 
+  // play/pausa con un fundido corto (FADE_MS), igual que el audio
+  const fadeRef = useRef<(() => void) | null>(null);
+  const volumeRef = useRef(volume);
+  volumeRef.current = volume;
+  // volumen puesto ahora en el reproductor (0–1): de ahí arranca el fundido
+  const appliedRef = useRef(volume);
+
   useEffect(() => {
-    if (!ready) return;
-    if (playing) playerRef.current?.playVideo();
-    else playerRef.current?.pauseVideo();
+    const player = playerRef.current;
+    if (!ready || !player) return;
+    const setVolume = (v: number) => {
+      appliedRef.current = v;
+      player.setVolume(Math.round(v * 100));
+    };
+    // si estaba en medio de un fundido, se da vuelta desde donde quedó
+    const midFade = fadeRef.current !== null;
+    fadeRef.current?.();
+    if (playing) {
+      if (!midFade) setVolume(0);
+      player.playVideo();
+      fadeRef.current = fadeVolume(
+        appliedRef.current,
+        volumeRef.current,
+        FADE_MS,
+        setVolume,
+        () => {
+          fadeRef.current = null;
+        },
+      );
+    } else {
+      fadeRef.current = fadeVolume(appliedRef.current, 0, FADE_MS, setVolume, () => {
+        player.pauseVideo();
+        setVolume(volumeRef.current);
+        fadeRef.current = null;
+      });
+    }
   }, [playing, ready]);
 
   useEffect(() => {
-    if (ready) playerRef.current?.setVolume(Math.round(volume * 100));
+    if (!ready || fadeRef.current) return;
+    appliedRef.current = volume;
+    playerRef.current?.setVolume(Math.round(volume * 100));
   }, [volume, ready]);
+
+  useEffect(() => () => fadeRef.current?.(), []);
 
   // progreso para la barra de la app
   useEffect(() => {

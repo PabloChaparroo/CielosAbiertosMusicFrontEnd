@@ -144,6 +144,14 @@ describe("parseChordPro — transposición y robustez", () => {
     });
   });
 
+  it("pone arriba del acorde las comillas pegadas a él, antes o después, y lo transpone", () => {
+    const [line] = parseChordPro("[''Bm] [A’’] [G]", 2, "A");
+    expect(line).toMatchObject({
+      kind: "line",
+      pairs: [{ chord: "C#m", above: "''" }, { chord: "B", above: "’’" }, { chord: "A" }],
+    });
+  });
+
   it("no transpone las marcas: [Baja Tono] no se convierte en 'C#aja Tono' (bug ya arreglado)", () => {
     const chords = chordsOf(parseChordPro("[G] [Sube Tono] [A] [Baja Tono] [%] :] [x3]", 2, "A"));
     expect(chords).toEqual(["A", "Sube Tono", "B", "Baja Tono", "%", "x3"]);
@@ -182,6 +190,29 @@ describe("packChartRows — Solo acordes: filas de 4 compases, repeticiones con 
     );
     expect(lines.map(barsOf)).toEqual([[], ["A", "D", "A/C# - F#m", "D"], ["A", "D", "Bm", "F#m"]]);
     expect(endOf(lines[1]!)).toBe(":]");
+  });
+
+  it("una nota '(…)' no corta el patrón y queda justo antes (arriba) del acorde que nombra", () => {
+    const lines = chart(
+      "{Coro}",
+      "[G]A tu nom[D]bre clamare [A]",
+      "[G]En ti mi[D]s ojos fija[A]re",
+      "Hasta el fin[Bm](interludio)al.",
+    );
+    expect(lines.map(barsOf)).toEqual([[], ["G", "D", "A"], ["Bm"]]);
+    expect(endOf(lines[1]!)).toBe(":]");
+    const last = lines[2]!;
+    expect(last.kind === "line" && last.pairs.map((p) => p.note ?? p.chord)).toEqual([
+      "interludio",
+      "Bm",
+    ]);
+  });
+
+  it("las comillas de arriba del acorde siguen arriba al armar las filas", () => {
+    const [line] = chart("['''Bm] - [A/C#] [D]");
+    expect(line).toMatchObject({
+      pairs: [{ chord: "Bm", above: "'''", text: "-" }, { chord: "A/C#" }, { chord: "D" }],
+    });
   });
 
   it("sin '-' escrito, dos acordes de una línea son dos compases", () => {
@@ -250,13 +281,13 @@ describe("packChartRows — Solo acordes: filas de 4 compases, repeticiones con 
     expect(chart("[D] [A]", "{Coro}", "[D] [A]").map(barsOf)).toEqual([["D", "A"], [], ["D", "A"]]);
   });
 
-  it("las líneas con ':]', marcas o notas se respetan tal cual", () => {
+  it("las líneas con ':]' o marcas se respetan tal cual; las notas no cortan", () => {
     expect(chart("[D] [A] :]", "[G] [A]").map(barsOf)).toEqual([
       ["D", "A"],
       ["G", "A"],
     ]);
     expect(chart("[D] [A] [x3]", "[G]")).toHaveLength(2);
-    expect(chart("[D] (suave) [A]", "[G]")).toHaveLength(2);
+    expect(chart("[D] (suave) [A]", "[G]").map(barsOf)).toEqual([["D", "A", "G"]]);
   });
 
   it("el % es un compás más", () => {

@@ -3,6 +3,7 @@ import {
   ArrowRightLeft,
   Check,
   FileDown,
+  ListMusic,
   Maximize2,
   Minus,
   Pause,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import { useSearch } from "@tanstack/react-router";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { OPEN_RELATED_TRACKS_EVENT } from "@/components/layout/MiniPlayer";
 import { Cover, FavButton, Skeletons } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import { Pager, usePaged } from "@/components/common/Pager";
@@ -189,6 +191,8 @@ export function AcordesPage() {
   const insertAtCursor = (value: string, lineBreaks: boolean, cursorBack = 0) => {
     const input = chordInputRef.current;
     const scrollTop = input?.scrollTop ?? 0;
+    // en celular, enfocar el textarea desplazaba toda la página: se vuelve a donde estaba
+    const pageScrollY = window.scrollY;
     const start = input?.selectionStart ?? draft.length;
     const end = input?.selectionEnd ?? draft.length;
     const before = draft.slice(0, start);
@@ -202,9 +206,10 @@ export function AcordesPage() {
     requestAnimationFrame(() => {
       if (!input) return;
       const cursor = before.length + inserted.length - cursorBack;
-      input.focus();
+      input.focus({ preventScroll: true });
       input.setSelectionRange(cursor, cursor);
       input.scrollTop = scrollTop;
+      window.scrollTo({ top: pageScrollY });
     });
   };
 
@@ -402,6 +407,42 @@ export function AcordesPage() {
               <div className="flex items-center gap-2">
                 <h2 className="truncate font-display text-2xl font-semibold">{song.title}</h2>
                 <FavButton songId={song.id} />
+                {/* en celular la lista (con su botón de reproducir) queda plegada: se reproduce desde acá */}
+                <div className="flex items-center gap-1 lg:hidden">
+                  <button
+                    type="button"
+                    onClick={() => (current?.id === song.id ? toggle() : play(song))}
+                    aria-label={
+                      current?.id === song.id && isPlaying
+                        ? `Pausar ${song.title}`
+                        : `Reproducir ${song.title}`
+                    }
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                  >
+                    {current?.id === song.id && isPlaying ? (
+                      <Pause className="h-4 w-4" />
+                    ) : (
+                      <Play className="ml-0.5 h-4 w-4" />
+                    )}
+                  </button>
+                  {song.trackCount > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (current?.id !== song.id) play(song);
+                        // después del render: el reproductor cierra el desplegable al cambiar de canción
+                        requestAnimationFrame(() =>
+                          window.dispatchEvent(new Event(OPEN_RELATED_TRACKS_EVENT)),
+                        );
+                      }}
+                      aria-label="Pistas relacionadas"
+                      title="Pistas relacionadas"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-primary"
+                    >
+                      <ListMusic className="h-4 w-4" />
+                    </button>
+                  ) : null}
+                </div>
               </div>
               <p className="truncate text-sm text-muted-foreground">
                 {song.artist} · original {song.key} · {song.compas} · {song.bpm} BPM
@@ -579,6 +620,15 @@ export function AcordesPage() {
                   className="rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-white/60 hover:bg-white/10"
                 >
                   :]
+                </button>
+                {/* comilla recta: pegada al acorde ([''Bm]) se dibuja arriba; el teclado del celular pone la curva */}
+                <button
+                  type="button"
+                  onClick={() => insertAtCursor("'", false)}
+                  title="Comilla: pegada al acorde ([''Bm]) aparece arriba de él"
+                  className="rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-white/60 hover:bg-white/10"
+                >
+                  &apos;
                 </button>
                 {["%", "x3", "x4", "Sube Tono", "Baja Tono"].map((marker) => (
                   <button

@@ -65,7 +65,8 @@ export function UploadModal({
   const [title, setTitle] = useState(song?.title ?? "");
   const [artist, setArtist] = useState(song?.artist ?? "");
   const [key, setKey] = useState(song?.key ?? "G");
-  const [bpm, setBpm] = useState(song?.bpm ?? 80);
+  // texto mientras se escribe: así se puede borrar todo para poner otro número (antes volvía a 1)
+  const [bpm, setBpm] = useState(String(song?.bpm ?? 80));
   const [compas, setCompas] = useState(song?.compas ?? "4/4");
   const [durationMinutes, setDurationMinutes] = useState(Math.floor((song?.duration ?? 240) / 60));
   const [durationSeconds, setDurationSeconds] = useState((song?.duration ?? 240) % 60);
@@ -162,7 +163,9 @@ export function UploadModal({
   };
 
   // la letra es opcional: se puede crear la canción y cargarla después (desde acá o en Acordes)
-  const canSave = title.trim() !== "" && artist.trim() !== "" && tipoId !== "" && !saving;
+  const bpmValue = Math.round(Number(bpm));
+  const canSave =
+    title.trim() !== "" && artist.trim() !== "" && tipoId !== "" && bpmValue >= 1 && !saving;
 
   const handleSave = async () => {
     setSaving(true);
@@ -193,7 +196,7 @@ export function UploadModal({
         title: title.trim(),
         artist: artist.trim(),
         key,
-        bpm,
+        bpm: bpmValue,
         compas,
         duration: durationMinutes * 60 + durationSeconds,
         cover: isEdit ? (song?.cover ?? coverFor(title.trim())) : coverFor(title.trim()),
@@ -340,7 +343,7 @@ export function UploadModal({
                 min={1}
                 className={inputCls}
                 value={bpm}
-                onChange={(e) => setBpm(Number(e.target.value) || 1)}
+                onChange={(e) => setBpm(e.target.value)}
               />
             </Field>
           </div>

@@ -621,6 +621,15 @@ export function AcordesPage() {
                 >
                   :]
                 </button>
+                {/* comilla recta: pegada al acorde ([''Bm]) se dibuja arriba; el teclado del celular pone la curva */}
+                <button
+                  type="button"
+                  onClick={() => insertAtCursor("'", false)}
+                  title="Comilla: pegada al acorde ([''Bm]) aparece arriba de él"
+                  className="rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-white/60 hover:bg-white/10"
+                >
+                  &apos;
+                </button>
                 {["%", "x3", "x4", "Sube Tono", "Baja Tono"].map((marker) => (
                   <button
                     key={marker}

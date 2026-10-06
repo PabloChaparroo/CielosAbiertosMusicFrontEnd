@@ -189,6 +189,21 @@ export function displayLyricsLines(
   });
 }
 
+const CHORD_PATTERN = String.raw`[A-G](?:#|b)?(?:m|min|maj|sus|add|dim|aug)?\d*(?:\/[A-G](?:#|b)?)?`;
+// comillas rectas y las tipográficas que pone el teclado del celular
+const QUOTES = "['\"‘’“”´`]+";
+const QUOTES_BEFORE = new RegExp(`^(${QUOTES})(${CHORD_PATTERN})$`);
+const QUOTES_AFTER = new RegExp(`^(${CHORD_PATTERN})(${QUOTES})$`);
+
+/** Comillas pegadas al acorde ([''Bm] o [Bm'']): se dibujan arriba del acorde, como [-''-Bm] */
+function quotedChord(raw: string): [string, string, string] | null {
+  const before = QUOTES_BEFORE.exec(raw);
+  if (before) return [raw, before[1]!, before[2]!];
+  const after = QUOTES_AFTER.exec(raw);
+  if (after) return [raw, after[2]!, after[1]!];
+  return null;
+}
+
 export function parseChordPro(body: string, semitones: number, targetKey: string): ParsedLine[] {
   const sourceLines = body.split("\n").map((raw) => raw.replace(/\r/g, ""));
   const normalizedLines: string[] = [];
@@ -236,7 +251,7 @@ export function parseChordPro(body: string, semitones: number, targetKey: string
       const aboveChord =
         /^-(.*)-([A-G](?:#|b)?(?:m|min|maj|sus|add|dim|aug)?\d*(?:\/[A-G](?:#|b)?)?)$/.exec(
           raw.trim(),
-        );
+        ) ?? quotedChord(raw.trim());
       const chordValue = aboveChord ? aboveChord[2]! : raw;
       const chord =
         chordValue.trim() === "%" || isChartMarker(chordValue)

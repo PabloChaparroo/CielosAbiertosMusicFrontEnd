@@ -144,6 +144,14 @@ describe("parseChordPro — transposición y robustez", () => {
     });
   });
 
+  it("pone arriba del acorde las comillas pegadas a él, antes o después, y lo transpone", () => {
+    const [line] = parseChordPro("[''Bm] [A’’] [G]", 2, "A");
+    expect(line).toMatchObject({
+      kind: "line",
+      pairs: [{ chord: "C#m", above: "''" }, { chord: "B", above: "’’" }, { chord: "A" }],
+    });
+  });
+
   it("no transpone las marcas: [Baja Tono] no se convierte en 'C#aja Tono' (bug ya arreglado)", () => {
     const chords = chordsOf(parseChordPro("[G] [Sube Tono] [A] [Baja Tono] [%] :] [x3]", 2, "A"));
     expect(chords).toEqual(["A", "Sube Tono", "B", "Baja Tono", "%", "x3"]);

@@ -189,6 +189,8 @@ export function AcordesPage() {
   const insertAtCursor = (value: string, lineBreaks: boolean, cursorBack = 0) => {
     const input = chordInputRef.current;
     const scrollTop = input?.scrollTop ?? 0;
+    // en celular, enfocar el textarea desplazaba toda la página: se vuelve a donde estaba
+    const pageScrollY = window.scrollY;
     const start = input?.selectionStart ?? draft.length;
     const end = input?.selectionEnd ?? draft.length;
     const before = draft.slice(0, start);
@@ -202,9 +204,10 @@ export function AcordesPage() {
     requestAnimationFrame(() => {
       if (!input) return;
       const cursor = before.length + inserted.length - cursorBack;
-      input.focus();
+      input.focus({ preventScroll: true });
       input.setSelectionRange(cursor, cursor);
       input.scrollTop = scrollTop;
+      window.scrollTo({ top: pageScrollY });
     });
   };
 

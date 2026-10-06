@@ -302,10 +302,71 @@ export function isSimpleChartLine(pairs: ChordPair[]): boolean {
 /** Compases por fila en "Solo acordes" */
 const BARS_PER_ROW = 4;
 
-/** "A/C# - F#m" → pares { A/C#, "-" } { F#m, "" } (un compás armado de nuevo como línea) */
-function barPairs(bar: string): ChordPair[] {
-  const chords = bar.split(" - ");
-  return chords.map((chord, k) => ({ chord, text: k < chords.length - 1 ? "-" : "" }));
+/**
+ * Un compás de "Solo acordes": `key` son solo sus acordes ("A/C# - F#m"), con eso se buscan las
+ * repeticiones; `pairs` lo arma de nuevo como línea, con lo de arriba del acorde ("'''") y las
+ * notas "(…)" que lo nombran (van justo antes de su acorde, así se dibujan arriba de él).
+ */
+type ChartBar = { key: string; pairs: ChordPair[] };
+
+/** Línea que entra en el armado de filas: tiene acordes, sin marcas ("x3") ni ":]" a mano */
+function isPackableLine(pairs: ChordPair[]): boolean {
+  return (
+    pairs.some((p) => p.chord) &&
+    !pairs.some((p) => (p.chord && isChartMarker(p.chord)) || p.text.includes(":]"))
+  );
+}
+
+/**
+ * Compases de una línea como `chartBars`, pero sin perder las notas: "[Bm](interludio)" → la
+ * nota va con el acorde de antes (Bm); si está antes del primer acorde, con el primero.
+ */
+function lineBars(pairs: ChordPair[]): ChartBar[] {
+  const bars: ChartBar[] = [];
+  let pending: ChordPair[] = [];
+  let joinsNext = false;
+  pairs.forEach((pair) => {
+    if (pair.note) {
+      const bar = bars[bars.length - 1];
+      if (!bar) pending.push(pair);
+      else {
+        // antes del último acorde del compás (el que la nota nombra)
+        const at = bar.pairs.length - 1;
+        bar.pairs.splice(at, 0, pair);
+      }
+      return;
+    }
+    if (pair.chord) {
+      const chord: ChordPair = {
+        chord: pair.chord,
+        text: "",
+        ...(pair.above !== undefined ? { above: pair.above } : {}),
+      };
+      const bar = bars[bars.length - 1];
+      if (joinsNext && bar) {
+        bar.pairs[bar.pairs.length - 1]!.text = "-";
+        bar.pairs.push(...pending, chord);
+        bar.key += ` - ${pair.chord}`;
+      } else bars.push({ key: pair.chord, pairs: [...pending, chord] });
+      pending = [];
+      joinsNext = false;
+    }
+    if (pair.text.includes("-")) joinsNext = true;
+  });
+  return bars;
+}
+
+/** Compás de la vuelta que se escribe, con las notas de todas sus repeticiones (sin repetir) */
+function mergeBarNotes(bars: ChartBar[]): ChordPair[] {
+  const [first, ...rest] = bars;
+  const seen = new Set(first!.pairs.filter((p) => p.note).map((p) => p.note));
+  const extra = rest
+    .flatMap((bar) => bar.pairs.filter((p) => p.note))
+    .filter((p) => !seen.has(p.note) && seen.add(p.note));
+  const pairs = first!.pairs.map((p) => ({ ...p }));
+  const at = pairs.length - 1;
+  pairs.splice(at, 0, ...extra);
+  return pairs;
 }
 
 /** Una vuelta tiene que tener al menos esto para escribirse con ":]" / "x3" (un solo acorde, no) */
@@ -347,26 +408,32 @@ export function packChartRows(lines: ParsedLine[]): ParsedLine[] {
   let i = 0;
   while (i < lines.length) {
     const line = lines[i]!;
-    if (line.kind !== "line" || !isSimpleChartLine(line.pairs)) {
+    if (line.kind !== "line" || !isPackableLine(line.pairs)) {
       out.push(line);
       i += 1;
       continue;
     }
-    // compases de las líneas simples del tramo (saltando las vacías)
-    const bars: string[] = [];
+    // compases de las líneas del tramo (saltando las vacías)
+    const bars: ChartBar[] = [];
     let last = i;
     for (let j = i; j < lines.length; j += 1) {
       const next = lines[j]!;
       if (next.kind === "blank") continue;
-      if (next.kind !== "line" || !isSimpleChartLine(next.pairs)) break;
-      bars.push(...chartBars(next.pairs));
+      if (next.kind !== "line" || !isPackableLine(next.pairs)) break;
+      bars.push(...lineBars(next.pairs));
       last = j;
     }
+    // las repeticiones se buscan solo por los acordes: una nota "(…)" no corta el patrón
+    const keys = bars.map((bar) => bar.key);
     for (let s = 0; s < bars.length;) {
-      const { period, times } = repeatAt(bars, s);
-      const block = bars.slice(s, s + period);
+      const { period, times } = repeatAt(keys, s);
+      const block = bars
+        .slice(s, s + period)
+        .map((_, k) =>
+          mergeBarNotes(Array.from({ length: times }, (_, t) => bars[s + k + period * t]!)),
+        );
       for (let k = 0; k < block.length; k += BARS_PER_ROW) {
-        const pairs = block.slice(k, k + BARS_PER_ROW).flatMap(barPairs);
+        const pairs = block.slice(k, k + BARS_PER_ROW).flat();
         // la repetición va al final de la última fila de la vuelta
         if (k + BARS_PER_ROW >= block.length && times === 2)
           pairs[pairs.length - 1] = { ...pairs[pairs.length - 1]!, text: ":]" };

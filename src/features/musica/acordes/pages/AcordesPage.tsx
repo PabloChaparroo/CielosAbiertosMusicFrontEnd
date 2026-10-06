@@ -661,7 +661,7 @@ export function AcordesPage() {
                   textareaRef={chordInputRef}
                   value={draft}
                   onChange={setDraft}
-                  className="min-h-[420px] w-full rounded-2xl border border-border bg-card p-6 font-mono text-lg leading-relaxed whitespace-pre-wrap outline-none focus:border-primary/50"
+                  className="min-h-[max(420px,60vh)] w-full rounded-2xl border border-border bg-card p-6 font-mono xl:min-h-[calc(100vh-8rem)] text-lg leading-relaxed whitespace-pre-wrap outline-none focus:border-primary/50"
                 />
                 <div
                   ref={sheetBoxRef}

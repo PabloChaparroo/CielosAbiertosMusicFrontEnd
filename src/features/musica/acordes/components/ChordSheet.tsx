@@ -7,7 +7,11 @@ import {
   type ParsedLine,
 } from "@/lib/chords";
 
-type ChartSegment = { kind: "chart"; value: string } | { kind: "note"; value: string };
+// "above": lo que va arriba de un acorde (comillas, "|||"), en la columna donde empieza el acorde
+type ChartSegment =
+  | { kind: "chart"; value: string }
+  | { kind: "note"; value: string }
+  | { kind: "above"; value: string };
 
 /**
  * Si la línea es el mismo grupo de compases repetido, lo escribe una sola vez con el signo de
@@ -16,7 +20,7 @@ type ChartSegment = { kind: "chart"; value: string } | { kind: "note"; value: st
  * respeta tal cual la escribió el usuario. null si no hay repetición.
  */
 function compressRepeats(pairs: ChordPair[]): string | null {
-  if (!isSimpleChartLine(pairs)) return null;
+  if (!isSimpleChartLine(pairs) || pairs.some((p) => p.above)) return null;
   const keys = chartBars(pairs);
   for (let period = 1; period <= keys.length / 2; period += 1) {
     if (keys.length % period !== 0) continue;
@@ -70,11 +74,13 @@ function chordChartSegments(pairs: ChordPair[]): ChartSegment[] {
       buffer += started ? ` ${pair.chord}` : pair.chord;
       applyNotation(notation);
     } else if (pair.chord) {
-      buffer += joinsNextChord
-        ? ` ${pair.chord}`
-        : started || buffer
-          ? ` | ${pair.chord}`
-          : `| ${pair.chord}`;
+      buffer += joinsNextChord ? " " : started || buffer ? " | " : "| ";
+      if (pair.above) {
+        segments.push({ kind: "chart", value: buffer });
+        segments.push({ kind: "above", value: pair.above });
+        buffer = "";
+      }
+      buffer += pair.chord;
       started = true;
       barOpen = true;
       joinsNextChord = false;
@@ -123,12 +129,37 @@ function alignBars(base: string, widths: number[]): string {
   return `| ${bars.cells.map((cell, c) => centerCell(cell, widths[c] ?? 0)).join(" | ")} ${bars.end}`;
 }
 
+/**
+ * Columna de `index` (de la línea sin encolumnar) en la línea ya encolumnada por `alignBars`:
+ * así lo de arriba de un acorde sigue sobre su acorde. Sin cambios si no se puede ubicar.
+ */
+function alignedColumn(base: string, index: number, widths: number[]): number {
+  const bars = splitBars(base);
+  if (!bars || !widths.length) return index;
+  let raw = 2;
+  let aligned = 2;
+  for (let c = 0; c < bars.cells.length; c += 1) {
+    const cell = bars.cells[c]!;
+    const width = Math.max(widths[c] ?? 0, cell.length);
+    if (index < raw + cell.length + 3) {
+      const left = Math.floor(Math.max(0, width - cell.length) / 2);
+      return aligned + left + (index - raw);
+    }
+    raw += cell.length + 3;
+    aligned += width + 3;
+  }
+  return index;
+}
+
 /** Texto de compases de una línea de "Solo acordes" sin notas "(…)"; null si tiene notas o no tiene acordes */
 function plainChartBase(line: ParsedLine): string | null {
   if (line.kind !== "line") return null;
   const pairs = line.pairs.filter((pair) => pair.chord || pair.note || pair.text.trim());
   if (!pairs.some((p) => p.chord) || pairs.some((p) => p.note)) return null;
-  return chordChartSegments(pairs)
+  const segments = chordChartSegments(pairs);
+  if (segments.some((s) => s.kind === "note")) return null;
+  return segments
+    .filter((s) => s.kind === "chart")
     .map((s) => s.value)
     .join("");
 }
@@ -245,8 +276,7 @@ export function ChordSheet({
         </p>
       );
     // en "Letra + acordes", una línea sin letra también va como compases
-    const hasAboveLabels = line.pairs.some((pair) => pair.above);
-    if ((mode === "chords" && !hasAboveLabels) || isChordOnlyLine(line.pairs)) {
+    if (mode === "chords" || isChordOnlyLine(line.pairs)) {
       const pairs = line.pairs.filter((pair) => pair.chord || pair.note || pair.text.trim());
       const hasChords = pairs.some((pair) => pair.chord);
       const segments: ChartSegment[] = hasChords
@@ -259,20 +289,28 @@ export function ChordSheet({
       // queda limpia. Si dos notas se pisarían, la segunda se corre.
       let base = "";
       let noteEnd = 0;
-      const notes: Array<{ col: number; value: string }> = [];
+      const notes: Array<{ col: number; value: string; arrow: boolean }> = [];
       segments.forEach((segment) => {
         if (segment.kind === "chart") {
           base += segment.value;
           return;
         }
-        const col = Math.max(base.length + 1, noteEnd);
-        notes.push({ col, value: segment.value });
-        noteEnd = col + noteWidthCh(segment.value);
+        // lo de arriba del acorde va justo sobre él; la nota "(…)", un lugar después
+        const arrow = segment.kind === "note";
+        const col = Math.max(base.length + (arrow ? 1 : 0), noteEnd);
+        notes.push({ col, value: segment.value, arrow });
+        noteEnd =
+          col +
+          (arrow ? noteWidthCh(segment.value) : Math.ceil(segment.value.length * NOTE_SCALE) + 1);
       });
       // una línea que es solo una nota ("(repetir intro)") se muestra como línea normal
       const notesAbove = base.trim() !== "";
       // en Solo acordes los compases se encolumnan con los de los otros renglones
-      if (mode === "chords" && hasChords && !notes.length) base = alignBars(base, barWidths);
+      // (con notas "(…)" no; lo de arriba de un acorde se corre junto con su acorde)
+      if (mode === "chords" && hasChords && !notes.some((note) => note.arrow)) {
+        notes.forEach((note) => (note.col = alignedColumn(base, note.col, barWidths)));
+        base = alignBars(base, barWidths);
+      }
       return (
         <div key={i} style={{ marginBottom: `${fontSize * 0.18}px` }}>
           {notesAbove && notes.length ? (
@@ -284,7 +322,7 @@ export function ChordSheet({
                     className="font-normal tracking-normal whitespace-pre text-primary"
                     style={{ fontSize: fontSize * NOTE_SCALE, lineHeight: 1 }}
                   >
-                    ↱ {note.value}
+                    {note.arrow ? `↱ ${note.value}` : note.value}
                   </span>
                 </span>
               ))}
@@ -400,7 +438,7 @@ function groupBySection(lines: ParsedLine[]): SectionGroup[] {
 function hasNotesAbove(line: ParsedLine | undefined): boolean {
   if (!line || line.kind !== "line") return false;
   const pairs = line.pairs.filter((p) => p.chord || p.note || p.text.trim());
-  return pairs.some((p) => p.note) && pairs.some((p) => p.chord);
+  return pairs.some((p) => p.note || p.above) && pairs.some((p) => p.chord);
 }
 
 function SectionRow({

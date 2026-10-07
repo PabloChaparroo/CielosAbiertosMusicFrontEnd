@@ -16,6 +16,7 @@ import { YoutubeEmbed, YoutubeIcon } from "@/components/common/YoutubeEmbed";
 import { parseYoutubeVideoId } from "@/lib/youtube";
 import type { AudioTrack } from "@/features/canciones/types/audio-track";
 import { useApp } from "@/hooks/useApp";
+import { FADE_MS, fadeVolume } from "@/lib/fade";
 import { Cover, FavButton, formatDuration } from "@/components/common/ui-bits";
 import { StorageClient } from "@/lib/storage-client";
 import { loadYoutubeApi } from "@/lib/youtube-api";
@@ -139,14 +140,43 @@ export function MiniPlayer() {
     };
   }, [current?.id, current?.audioKey]);
 
+  // play/pausa con un fundido corto (FADE_MS) en vez de cortar el sonido de golpe
+  const fadeRef = useRef<(() => void) | null>(null);
+  const volumeRef = useRef(volume);
+  volumeRef.current = volume;
+
+  useEffect(() => {
+    const el = localRef.current;
+    if (el && !fadeRef.current) el.volume = volume;
+  }, [volume]);
+
   useEffect(() => {
     const el = localRef.current;
     if (!el) return;
     audioRef.current = el;
-    el.volume = volume;
-    if (isPlaying && resolvedUrl && !useYoutube) void el.play().catch(() => undefined);
-    else el.pause();
-  }, [isPlaying, current, volume, audioRef, resolvedUrl, useYoutube]);
+    const setVolume = (v: number) => (el.volume = Math.min(1, Math.max(0, v)));
+    if (isPlaying && resolvedUrl && !useYoutube) {
+      // si estaba bajando para pausar, se da vuelta desde donde quedó
+      if (!el.paused && !fadeRef.current) return;
+      fadeRef.current?.();
+      if (el.paused) {
+        el.volume = 0;
+        void el.play().catch(() => undefined);
+      }
+      fadeRef.current = fadeVolume(el.volume, volumeRef.current, FADE_MS, setVolume, () => {
+        fadeRef.current = null;
+      });
+    } else if (!el.paused) {
+      fadeRef.current?.();
+      fadeRef.current = fadeVolume(el.volume, 0, FADE_MS, setVolume, () => {
+        el.pause();
+        el.volume = volumeRef.current;
+        fadeRef.current = null;
+      });
+    }
+  }, [isPlaying, current, audioRef, resolvedUrl, useYoutube]);
+
+  useEffect(() => () => fadeRef.current?.(), []);
 
   // controles comunes al audio y a YouTube
   const media = {

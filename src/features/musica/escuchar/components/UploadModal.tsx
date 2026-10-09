@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Music, Trash2, Upload, X } from "lucide-react";
+import { CheckCircle2, Music, Rocket, Trash2, Upload, X } from "lucide-react";
 import { useApp } from "@/hooks/useApp";
+import { ConfirmTypedDeleteModal } from "./ConfirmTypedDeleteModal";
 import { DeleteSongModal } from "./DeleteSongModal";
 import { TagChip } from "@/components/common/ui-bits";
 import { KEYS } from "@/lib/chords";
@@ -8,6 +9,7 @@ import { StorageClient } from "@/lib/storage-client";
 import { SongsService, type TipoCancion } from "@/features/canciones/services/songs.service";
 import { validateAudioFile } from "@/features/canciones/lib/audio-validation";
 import { readAudioDuration, readFileDuration } from "@/features/canciones/lib/audio-duration";
+import { trackNameFromFile } from "@/features/canciones/lib/track-name";
 import type { Song, Tag } from "@/types";
 
 const COVER_PALETTE = [
@@ -60,8 +62,14 @@ export function UploadModal({
   onSave: (s: Song) => void;
 }) {
   const isEdit = song !== undefined;
-  const { can } = useApp();
+  const { can, updateSong } = useApp();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // audio principal guardado: se vacía al eliminarlo, así Guardar no lo vuelve a poner
+  const [savedAudioKey, setSavedAudioKey] = useState(song?.audioKey ?? null);
+  const [confirmRemoveAudio, setConfirmRemoveAudio] = useState(false);
+  // nombre propio del audio principal (ej. "Audio Quién podrá"); vacío = el título de la canción
+  const [audioName, setAudioName] = useState(song?.audioName ?? "");
+  const [proxima, setProxima] = useState(song?.esProxima ?? false);
   const [title, setTitle] = useState(song?.title ?? "");
   const [artist, setArtist] = useState(song?.artist ?? "");
   const [key, setKey] = useState(song?.key ?? "G");
@@ -158,6 +166,8 @@ export function UploadModal({
       return;
     }
     setAudioFile(file);
+    // el nombre del audio se completa con el del archivo (se puede cambiar)
+    if (!audioName.trim()) setAudioName(trackNameFromFile(file.name));
     const requestId = ++durationRequestRef.current;
     void readFileDuration(file).then((seconds) => applyAudioDuration(seconds, requestId));
   };
@@ -171,7 +181,7 @@ export function UploadModal({
     setSaving(true);
     setError(null);
     try {
-      let audioKey = song?.audioKey ?? undefined;
+      let audioKey = savedAudioKey ?? undefined;
 
       if (audioFile) {
         const { uploadUrl, key: newKey } = await StorageClient.getUploadUrl(
@@ -204,7 +214,9 @@ export function UploadModal({
         // sin temas elegidos va vacío (antes se ponía "Adoración", que es un tipo y ya no es tema)
         tags,
         tipoId,
-        ...(audioKey ? { audioKey } : {}),
+        ...(audioKey ? { audioKey, audioName: audioName.trim() } : {}),
+        // solo si cambió: volver a guardar no tiene que renovar la fecha de la marca
+        ...(proxima !== (song?.esProxima ?? false) ? { proximaASacar: proxima } : {}),
       };
 
       const saved = isEdit
@@ -306,13 +318,35 @@ export function UploadModal({
                     onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
                   />
                 </label>
-                {!audioFile && song?.audioKey ? (
-                  <p className="mt-1.5 flex items-center gap-1.5 text-xs text-primary">
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Ya tiene audio cargado — elegí otro
-                    archivo para reemplazarlo.
-                  </p>
+                {!audioFile && savedAudioKey ? (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <p className="flex items-center gap-1.5 text-xs text-primary">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Ya tiene audio cargado — elegí otro
+                      archivo para reemplazarlo.
+                    </p>
+                    {can("removeAudioTrack") ? (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmRemoveAudio(true)}
+                        disabled={saving}
+                        className="flex items-center gap-1 text-xs text-destructive hover:underline disabled:opacity-40"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Eliminar audio
+                      </button>
+                    ) : null}
+                  </div>
                 ) : null}
-                {!audioFile && !song?.audioKey && isEdit ? (
+                {audioFile || savedAudioKey ? (
+                  <input
+                    className={`${inputCls} mt-2`}
+                    placeholder={`Nombre del audio (si queda vacío: ${title.trim() || "el título"})`}
+                    value={audioName}
+                    onChange={(e) => setAudioName(e.target.value)}
+                    disabled={saving}
+                    aria-label="Nombre del audio"
+                  />
+                ) : null}
+                {!audioFile && !savedAudioKey && isEdit ? (
                   <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Music className="h-3.5 w-3.5" /> Todavía sin audio cargado.
                   </p>
@@ -347,6 +381,35 @@ export function UploadModal({
               />
             </Field>
           </div>
+
+          {/* sale destacada en Inicio hasta que la canción se toque en una lista que pase al historial */}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={proxima}
+            onClick={() => setProxima((value) => !value)}
+            disabled={saving}
+            className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors disabled:opacity-40 ${
+              proxima ? "border-primary/50 bg-primary/10" : "border-border hover:border-primary/40"
+            }`}
+          >
+            <Rocket
+              className={`h-5 w-5 shrink-0 ${proxima ? "text-primary" : "text-muted-foreground"}`}
+            />
+            <span className="flex-1">
+              <span className="block text-sm font-medium">Próxima a sacar</span>
+              <span className="block text-xs text-muted-foreground">
+                Sale destacada en Inicio hasta que se toque en una lista que pase al historial.
+              </span>
+            </span>
+            <span
+              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${proxima ? "bg-primary" : "bg-secondary"}`}
+            >
+              <span
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${proxima ? "left-[22px]" : "left-0.5"}`}
+              />
+            </span>
+          </button>
 
           <Field label="Compás">
             <select className={inputCls} value={compas} onChange={(e) => setCompas(e.target.value)}>
@@ -451,6 +514,25 @@ export function UploadModal({
           </button>
         </div>
       </div>
+      {confirmRemoveAudio && song ? (
+        <ConfirmTypedDeleteModal
+          title="Eliminar audio definitivamente"
+          confirmText={song.title}
+          confirmLabel="el título de la canción"
+          onClose={() => setConfirmRemoveAudio(false)}
+          onConfirm={async () => {
+            await SongsService.removeSongAudio(song.id);
+            setSavedAudioKey(null);
+            setAudioName("");
+            updateSong({ ...song, audioKey: null, audioName: null });
+            setConfirmRemoveAudio(false);
+          }}
+        >
+          Se va a borrar el audio principal de <span className="font-semibold">{song.title}</span>,
+          también del archivo guardado. La canción, su letra y sus pistas quedan. Si ese audio es
+          además una de las pistas, el archivo se conserva para la pista.
+        </ConfirmTypedDeleteModal>
+      ) : null}
       {confirmDelete && song ? (
         <DeleteSongModal song={song} onClose={() => setConfirmDelete(false)} onDeleted={onClose} />
       ) : null}

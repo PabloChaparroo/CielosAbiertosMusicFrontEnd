@@ -6,6 +6,10 @@ import { INSTRUMENTS } from "@/lib/instruments";
 import { useApp } from "@/hooks/useApp";
 import { SetlistsService } from "../services/setlists.service";
 import { EVENT_TYPES, type EventType, type Setlist, type SetlistItem } from "@/types";
+import { matchesSearch } from "@/lib/search";
+import { hasSequence } from "@/features/canciones/lib/sequence";
+import { ListDuration } from "./ListDuration";
+import { visibleTeam } from "@/features/equipo/lib/visible-team";
 
 const inputCls =
   "w-full rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary/60";
@@ -52,7 +56,7 @@ export function NewSetlistModal({
   /** Lista predefinida de la que se parte: trae el título y las canciones (con su tono) */
   initial?: { title: string; items: SetlistItem[] } | undefined;
 }) {
-  const { songs, users, currentUser, setlists } = useApp();
+  const { songs, users, currentUser, setlists, can } = useApp();
   // "Menos tocadas": ordena por cuántas veces se tocó cada canción en los setlists de los
   // últimos 5 meses (de menos a más)
   const [leastPlayed, setLeastPlayed] = useState(false);
@@ -141,13 +145,18 @@ export function NewSetlistModal({
   };
 
   const results = useMemo(() => {
-    const found = songs.filter((s) => s.title.toLowerCase().includes(query.toLowerCase()));
+    // a una lista solo entran canciones con secuencia (al menos un audio cargado)
+    const found = songs.filter((s) => hasSequence(s) && matchesSearch(query, s.title));
     if (leastPlayed)
       found.sort((a, b) => (playCounts.get(a.id) ?? 0) - (playCounts.get(b.id) ?? 0));
     return found.slice(0, 40);
   }, [songs, query, leastPlayed, playCounts]);
 
-  const activeUsers = useMemo(() => users.filter((u) => !u.fechaHoraBaja), [users]);
+  // equipo para elegir: activos, y sin los admins si quien arma la lista no es admin
+  const activeUsers = useMemo(
+    () => visibleTeam(users, can("manageRoles")).filter((u) => !u.fechaHoraBaja),
+    [users, can],
+  );
   const pickedSongs = picked
     .map((id) => songs.find((song) => song.id === id))
     .filter((song): song is (typeof songs)[number] => Boolean(song));
@@ -331,7 +340,10 @@ export function NewSetlistModal({
               <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                 Orden del servicio
               </p>
-              <span className="text-xs text-muted-foreground">{pickedSongs.length} canciones</span>
+              <span className="flex items-center gap-3 text-xs text-muted-foreground">
+                <ListDuration songs={pickedSongs} />
+                {pickedSongs.length} canciones
+              </span>
             </div>
             {pickedSongs.length === 0 ? (
               <p className="rounded-xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground">

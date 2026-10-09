@@ -25,6 +25,9 @@ export interface RawSong {
   /** Ausente en respuestas de un backend anterior a la migración AddSongCoverKey */
   coverKey?: string | null;
   audioKey: string | null;
+  audioName?: string | null;
+  proximaDesde?: string | null;
+  esProxima?: boolean;
   chordpro: string;
   lyricsImageKey: string | null;
   tags: RawTag[];
@@ -59,6 +62,10 @@ export interface CreateSongInput {
   tags: string[];
   tipoId: string;
   audioKey?: string;
+  /** Vacío lo quita */
+  audioName?: string;
+  /** Marca o desmarca "próxima a sacar" */
+  proximaASacar?: boolean;
   lyricsImageKey?: string;
   /** null quita la portada */
   coverKey?: string | null;
@@ -105,6 +112,9 @@ export function mapSong(raw: RawSong): Song {
     coverKey: raw.coverKey ?? null,
     youtubeVideoId: youtubeVideoIdOf(raw.links ?? []),
     audioKey: raw.audioKey,
+    audioName: raw.audioName ?? null,
+    proximaDesde: raw.proximaDesde ?? null,
+    esProxima: raw.esProxima ?? false,
     chordpro: raw.chordpro,
     lyricsImageKey: raw.lyricsImageKey,
     addedAt: raw.fechaHoraAlta,
@@ -143,6 +153,11 @@ export const SongsService = {
   /** Elimina la canción DEFINITIVAMENTE, con todo lo relacionado y sus archivos (solo Admin) */
   deleteSongForever(id: string): Promise<{ deletedFiles: number; removedFromSetlists: number }> {
     return apiRequest(`/canciones/${id}/definitivo`, { method: "DELETE" });
+  },
+
+  /** Saca el audio principal y borra su archivo (si no es también una pista) */
+  removeSongAudio(id: string): Promise<void> {
+    return apiRequest(`/canciones/${id}/audio`, { method: "DELETE" });
   },
 
   async updateSong(id: string, dto: UpdateSongInput): Promise<Song> {

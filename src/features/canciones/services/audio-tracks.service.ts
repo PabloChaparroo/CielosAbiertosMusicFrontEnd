@@ -13,5 +13,9 @@ export const AudioTracksService = {
   create: (songId: string, dto: CreateAudioTrackInput) =>
     apiRequest<AudioTrack>(`/canciones/${songId}/pistas`, { method: "POST", body: dto }),
 
+  rename: (id: string, label: string) =>
+    apiRequest<AudioTrack>(`/pistas/${id}`, { method: "PATCH", body: { label } }),
+
+  /** Definitivo: también borra el archivo (si no es el audio principal) */
   remove: (id: string) => apiRequest<void>(`/pistas/${id}`, { method: "DELETE" }),
 };

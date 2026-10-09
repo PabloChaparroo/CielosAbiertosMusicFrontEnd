@@ -1,27 +1,31 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SongsService } from "@/features/canciones/services/songs.service";
 import {
   Check,
-  Clock,
   LayoutGrid,
   Layers,
   Link2,
   List,
   Music4,
+  MoreHorizontal,
   Pencil,
   Play,
   Plus,
   Search,
+  X,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, EmptyState, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
+import { TagList } from "@/components/common/TagList";
+import { hasSequence } from "@/features/canciones/lib/sequence";
 import { useApp } from "@/hooks/useApp";
 import { Pager, usePaged } from "@/components/common/Pager";
-import { readYoutubeDuration } from "@/lib/youtube-duration";
 import type { Song, Tag } from "@/types";
 import { AudioTracksModal } from "../components/AudioTracksModal";
+import { ProximaButton } from "../components/ProximaButton";
 import { SongLinksModal } from "../components/SongLinksModal";
 import { UploadModal } from "../components/UploadModal";
+import { matchesSearch } from "@/lib/search";
 
 /** Desplegable de filtro: dorado si tiene algo elegido */
 const filterSelectClass = (active: boolean) =>
@@ -33,6 +37,26 @@ const filterSelectClass = (active: boolean) =>
 
 export function EscucharPage() {
   const { songs, play, current, can, addSong, updateSong } = useApp();
+  // celular: fila con las acciones abiertas (una a la vez)
+  const [actionsOpen, setActionsOpen] = useState<string | null>(null);
+  // tocar en cualquier otro lado las cierra. Ese toque solo cierra: si cae sobre otra canción no
+  // la reproduce (closedAtRef, lo mira el click de la fila)
+  const closedAtRef = useRef(0);
+  useEffect(() => {
+    if (!actionsOpen) return;
+    const closeOnOutside = (event: PointerEvent) => {
+      const panel = document.querySelector(`[data-actions-panel="${actionsOpen}"]`);
+      if (panel?.contains(event.target as Node)) return;
+      closedAtRef.current = Date.now();
+      setActionsOpen(null);
+    };
+    document.addEventListener("pointerdown", closeOnOutside);
+    return () => document.removeEventListener("pointerdown", closeOnOutside);
+  }, [actionsOpen]);
+  const playRow = (song: Song) => {
+    if (Date.now() - closedAtRef.current < 600) return;
+    play(song);
+  };
   const [query, setQuery] = useState("");
   // vista lista (con todos los datos) o tarjetas (portada, título y artista); se recuerda
   const [view, setView] = useState<"list" | "cards">(() => {
@@ -80,34 +104,45 @@ export function EscucharPage() {
         (s) =>
           (!tag || s.tags.includes(tag)) &&
           (!tipo || s.tipo === tipo) &&
-          (!secuencia || (secuencia === "con") === s.trackCount > 0) &&
-          (s.title.toLowerCase().includes(query.toLowerCase()) ||
-            s.artist.toLowerCase().includes(query.toLowerCase())),
+          (!secuencia || (secuencia === "con") === hasSequence(s)) &&
+          matchesSearch(query, s.title, s.artist),
       ),
     [songs, query, tag, tipo, secuencia],
   );
   // 30 por página; la búsqueda y los filtros miran todas las canciones
   const paged = usePaged(filtered, 30, `${query}|${tag}|${tipo}|${secuencia}`);
 
-  // duración de cada canción = la de su video principal de YouTube (se guarda en la base)
-  const [durationSync, setDurationSync] = useState<{ done: number; total: number } | null>(null);
-  const syncYoutubeDurations = async () => {
-    const withVideo = songs.filter((s) => s.youtubeVideoId);
-    setDurationSync({ done: 0, total: withVideo.length });
-    for (const [i, song] of withVideo.entries()) {
-      const seconds = await readYoutubeDuration(song.youtubeVideoId!);
-      if (seconds && seconds !== song.duration) {
-        try {
-          await SongsService.updateSong(song.id, { duration: seconds });
-          updateSong({ ...song, duration: seconds });
-        } catch {
-          // queda la duración anterior
-        }
-      }
-      setDurationSync({ done: i + 1, total: withVideo.length });
-    }
-    setDurationSync(null);
-  };
+  // lista / tarjetas: en celular va al lado del buscador, en compu al final de los filtros
+  const renderViewToggle = (className: string) => (
+    <div
+      className={`shrink-0 rounded-full border border-border p-0.5 ${className}`}
+      role="group"
+      aria-label="Vista"
+    >
+      {(
+        [
+          ["list", List, "Vista en lista"],
+          ["cards", LayoutGrid, "Vista en tarjetas"],
+        ] as const
+      ).map(([value, Icon, label]) => (
+        <button
+          key={value}
+          type="button"
+          onClick={() => changeView(value)}
+          aria-pressed={view === value}
+          aria-label={label}
+          title={label}
+          className={`rounded-full p-1.5 transition-colors ${
+            view === value
+              ? "gradient-gold text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Icon className="h-4 w-4" />
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <AppLayout
@@ -116,19 +151,6 @@ export function EscucharPage() {
       actions={
         can("editSongs") ? (
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => void syncYoutubeDurations()}
-              disabled={durationSync !== null}
-              title="Toma la duración del video principal de YouTube de cada canción"
-              className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground disabled:opacity-70"
-            >
-              <Clock className="h-4 w-4" />
-              <span className="hidden sm:inline">
-                {durationSync
-                  ? `Duraciones ${durationSync.done}/${durationSync.total}`
-                  : "Duraciones de YouTube"}
-              </span>
-            </button>
             <button
               onClick={() => setModal(true)}
               className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
@@ -139,26 +161,30 @@ export function EscucharPage() {
         ) : null
       }
     >
-      <div className="mb-6 flex flex-wrap items-center gap-2">
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar canción o artista…"
-            className="h-9 w-full rounded-full border border-border bg-card pr-4 pl-10 text-sm outline-none transition-colors focus:border-primary/60"
-          />
+      {/* celular: buscador + vista en una fila, y los filtros en otra que se desliza de costado;
+          compu: todo en una fila */}
+      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-2">
+          <div className="relative min-w-0 flex-1 sm:w-72 sm:flex-none">
+            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar canción o artista…"
+              className="h-9 w-full rounded-full border border-border bg-card pr-4 pl-10 text-sm outline-none transition-colors focus:border-primary/60"
+            />
+          </div>
+          {renderViewToggle("flex sm:hidden")}
         </div>
-        {/* tipo, secuencia y temas al lado del buscador (abajo en celular) */}
-        <div className="contents">
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] sm:mx-0 sm:flex-1 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
           {tipos.length ? (
             <select
               value={tipo ?? ""}
               onChange={(e) => setTipo(e.target.value || null)}
               aria-label="Filtrar por tipo"
-              className={filterSelectClass(tipo !== null)}
+              className={`shrink-0 ${filterSelectClass(tipo !== null)}`}
             >
-              <option value="">Todos los tipos</option>
+              <option value="">Tipo: todos</option>
               {tipos.map((t) => (
                 <option key={t} value={t}>
                   {t}
@@ -170,9 +196,9 @@ export function EscucharPage() {
             value={secuencia ?? ""}
             onChange={(e) => setSecuencia((e.target.value || null) as "con" | "sin" | null)}
             aria-label="Filtrar por secuencia"
-            className={filterSelectClass(secuencia !== null)}
+            className={`shrink-0 ${filterSelectClass(secuencia !== null)}`}
           >
-            <option value="">Con y sin secuencia</option>
+            <option value="">Secuencia: todas</option>
             <option value="con">Con secuencia</option>
             <option value="sin">Sin secuencia</option>
           </select>
@@ -181,43 +207,16 @@ export function EscucharPage() {
             value={tag ?? ""}
             onChange={(e) => setTag(e.target.value || null)}
             aria-label="Filtrar por tema"
-            className={filterSelectClass(tag !== null)}
+            className={`shrink-0 ${filterSelectClass(tag !== null)}`}
           >
-            <option value="">Todos los temas</option>
+            <option value="">Tema: todos</option>
             {allTags.map((t) => (
               <option key={t} value={t}>
                 {t}
               </option>
             ))}
           </select>
-          <div
-            className="ml-auto flex rounded-full border border-border p-0.5"
-            role="group"
-            aria-label="Vista"
-          >
-            {(
-              [
-                ["list", List, "Vista en lista"],
-                ["cards", LayoutGrid, "Vista en tarjetas"],
-              ] as const
-            ).map(([value, Icon, label]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => changeView(value)}
-                aria-pressed={view === value}
-                aria-label={label}
-                title={label}
-                className={`rounded-full p-1.5 transition-colors ${
-                  view === value
-                    ? "gradient-gold text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-              </button>
-            ))}
-          </div>
+          {renderViewToggle("ml-auto hidden sm:flex")}
         </div>
       </div>
 
@@ -260,7 +259,8 @@ export function EscucharPage() {
                   {song.key} · {formatDuration(song.duration)}
                 </span>
                 {/* el corazón no reproduce */}
-                <span onClick={(e) => e.stopPropagation()}>
+                <span className="flex items-center" onClick={(e) => e.stopPropagation()}>
+                  {can("editSongs") ? <ProximaButton song={song} /> : null}
                   <FavButton songId={song.id} />
                 </span>
               </div>
@@ -269,7 +269,7 @@ export function EscucharPage() {
         </div>
       ) : (
         <div className="surface-card overflow-x-auto">
-          <div className="hidden grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_56px_140px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_56px_140px] gap-4 border-b border-border/60 px-4 py-3 text-[11px] tracking-widest text-muted-foreground uppercase md:grid">
+          <div className="hidden grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_56px_176px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_56px_176px] gap-4 border-b border-border/60 px-4 py-3 text-[11px] tracking-widest text-muted-foreground uppercase md:grid">
             <span>#</span>
             <span>Título</span>
             <span className="hidden 2xl:block">Temas</span>
@@ -282,8 +282,8 @@ export function EscucharPage() {
           {paged.pageItems.map((song, i) => (
             <div
               key={song.id}
-              onClick={() => play(song)}
-              className={`group grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-2.5 transition-colors hover:bg-elevated/70 md:grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_56px_140px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_56px_140px] ${
+              onClick={() => playRow(song)}
+              className={`group relative grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-2.5 transition-colors hover:bg-elevated/70 md:grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_56px_176px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_56px_176px] ${
                 current?.id === song.id ? "bg-elevated/60" : ""
               }`}
             >
@@ -304,23 +304,29 @@ export function EscucharPage() {
                     {song.title}
                   </p>
                   <p className="truncate text-sm text-muted-foreground">{song.artist}</p>
+                  {/* sin columna de temas (celular y pantallas medianas): van debajo del artista */}
+                  {/* en celular entra 1 tema (y "+N"); en pantallas medianas, 2 */}
+                  <div className="mt-1 sm:hidden">
+                    <TagList tags={song.tags} max={1} />
+                  </div>
+                  <div className="mt-1 hidden sm:block 2xl:hidden">
+                    <TagList tags={song.tags} />
+                  </div>
                 </div>
               </div>
-              <div className="hidden flex-wrap gap-1.5 2xl:flex">
-                {song.tags.map((t) => (
-                  <TagChip key={t} tag={t} />
-                ))}
+              <div className="hidden min-w-0 2xl:block">
+                <TagList tags={song.tags} />
               </div>
               <span className="hidden truncate text-sm text-muted-foreground md:block">
                 {song.tipo}
               </span>
               {/* secuencia: check amarillo si tiene pistas (multitracks), "-" si no */}
               <span className="hidden justify-center md:flex">
-                {song.trackCount > 0 ? (
+                {hasSequence(song) ? (
                   <Check
                     className="h-5 w-5 text-primary"
                     strokeWidth={3}
-                    aria-label={`Con secuencia (${song.trackCount} pistas)`}
+                    aria-label="Con secuencia (tiene audio cargado)"
                   />
                 ) : (
                   <span className="text-base text-foreground" aria-label="Sin secuencia">
@@ -334,7 +340,30 @@ export function EscucharPage() {
               <span className="hidden text-right text-sm text-muted-foreground tabular-nums md:block">
                 {formatDuration(song.duration)}
               </span>
-              <div className="flex items-center justify-end gap-1 whitespace-nowrap">
+              {/* celular: un solo botón "⋯"; al tocarlo, las acciones entran desde la derecha
+                  sobre la fila. Compu: siempre a la vista */}
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setActionsOpen(song.id);
+                }}
+                aria-label={`Acciones de ${song.title}`}
+                aria-expanded={actionsOpen === song.id}
+                className="rounded-full p-2 text-muted-foreground transition-colors hover:text-primary md:hidden"
+              >
+                <MoreHorizontal className="h-5 w-5" />
+              </button>
+              <div
+                data-actions-panel={song.id}
+                onClick={(event) => event.stopPropagation()}
+                className={`items-center justify-end gap-1 whitespace-nowrap md:static md:flex md:animate-none md:bg-transparent md:p-0 md:shadow-none ${
+                  actionsOpen === song.id
+                    ? "absolute inset-y-0 right-0 z-10 flex animate-in rounded-l-2xl bg-card/95 pr-2 pl-3 shadow-[-18px_0_24px_-14px_rgba(0,0,0,0.7)] backdrop-blur fade-in-0 slide-in-from-right-full duration-300"
+                    : "hidden"
+                }`}
+              >
+                {can("editSongs") ? <ProximaButton song={song} /> : null}
                 <FavButton songId={song.id} />
                 <button
                   onClick={(event) => {
@@ -378,6 +407,14 @@ export function EscucharPage() {
                   className="rounded-full p-2 text-muted-foreground hover:text-primary md:hidden"
                 >
                   <Play className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActionsOpen(null)}
+                  aria-label="Cerrar acciones"
+                  className="ml-1 rounded-full bg-secondary p-2 text-foreground md:hidden"
+                >
+                  <X className="h-4 w-4" />
                 </button>
               </div>
             </div>

@@ -187,3 +187,25 @@
   transform-origin: bottom;
   animation: eq-bar 0.9s ease-in-out infinite;
 }
+
+/* Letra "cantándose" (Próximas a sacar en Inicio): el renglón se pinta de dorado de izquierda a
+   derecha en lo que dura (la duración la pone el componente) */
+@keyframes karaoke-fill {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@utility karaoke-fill {
+  animation: karaoke-fill linear forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .karaoke-fill {
+    animation: none;
+    clip-path: none;
+  }
+}

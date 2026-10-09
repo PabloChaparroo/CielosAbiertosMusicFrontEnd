@@ -104,7 +104,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap",
       },
-      // logo del ministerio (public/icono.jpeg, achicado): pestaña del navegador y ventana de Windows
+      // logo del ministerio (public/logo2.jpeg, achicado): pestaña del navegador y ventana de Windows
       { rel: "icon", href: "/favicon.ico", sizes: "16x16 32x32 48x48" },
       { rel: "icon", href: "/favicon-96.png", type: "image/png", sizes: "96x96" },
       // instalable en el celular (módulo Instalar app)

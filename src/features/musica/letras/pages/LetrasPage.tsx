@@ -10,6 +10,7 @@ import {
   Play,
   RectangleVertical,
   Search,
+  Heart,
   Type as TypeIcon,
   Upload,
   X,
@@ -30,9 +31,10 @@ import {
   exitBrowserFullscreen,
   isBrowserFullscreen,
 } from "@/lib/browser-fullscreen";
+import { matchesSearch } from "@/lib/search";
 
 export function LetrasPage() {
-  const { songs, can, updateSong, current, isPlaying, play, toggle } = useApp();
+  const { songs, can, updateSong, current, isPlaying, play, toggle, favorites } = useApp();
   const { songId: requestedSongId, songIds } = useSearch({ from: "/letras" });
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -47,10 +49,19 @@ export function LetrasPage() {
     document.addEventListener("pointerdown", closeOnOutsideTap);
     return () => document.removeEventListener("pointerdown", closeOnOutsideTap);
   }, []);
-  const scopedSongIds = useMemo(() => (songIds ? new Set(songIds.split(",")) : null), [songIds]);
+  // abierta desde una lista de canciones: solo esas, EN EL ORDEN DE LA LISTA (el equipo la sigue
+  // mientras toca), y la canción abierta no se mueve de lugar
+  // favoritos (en el orden en que se marcaron): se muestran cuando no hay canción elegida
+  const favoriteSongs = useMemo(
+    () => favorites.flatMap((id) => songs.find((s) => s.id === id) ?? []),
+    [favorites, songs],
+  );
+  const scopedOrder = useMemo(() => (songIds ? songIds.split(",") : null), [songIds]);
+  const scopedSongIds = useMemo(() => (scopedOrder ? new Set(scopedOrder) : null), [scopedOrder]);
   const availableSongs = useMemo(
-    () => (scopedSongIds ? songs.filter((item) => scopedSongIds.has(item.id)) : songs),
-    [songs, scopedSongIds],
+    () =>
+      scopedOrder ? scopedOrder.flatMap((id) => songs.find((item) => item.id === id) ?? []) : songs,
+    [songs, scopedOrder],
   );
 
   useEffect(() => {
@@ -61,18 +72,16 @@ export function LetrasPage() {
   const filtered = useMemo(
     () =>
       availableSongs.filter(
-        (s) =>
-          s.title.toLowerCase().includes(query.toLowerCase()) ||
-          s.tags.some((t) => t.toLowerCase().includes(query.toLowerCase())),
+        (s) => matchesSearch(query, s.title) || matchesSearch(query, ...s.tags),
       ),
     [availableSongs, query],
   );
   const visibleSongs = useMemo(
     () =>
-      query
+      query || scopedSongIds
         ? filtered
         : [...filtered].sort((a, b) => Number(b.id === selected) - Number(a.id === selected)),
-    [filtered, query, selected],
+    [filtered, query, selected, scopedSongIds],
   );
   // el buscador muestra de a 15: con muchas canciones no dibuja la lista entera
   const pagedList = usePaged(visibleSongs, 15, query);
@@ -84,7 +93,7 @@ export function LetrasPage() {
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <aside
           ref={searchPanelRef}
-          className="surface-card order-1 flex max-h-[55vh] flex-col overflow-hidden lg:order-1 lg:sticky lg:top-24 lg:max-h-[70vh]"
+          className="surface-card order-1 flex max-h-[55vh] flex-col overflow-hidden lg:order-1 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7.5rem)]"
         >
           <div className="relative border-b border-border/60 p-3">
             <Search className="absolute top-1/2 left-6 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -99,10 +108,10 @@ export function LetrasPage() {
           <div
             className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out lg:flex-1 lg:grid-rows-[1fr] lg:opacity-100 ${searchOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
           >
-            <div className="min-h-0 overflow-y-auto p-2 lg:max-h-[65vh]">
+            <div className="min-h-0 overflow-y-auto p-2 lg:h-full">
               {!query && (
                 <p className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Recientes
+                  {scopedSongIds ? "Orden de la lista" : "Recientes"}
                 </p>
               )}
               {filtered.length === 0 ? (
@@ -176,19 +185,19 @@ export function LetrasPage() {
           {song ? (
             <SongLyricsDetail song={song} canEdit={can("editSongs")} onSave={updateSong} />
           ) : (
-            // sin canción elegida: las últimas subidas (mismo orden que "Últimas subidas" de Inicio)
+            // sin canción elegida: tus favoritos, para abrir su letra de un toque
             <div className="surface-card p-4 sm:p-6">
               <div className="mb-3 flex items-center gap-2">
-                <TypeIcon className="h-5 w-5 text-primary" />
-                <h2 className="font-display text-lg font-semibold">Últimas canciones subidas</h2>
+                <Heart className="h-5 w-5 text-primary" />
+                <h2 className="font-display text-lg font-semibold">Tus favoritos</h2>
               </div>
-              {availableSongs.length === 0 ? (
+              {favoriteSongs.length === 0 ? (
                 <p className="py-10 text-center text-sm text-muted-foreground">
-                  Todavía no hay canciones.
+                  Todavía no tenés favoritos. Tocá el corazón de una canción para tenerla acá.
                 </p>
               ) : (
                 <div className="divide-y divide-border/60">
-                  {availableSongs.slice(0, 8).map((item) => (
+                  {favoriteSongs.map((item) => (
                     <button
                       key={item.id}
                       type="button"
@@ -370,8 +379,13 @@ function SongLyricsDetail({
       return !v;
     });
 
-  /** Letra agrupada por sección: en dos columnas, cada sección va entera en una columna */
-  const renderLyrics = (className: string, fontSize?: number) => {
+  /**
+   * Letra agrupada por sección. En dos columnas (`columns`), cada sección va entera en una de dos
+   * columnas lado a lado, repartidas para que tengan una cantidad de renglones parecida, y los
+   * renglones no se cortan: si no entran en la pantalla, se desplaza de costado con el dedo o se
+   * aleja pellizcando (pedido de Pablo: antes la letra se apretaba para entrar).
+   */
+  const renderLyrics = (className: string, fontSize?: number, columns = false) => {
     const blocks: Array<{ title: string | null; lines: string[] }> = [];
     displayLyricsLines(song.chordpro).forEach((line) => {
       if (line.kind === "section") blocks.push({ title: line.value, lines: [] });
@@ -380,6 +394,43 @@ function SongLyricsDetail({
         blocks[blocks.length - 1]!.lines.push(line.value);
       }
     });
+    const renderBlock = (block: (typeof blocks)[number], b: number) => (
+      <div key={b} className="break-inside-avoid">
+        {block.title ? (
+          <div className="mt-6 mb-3 text-xl font-semibold tracking-widest text-primary">
+            {block.title}
+          </div>
+        ) : null}
+        {block.lines.map((line, i) => (
+          <div key={i} className="min-h-[1.5em] whitespace-pre">
+            {line || " "}
+          </div>
+        ))}
+      </div>
+    );
+    if (columns) {
+      // la primera columna se llena hasta la mitad de los renglones (contando los títulos)
+      const size = (block: (typeof blocks)[number]) => block.lines.length + (block.title ? 2 : 0);
+      const total = blocks.reduce((sum, block) => sum + size(block), 0);
+      let acc = 0;
+      let split = blocks.length;
+      for (let b = 0; b < blocks.length; b += 1) {
+        if (acc >= total / 2) {
+          split = b;
+          break;
+        }
+        acc += size(blocks[b]!);
+      }
+      return (
+        <div
+          className={`flex w-max items-start gap-16 ${className}`}
+          style={fontSize ? { fontSize } : undefined}
+        >
+          <div>{blocks.slice(0, split).map(renderBlock)}</div>
+          <div>{blocks.slice(split).map((block, b) => renderBlock(block, b + split))}</div>
+        </div>
+      );
+    }
     return (
       <div className={className} style={fontSize ? { fontSize } : undefined}>
         {blocks.map((block, b) => (
@@ -403,7 +454,7 @@ function SongLyricsDetail({
   if (fullscreen) {
     return (
       <div
-        className="fixed inset-0 z-50 overflow-y-auto bg-background px-5 py-8 sm:px-10 sm:py-10"
+        className="fixed inset-0 z-50 overflow-auto bg-background px-5 py-8 sm:px-10 sm:py-10"
         {...pinch}
       >
         <button
@@ -434,17 +485,18 @@ function SongLyricsDetail({
         ) : null}
         {/* Bloque centrado en la pantalla (horizontal, y vertical si la letra es corta), con el
             texto alineado a la izquierda adentro */}
-        <div className="flex min-h-full flex-col">
-          <div className="m-auto w-fit max-w-full pb-10">
+        {/* "safe": si la letra es más ancha que la pantalla (dos columnas), arranca desde el borde
+            izquierdo y se desplaza, en vez de quedar cortada de los dos lados */}
+        <div className="flex min-h-full flex-col items-center-safe">
+          <div
+            className={`my-auto pb-10 ${mode === "texto" && twoColumns ? "w-max" : "w-fit max-w-full"}`}
+          >
             <div className="mb-8 pr-12">
               <p className="text-sm text-muted-foreground">{song.artist}</p>
               <h2 className="font-display text-3xl font-semibold">{song.title}</h2>
             </div>
             {mode === "texto" ? (
-              renderLyrics(
-                twoColumns ? "leading-relaxed columns-2 gap-x-16" : "leading-relaxed",
-                lyricsSize,
-              )
+              renderLyrics("leading-relaxed", lyricsSize, twoColumns)
             ) : resolvedUrl ? (
               <img
                 src={resolvedUrl}

@@ -1,7 +1,5 @@
 import { useMemo, useState } from "react";
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
   Cell,
   Legend,
@@ -17,13 +15,18 @@ import {
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, Skeletons } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
+import { hasSequence } from "@/features/canciones/lib/sequence";
 import { SongHistoryPanel } from "../components/SongHistoryPanel";
 import {
   historicRanking,
+  isPlayedSetlist,
   monthlyTrend,
-  playsByTag,
-  playsByYear,
-  topSongsForMonth,
+  monthsBetween,
+  playsByTagInMonths,
+  playsFromSetlists,
+  recentMonths,
+  toLocalDay,
+  topSongsInMonths,
 } from "../lib/stats";
 
 const COLORS = [
@@ -37,24 +40,11 @@ const COLORS = [
   "oklch(0.78 0.14 120)",
 ];
 
-// Años de la comparativa (fijos, igual que antes de pasar los cálculos a lib/stats.ts)
-const YEARS = ["2025", "2026"] as const;
-
-const MONTHS = [
-  "2025-09",
-  "2025-10",
-  "2025-11",
-  "2025-12",
-  "2026-01",
-  "2026-02",
-  "2026-03",
-  "2026-04",
-  "2026-05",
-  "2026-06",
-  "2026-07",
-  "2026-08",
-  "2026-09",
-];
+/** "2026-09" → "septiembre 2026" */
+const monthLabel = (month: string) => {
+  const [y, m] = month.split("-").map(Number) as [number, number];
+  return new Date(y, m - 1, 1).toLocaleDateString("es-AR", { month: "long", year: "numeric" });
+};
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -73,24 +63,104 @@ const tooltipStyle = {
   fontSize: 12,
 };
 
+/** Ranking de canciones con barras (se lee bien en celular) */
+function TopCard({
+  title,
+  subtitle,
+  rows,
+}: {
+  title: string;
+  subtitle: string;
+  rows: ReturnType<typeof topSongsInMonths>;
+}) {
+  const max = rows[0]?.plays ?? 1;
+  return (
+    <div className="surface-card p-5">
+      <h3 className="font-display text-lg font-semibold">{title}</h3>
+      <p className="mb-4 text-xs text-muted-foreground first-letter:uppercase">{subtitle}</p>
+      {rows.length ? (
+        <ol className="space-y-2.5">
+          {rows.map((row, i) => (
+            <li key={row.song.id} className="flex items-center gap-3">
+              <span className="w-5 text-center font-display text-sm font-semibold text-primary">
+                {i + 1}
+              </span>
+              <Cover song={row.song} size="none" className="h-9 w-9 shrink-0 shadow-none" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="truncate text-sm font-medium">{row.song.title}</p>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {row.plays} {row.plays === 1 ? "vez" : "veces"}
+                  </span>
+                </div>
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className="h-full rounded-full gradient-gold"
+                    style={{ width: `${(row.plays / max) * 100}%` }}
+                  />
+                </div>
+              </div>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="py-10 text-center text-sm text-muted-foreground">
+          No se tocó ninguna canción con secuencia en este período.
+        </p>
+      )}
+    </div>
+  );
+}
+
+const selectCls = "rounded-full border border-border bg-secondary px-3 py-1.5 text-xs capitalize";
+
+/**
+ * Estadísticas = veces que se tocó cada canción: una por cada lista de canciones que ya pasó al
+ * historial (pedido de Pablo: lo que importa es qué canta la congregación, no las escuchas en la
+ * app). Se ven por mes o por un rango de meses.
+ */
 export function EstadisticasPage() {
-  const { songs, songsLoadState } = useApp();
-  const [range, setRange] = useState<"mes" | "anio">("mes");
-  const [month, setMonth] = useState("2026-09");
+  const { songs, songsLoadState, setlists, setlistsLoadState } = useApp();
+  const [mode, setMode] = useState<"mes" | "rango">("mes");
+  const thisMonth = toLocalDay(new Date()).slice(0, 7);
+  const [month, setMonth] = useState(thisMonth);
+  const [from, setFrom] = useState(recentMonths(3)[0]!);
+  const [to, setTo] = useState(thisMonth);
 
-  // Los cálculos viven en ../lib/stats.ts (funciones puras, con tests); acá solo se memorizan
-  const topMonth = useMemo(() => topSongsForMonth(songs, month), [songs, month]);
-  const byYear = useMemo(() => playsByYear(songs, YEARS), [songs]);
-  const byTag = useMemo(() => playsByTag(songs), [songs]);
-  const trend = useMemo(() => monthlyTrend(songs, MONTHS), [songs]);
-  const ranking = useMemo(() => historicRanking(songs), [songs]);
+  // canciones con `playsByMonth` = veces que se tocó, según las listas pasadas
+  // solo canciones con secuencia (al menos un audio cargado): las demás no cuentan
+  const played = useMemo(
+    () => playsFromSetlists(songs.filter(hasSequence), setlists),
+    [songs, setlists],
+  );
 
-  // Mismo patrón que Inicio/Acordes/Setlists: los hooks de arriba se llaman
-  // siempre (regla de hooks) sobre `songs` vacío mientras carga sin
-  // problema (no hay ningún songs[0]! acá), pero el guard recién se aplica
-  // en el return para no mostrar gráficos vacíos por un instante como si
-  // fueran datos reales.
-  if (songsLoadState !== "ready") {
+  // meses para elegir: desde la lista pasada más vieja (o un año atrás) hasta el actual
+  const monthOptions = useMemo(() => {
+    const oldest = setlists
+      .filter((s) => isPlayedSetlist(s))
+      .map((s) => toLocalDay(s.date).slice(0, 7))
+      .sort()[0];
+    const yearAgo = recentMonths(12)[0]!;
+    return monthsBetween(oldest && oldest < yearAgo ? oldest : yearAgo, thisMonth).reverse();
+  }, [setlists, thisMonth]);
+
+  const months = useMemo(
+    () => (mode === "mes" ? [month] : monthsBetween(from, to)),
+    [mode, month, from, to],
+  );
+  const periodLabel =
+    mode === "mes"
+      ? monthLabel(month)
+      : `${monthLabel(from <= to ? from : to)} a ${monthLabel(from <= to ? to : from)}`;
+
+  const top = useMemo(() => topSongsInMonths(played, months), [played, months]);
+  const lastThree = useMemo(() => recentMonths(3), []);
+  const topLastThree = useMemo(() => topSongsInMonths(played, lastThree), [played, lastThree]);
+  const byTag = useMemo(() => playsByTagInMonths(played, months), [played, months]);
+  const trend = useMemo(() => monthlyTrend(played, recentMonths(12)), [played]);
+  const ranking = useMemo(() => historicRanking(played).filter((r) => r.plays > 0), [played]);
+
+  if (songsLoadState !== "ready" || setlistsLoadState === "loading") {
     return (
       <AppLayout title="Estadísticas" subtitle="Qué está cantando la congregación">
         <Skeletons rows={5} />
@@ -103,96 +173,116 @@ export function EstadisticasPage() {
       title="Estadísticas"
       subtitle="Qué está cantando la congregación"
       actions={
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <div className="flex rounded-full border border-border p-0.5">
-            {(["mes", "anio"] as const).map((r) => (
+            {(["mes", "rango"] as const).map((m) => (
               <button
-                key={r}
-                onClick={() => setRange(r)}
+                key={m}
+                onClick={() => setMode(m)}
                 className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                  range === r ? "gradient-gold text-primary-foreground" : "text-muted-foreground"
+                  mode === m ? "gradient-gold text-primary-foreground" : "text-muted-foreground"
                 }`}
               >
-                {r === "mes" ? "Por mes" : "Por año"}
+                {m === "mes" ? "Mes" : "Rango"}
               </button>
             ))}
           </div>
-          {range === "mes" ? (
+          {mode === "mes" ? (
             <select
               value={month}
               onChange={(e) => setMonth(e.target.value)}
-              className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs"
+              aria-label="Mes"
+              className={selectCls}
             >
-              {MONTHS.map((m) => (
+              {monthOptions.map((m) => (
                 <option key={m} value={m}>
-                  {m}
+                  {monthLabel(m)}
                 </option>
               ))}
             </select>
-          ) : null}
+          ) : (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <select
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+                aria-label="Desde"
+                className={selectCls}
+              >
+                {monthOptions.map((m) => (
+                  <option key={m} value={m}>
+                    {monthLabel(m)}
+                  </option>
+                ))}
+              </select>
+              a
+              <select
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                aria-label="Hasta"
+                className={selectCls}
+              >
+                {monthOptions.map((m) => (
+                  <option key={m} value={m}>
+                    {monthLabel(m)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       }
     >
       <div className="grid gap-5 xl:grid-cols-2">
-        <SongHistoryPanel />
-        <Panel title={range === "mes" ? `Más tocadas en ${month}` : "Comparativa 2025 vs 2026"}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={range === "mes" ? topMonth : byYear}>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 8%)" />
-              <XAxis
-                dataKey="name"
-                tick={{ fontSize: 10, fill: "#9aa0a6" }}
-                interval={0}
-                angle={-20}
-                height={60}
-                textAnchor="end"
-              />
-              <YAxis tick={{ fontSize: 11, fill: "#9aa0a6" }} />
-              <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "oklch(1 0 0 / 5%)" }} />
-              {range === "mes" ? (
-                <Bar dataKey="plays" name="Veces tocada" fill={COLORS[0]} radius={[6, 6, 0, 0]} />
-              ) : (
-                <>
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="2025" fill={COLORS[1]} radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="2026" fill={COLORS[0]} radius={[6, 6, 0, 0]} />
-                </>
-              )}
-            </BarChart>
-          </ResponsiveContainer>
+        {/* más tocadas: la del período elegido y, al lado, la de los últimos 3 meses */}
+        <TopCard title="Más tocadas" subtitle={periodLabel} rows={top} />
+        <TopCard
+          title="Más tocadas · últimos 3 meses"
+          subtitle={`${monthLabel(lastThree[0]!)} a ${monthLabel(lastThree[2]!)}`}
+          rows={topLastThree}
+        />
+
+        <div className="xl:col-span-2">
+          <SongHistoryPanel />
+        </div>
+
+        <Panel title={`Por tema · ${periodLabel}`}>
+          {byTag.length ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={byTag}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={55}
+                  outerRadius={95}
+                  paddingAngle={3}
+                >
+                  {byTag.map((_, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="transparent" />
+                  ))}
+                </Pie>
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Tooltip contentStyle={tooltipStyle} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              Sin datos en este período.
+            </p>
+          )}
         </Panel>
 
-        <Panel title="Distribución por tema">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={byTag}
-                dataKey="value"
-                nameKey="name"
-                innerRadius={55}
-                outerRadius={95}
-                paddingAngle={3}
-              >
-                {byTag.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="transparent" />
-                ))}
-              </Pie>
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Tooltip contentStyle={tooltipStyle} />
-            </PieChart>
-          </ResponsiveContainer>
-        </Panel>
-
-        <Panel title="Evolución mensual del repertorio">
+        <Panel title="Canciones tocadas por mes (último año)">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={trend}>
               <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 8%)" />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9aa0a6" }} />
-              <YAxis tick={{ fontSize: 11, fill: "#9aa0a6" }} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#9aa0a6" }} />
               <Tooltip contentStyle={tooltipStyle} />
               <Line
                 type="monotone"
                 dataKey="total"
+                name="Veces"
                 stroke={COLORS[0]}
                 strokeWidth={3}
                 dot={false}
@@ -201,26 +291,34 @@ export function EstadisticasPage() {
           </ResponsiveContainer>
         </Panel>
 
-        <div className="surface-card p-5">
-          <h3 className="mb-4 font-display text-lg font-semibold">Top 10 histórico</h3>
-          <ol className="space-y-2">
-            {ranking.map((r, i) => (
-              <li
-                key={r.song.id}
-                className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-elevated/60"
-              >
-                <span className="w-6 text-center font-display text-lg font-semibold text-primary">
-                  {i + 1}
-                </span>
-                <Cover song={r.song} size="none" className="h-9 w-9 shadow-none" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{r.song.title}</p>
-                  <p className="truncate text-xs text-muted-foreground">{r.song.artist}</p>
-                </div>
-                <span className="text-sm text-muted-foreground">{r.plays}</span>
-              </li>
-            ))}
-          </ol>
+        <div className="surface-card p-5 xl:col-span-2">
+          <h3 className="mb-4 font-display text-lg font-semibold">Más tocadas de siempre</h3>
+          {ranking.length ? (
+            <ol className="grid gap-2 sm:grid-cols-2">
+              {ranking.map((r, i) => (
+                <li
+                  key={r.song.id}
+                  className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-elevated/60"
+                >
+                  <span className="w-6 text-center font-display text-lg font-semibold text-primary">
+                    {i + 1}
+                  </span>
+                  <Cover song={r.song} size="none" className="h-9 w-9 shadow-none" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{r.song.title}</p>
+                    <p className="truncate text-xs text-muted-foreground">{r.song.artist}</p>
+                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    {r.plays} {r.plays === 1 ? "vez" : "veces"}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              Todavía no hay listas de canciones en el historial.
+            </p>
+          )}
         </div>
       </div>
     </AppLayout>

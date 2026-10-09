@@ -176,7 +176,7 @@ export function TagChip({ tag, active }: { tag: string; active?: boolean }) {
   return (
     <span
       className={cn(
-        "rounded-full border px-2.5 py-0.5 text-[11px] font-medium tracking-wide transition-colors",
+        "shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-medium tracking-wide whitespace-nowrap transition-colors",
         active
           ? "border-primary/50 bg-primary/15 text-primary"
           : "border-border bg-secondary/60 text-muted-foreground",

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { announcePlaying, onOtherPlaying } from "@/lib/exclusive-audio";
-import { Check, Pause, Play, Plus, Star, Trash2, Upload, X } from "lucide-react";
+import { Check, Pause, Pencil, Play, Plus, Star, Trash2, Upload, X } from "lucide-react";
 import { StorageClient } from "@/lib/storage-client";
 import { validateAudioFile } from "@/features/canciones/lib/audio-validation";
 import { SongsService } from "@/features/canciones/services/songs.service";
@@ -11,6 +11,8 @@ import {
 import type { AudioTrack } from "@/features/canciones/types/audio-track";
 import { useApp } from "@/hooks/useApp";
 import type { Song } from "@/types";
+import { trackNameFromFile } from "@/features/canciones/lib/track-name";
+import { ConfirmTypedDeleteModal } from "./ConfirmTypedDeleteModal";
 
 const inputCls =
   "w-full rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary/60";
@@ -36,6 +38,11 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+
+  const [confirmTrack, setConfirmTrack] = useState<AudioTrack | null>(null);
+  // renombrar una pista: id de la que se edita y el nombre nuevo
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   const canEdit = can("editSongs");
   const canDelete = can("removeAudioTrack");
@@ -87,6 +94,8 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
       return;
     }
     setAudioFile(file);
+    // el nombre se completa con el del archivo (se puede cambiar antes de subir)
+    if (!label.trim()) setLabel(trackNameFromFile(file.name));
   };
 
   const handleUpload = async () => {
@@ -134,15 +143,32 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
       audioRef.current?.pause();
       setPlayingId(null);
     }
+    // los errores los muestra el modal de confirmación
+    await AudioTracksService.remove(id);
+    setTracks((prev) => {
+      const next = prev.filter((t) => t.id !== id);
+      updateSong({ ...latestSong(), trackCount: next.length });
+      return next;
+    });
+  };
+
+  const startRename = (track: AudioTrack) => {
+    setRenamingId(track.id);
+    setRenameValue(track.label);
+  };
+
+  const handleRename = async (track: AudioTrack) => {
+    const label = renameValue.trim();
+    setRenamingId(null);
+    if (!label || label === track.label) return;
+    setError(null);
     try {
-      await AudioTracksService.remove(id);
-      setTracks((prev) => {
-        const next = prev.filter((t) => t.id !== id);
-        updateSong({ ...latestSong(), trackCount: next.length });
-        return next;
-      });
+      const updated = await AudioTracksService.rename(track.id, label);
+      setTracks((prev) =>
+        prev.map((t) => (t.id === track.id ? { ...t, label: updated.label } : t)),
+      );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo borrar la pista");
+      setError(e instanceof Error ? e.message : "No se pudo cambiar el nombre");
     }
   };
 
@@ -156,6 +182,18 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
       setError(e instanceof Error ? e.message : "No se pudo definir el audio principal");
     }
   };
+
+  // audio principal como una fila más (para escucharlo), salvo que ya sea una de las pistas
+  const mainKey = latestSong().audioKey;
+  const mainTrack: AudioTrack | null =
+    mainKey && !tracks.some((t) => t.audioKey === mainKey)
+      ? ({
+          id: "principal",
+          label: latestSong().audioName || song.title,
+          audioKey: mainKey,
+          order: -1,
+        } as AudioTrack)
+      : null;
 
   const handlePlay = async (track: AudioTrack) => {
     const el = audioRef.current;
@@ -204,6 +242,32 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
           </button>
         </div>
 
+        {/* el audio principal (el de Editar canción) también se ve acá, primero; si además es
+            una de las pistas, ya aparece en la lista con su check */}
+        {loadState === "ready" && mainTrack ? (
+          <div className="mb-2 flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5">
+            <button
+              onClick={() => void handlePlay(mainTrack)}
+              disabled={resolvingId === mainTrack.id}
+              aria-label={
+                playingId === mainTrack.id
+                  ? `Pausar ${mainTrack.label}`
+                  : `Reproducir ${mainTrack.label}`
+              }
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-elevated hover:text-primary disabled:opacity-50"
+            >
+              {playingId === mainTrack.id ? (
+                <Pause className="h-4 w-4" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
+            </button>
+            <span className="flex-1 truncate text-sm font-medium">{mainTrack.label}</span>
+            <span className="text-[10px] font-semibold tracking-wide text-primary uppercase">
+              Audio principal
+            </span>
+          </div>
+        ) : null}
         {loadState === "loading" ? (
           <div className="space-y-2">
             {Array.from({ length: 2 }).map((_, i) => (
@@ -237,7 +301,33 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
                     <Play className="h-4 w-4" />
                   )}
                 </button>
-                <span className="flex-1 truncate text-sm font-medium">{track.label}</span>
+                {renamingId === track.id ? (
+                  <input
+                    autoFocus
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onBlur={() => void handleRename(track)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") e.currentTarget.blur();
+                      if (e.key === "Escape") setRenamingId(null);
+                    }}
+                    aria-label={`Nuevo nombre de ${track.label}`}
+                    className="min-w-0 flex-1 rounded-lg border border-primary/50 bg-secondary px-2 py-1 text-sm outline-none"
+                  />
+                ) : (
+                  <span className="flex-1 truncate text-sm font-medium">{track.label}</span>
+                )}
+                {canEdit && renamingId !== track.id ? (
+                  <button
+                    type="button"
+                    onClick={() => startRename(track)}
+                    aria-label={`Cambiar el nombre de ${track.label}`}
+                    title="Cambiar nombre"
+                    className="rounded-full p-2 text-muted-foreground hover:text-primary"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                ) : null}
                 {canEdit ? (
                   <button
                     type="button"
@@ -265,7 +355,7 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
                 ) : null}
                 {canDelete ? (
                   <button
-                    onClick={() => void handleRemove(track.id)}
+                    onClick={() => setConfirmTrack(track)}
                     aria-label={`Borrar ${track.label}`}
                     className="rounded-full p-2 text-muted-foreground hover:text-destructive"
                   >
@@ -284,7 +374,7 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
             </p>
             <input
               className={inputCls}
-              placeholder="Nombre de la pista, ej. Click y guía"
+              placeholder="Nombre de la pista, ej. Batería, Guitarra, Click y guía"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               disabled={saving}
@@ -338,6 +428,24 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
           </div>
         ) : null}
       </div>
+      {confirmTrack ? (
+        <ConfirmTypedDeleteModal
+          title="Eliminar pista definitivamente"
+          confirmText={confirmTrack.label}
+          confirmLabel="el nombre de la pista"
+          onClose={() => setConfirmTrack(null)}
+          onConfirm={async () => {
+            await handleRemove(confirmTrack.id);
+            setConfirmTrack(null);
+          }}
+        >
+          Se va a borrar la pista <span className="font-semibold">{confirmTrack.label}</span>,
+          también del archivo guardado.
+          {latestSong().audioKey === confirmTrack.audioKey
+            ? " Es el audio principal de la canción: el archivo se conserva para el principal."
+            : null}
+        </ConfirmTypedDeleteModal>
+      ) : null}
     </div>
   );
 }

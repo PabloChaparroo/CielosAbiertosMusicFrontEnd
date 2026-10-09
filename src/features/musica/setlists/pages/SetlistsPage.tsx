@@ -11,6 +11,7 @@ import {
 import { AppLayout } from "@/components/layout/AppLayout";
 import { EmptyState, Skeletons } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
+import type { Setlist } from "@/types";
 import { LockedHint } from "../components/LockedHint";
 import { NewSetlistModal } from "../components/NewSetlistModal";
 import { SetlistCard } from "../components/SetlistCard";
@@ -19,6 +20,8 @@ import {
   SetlistTemplatesService,
   type SetlistTemplate,
 } from "../services/setlist-templates.service";
+import { matchesSearch } from "@/lib/search";
+import { nextTemplateName } from "../lib/template-name";
 
 /** "AAAA-MM-DD" en hora local */
 const localDay = (d: Date) => {
@@ -41,6 +44,10 @@ export function SetlistsPage() {
   const [fromTemplate, setFromTemplate] = useState<SetlistTemplate | null>(null);
   const [templates, setTemplates] = useState<SetlistTemplate[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
+  // guardar como predefinida: la lista a guardar y el nombre elegido
+  const [naming, setNaming] = useState<Setlist | null>(null);
+  const [templateName, setTemplateName] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
 
   useEffect(() => {
     SetlistTemplatesService.listAll()
@@ -79,23 +86,31 @@ export function SetlistsPage() {
   const upcoming = sorted.filter((s) => s.isUpcoming && !isPast(s.date));
   const past = sorted
     .filter((s) => !s.isUpcoming || isPast(s.date))
-    .filter((s) => s.title.toLowerCase().includes(query.toLowerCase()));
+    .filter((s) => matchesSearch(query, s.title));
 
   const toggleUpcoming = (target: (typeof setlists)[number]) => {
     void updateSetlist({ ...target, isUpcoming: !target.isUpcoming });
   };
 
   const canCreate = can("createSetlist");
-  const saveTemplate = async (target: (typeof setlists)[number]) => {
+  // guardar como predefinida: primero se elige el nombre (viene uno automático, "Lista N")
+  const askTemplateName = (target: (typeof setlists)[number]) => {
+    setTemplateName(nextTemplateName(templates.map((t) => t.title)));
+    setNaming(target);
+  };
+  const saveTemplate = async () => {
+    const title = templateName.trim();
+    if (!naming || !title) return;
+    setSavingTemplate(true);
     try {
-      const created = await SetlistTemplatesService.create({
-        title: target.title,
-        items: target.items,
-      });
+      const created = await SetlistTemplatesService.create({ title, items: naming.items });
       setTemplates((prev) => [...prev, created].sort((a, b) => a.title.localeCompare(b.title)));
-      setNotice(`"${target.title}" se guardó en Listas predefinidas`);
+      setNotice(`"${title}" se guardó en Listas predefinidas`);
+      setNaming(null);
     } catch {
       setNotice("No se pudo guardar la lista predefinida");
+    } finally {
+      setSavingTemplate(false);
     }
   };
   const removeTemplate = async (template: SetlistTemplate) => {
@@ -155,7 +170,7 @@ export function SetlistsPage() {
                 s={s}
                 onClick={() => setSelected(s.id)}
                 onToggleUpcoming={() => toggleUpcoming(s)}
-                onSaveTemplate={canCreate ? () => void saveTemplate(s) : undefined}
+                onSaveTemplate={canCreate ? () => askTemplateName(s) : undefined}
               />
             ))}
           </div>
@@ -240,7 +255,7 @@ export function SetlistsPage() {
               onClick={() => setSelected(s.id)}
               // ya pasó la fecha: no puede volver a Próximos
               onToggleUpcoming={isPast(s.date) ? undefined : () => toggleUpcoming(s)}
-              onSaveTemplate={canCreate ? () => void saveTemplate(s) : undefined}
+              onSaveTemplate={canCreate ? () => askTemplateName(s) : undefined}
               muted
             />
           ))}
@@ -266,6 +281,55 @@ export function SetlistsPage() {
             setFromTemplate(null);
           }}
         />
+      ) : null}
+      {naming ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Guardar como lista predefinida"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !savingTemplate) setNaming(null);
+          }}
+        >
+          <div className="w-full max-w-sm animate-in fade-in-0 zoom-in-95 rounded-2xl border border-border bg-card p-6 shadow-2xl">
+            <h2 className="font-display text-lg font-semibold">Guardar como lista predefinida</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {naming.items.length} canciones de “{naming.title}”. Ponele un nombre para
+              reconocerla.
+            </p>
+            <input
+              autoFocus
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              onFocus={(e) => e.currentTarget.select()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void saveTemplate();
+                if (e.key === "Escape") setNaming(null);
+              }}
+              aria-label="Nombre de la lista predefinida"
+              className="mt-4 w-full rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none focus:border-primary/60"
+            />
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setNaming(null)}
+                disabled={savingTemplate}
+                className="rounded-full px-4 py-2 text-sm text-muted-foreground hover:bg-secondary disabled:opacity-40"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void saveTemplate()}
+                disabled={!templateName.trim() || savingTemplate}
+                className="rounded-full gradient-gold px-5 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+              >
+                {savingTemplate ? "Guardando…" : "Guardar"}
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </AppLayout>
   );

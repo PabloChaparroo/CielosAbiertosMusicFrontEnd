@@ -7,6 +7,7 @@ import { AddMemberModal } from "../components/AddMemberModal";
 import { EditMemberModal } from "../components/EditMemberModal";
 import { GeneratedPasswordModal } from "../components/GeneratedPasswordModal";
 import { roleNames } from "@/lib/user-roles";
+import { visibleTeam } from "../lib/visible-team";
 
 export function EquipoPage() {
   const { users, usersLoadState, reloadUsers, can, setlists, songs } = useApp();
@@ -22,8 +23,10 @@ export function EquipoPage() {
     title?: string;
   } | null>(null);
 
-  const activeUsers = useMemo(() => users.filter((u) => !u.fechaHoraBaja), [users]);
-  const visibleUsers = showBajas ? users : activeUsers;
+  // los admins solo los ven otros admins
+  const team = useMemo(() => visibleTeam(users, can("manageRoles")), [users, can]);
+  const activeUsers = useMemo(() => team.filter((u) => !u.fechaHoraBaja), [team]);
+  const visibleUsers = showBajas ? team : activeUsers;
 
   // filtros por rol del sistema; "Sin rol" solo aparece si hay integrantes activos sin ninguno
   const roleFilters = useMemo(() => {

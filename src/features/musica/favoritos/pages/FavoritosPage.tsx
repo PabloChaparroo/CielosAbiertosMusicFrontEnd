@@ -5,6 +5,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, EmptyState, FavButton, formatDuration } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import { Pager, usePaged } from "@/components/common/Pager";
+import { matchesSearch } from "@/lib/search";
 
 type Destino = "letras" | "acordes";
 const DESTINO_KEY = "favoritos:destino";
@@ -36,8 +37,7 @@ export function FavoritosPage() {
     void navigate({ to: destino === "letras" ? "/letras" : "/acordes", search: { songId } });
   const favoriteSongs = songs.filter((s) => favorites.includes(s.id));
   const list = favoriteSongs.filter((song) => {
-    const text = `${song.title} ${song.artist}`.toLowerCase();
-    return text.includes(query.toLowerCase());
+    return matchesSearch(query, `${song.title} ${song.artist}`);
   });
   // 24 por página; la búsqueda mira todos los favoritos
   const paged = usePaged(list, 24, query);

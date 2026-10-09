@@ -3,6 +3,7 @@ import { CalendarDays, Users } from "lucide-react";
 import { Avatar } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import { songPlaysInRange, toLocalDay } from "../lib/stats";
+import { hasSequence } from "@/features/canciones/lib/sequence";
 
 const inputCls =
   "rounded-full border border-border bg-secondary px-3 py-1.5 text-sm outline-none focus:border-primary/60";
@@ -30,7 +31,7 @@ const formatDay = (iso: string) =>
 export function SongHistoryPanel() {
   const { songs, setlists, users } = useApp();
   const sortedSongs = useMemo(
-    () => [...songs].sort((a, b) => a.title.localeCompare(b.title)),
+    () => songs.filter(hasSequence).sort((a, b) => a.title.localeCompare(b.title)),
     [songs],
   );
   const [songId, setSongId] = useState("");

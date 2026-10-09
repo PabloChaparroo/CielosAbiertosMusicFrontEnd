@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import type { Setlist, Song, Tag } from "@/types";
 import {
   historicRanking,
+  isPlayedSetlist,
   monthlyTrend,
+  monthsBetween,
+  playsFromSetlists,
+  recentMonths,
+  topSongsInMonths,
   playsByTag,
   playsByYear,
   songPlaysInRange,
@@ -28,6 +33,9 @@ function song(title: string, tags: Tag[], playsByMonth: Record<string, number>):
     tags,
     cover: "",
     audioKey: null,
+    audioName: null,
+    proximaDesde: null,
+    esProxima: false,
     chordpro: "",
     lyricsImageKey: null,
     coverKey: null,
@@ -187,5 +195,72 @@ describe("songPlaysInRange", () => {
 
   it("devuelve vacío si no se tocó en el rango", () => {
     expect(songPlaysInRange(setlists, "s2", "2026-07-01", "2026-09-01")).toEqual([]);
+  });
+});
+
+describe("veces tocada según las listas que pasaron al historial", () => {
+  const today = new Date("2026-10-08T15:00:00.000Z");
+  const list = (id: string, date: string, songIds: string[], isUpcoming = true): Setlist =>
+    ({
+      id,
+      title: id,
+      date,
+      isUpcoming,
+      type: "Culto Miércoles",
+      leaderId: "u1",
+      items: songIds.map((songId) => ({ songId, key: "D" })),
+      teamIds: [],
+      teamInstruments: {},
+    }) as Setlist;
+  const base = [oceanos, digno].map((s, i) => ({ ...s, id: `s${i + 1}` }));
+
+  it("cuenta una vez por lista pasada, en el mes de su fecha; las futuras no cuentan", () => {
+    const [s1, s2] = playsFromSetlists(
+      base,
+      [
+        list("a", "2026-09-06T13:30:00.000Z", ["s1", "s2", "s1"]),
+        list("b", "2026-09-13T13:30:00.000Z", ["s1"]),
+        list("c", "2026-10-04T13:30:00.000Z", ["s2"]),
+        list("futura", "2026-10-11T13:30:00.000Z", ["s1"]),
+        list("pasada-a-mano", "2026-10-18T13:30:00.000Z", ["s2"], false),
+      ],
+      today,
+    );
+    expect(s1!.playsByMonth).toEqual({ "2026-09": 2 });
+    expect(s2!.playsByMonth).toEqual({ "2026-09": 1, "2026-10": 2 });
+  });
+
+  it("una lista pasa al historial el día después de su fecha", () => {
+    expect(isPlayedSetlist(list("hoy", "2026-10-08T22:00:00.000Z", []), today)).toBe(false);
+    expect(isPlayedSetlist(list("ayer", "2026-10-07T13:30:00.000Z", []), today)).toBe(true);
+  });
+
+  it("meses de un rango y últimos meses", () => {
+    expect(monthsBetween("2025-11", "2026-02")).toEqual([
+      "2025-11",
+      "2025-12",
+      "2026-01",
+      "2026-02",
+    ]);
+    expect(monthsBetween("2026-02", "2025-12")).toEqual(["2025-12", "2026-01", "2026-02"]);
+    expect(recentMonths(3, today)).toEqual(["2026-08", "2026-09", "2026-10"]);
+  });
+
+  it("más tocadas en un rango, sin las que no se tocaron", () => {
+    const songs = playsFromSetlists(
+      base,
+      [
+        list("a", "2026-08-02T13:30:00.000Z", ["s1"]),
+        list("b", "2026-09-06T13:30:00.000Z", ["s2"]),
+        list("c", "2026-09-13T13:30:00.000Z", ["s2"]),
+      ],
+      today,
+    );
+    expect(topSongsInMonths(songs, ["2026-09"]).map((r) => [r.song.id, r.plays])).toEqual([
+      ["s2", 2],
+    ]);
+    expect(
+      topSongsInMonths(songs, monthsBetween("2026-08", "2026-09")).map((r) => r.plays),
+    ).toEqual([2, 1]);
   });
 });

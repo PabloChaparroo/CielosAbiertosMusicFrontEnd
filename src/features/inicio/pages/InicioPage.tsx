@@ -44,8 +44,9 @@ export function InicioPage() {
   const songOfMonth = top[0];
   const favSongs = songs.filter((s) => favorites.includes(s.id));
   // próximas a sacar: las más recientemente marcadas primero
+  // los invitados no ven las próximas a sacar (son del equipo: pedido de Pablo)
   const proximas = songs
-    .filter((s) => s.esProxima)
+    .filter((s) => !isGuest && s.esProxima)
     .sort((a, b) => (b.proximaDesde ?? "").localeCompare(a.proximaDesde ?? ""));
 
   const latestSection = (

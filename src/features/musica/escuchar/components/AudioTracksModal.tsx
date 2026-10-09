@@ -183,6 +183,13 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
     }
   };
 
+  // audio principal como una fila más (para escucharlo), salvo que ya sea una de las pistas
+  const mainKey = latestSong().audioKey;
+  const mainTrack: AudioTrack | null =
+    mainKey && !tracks.some((t) => t.audioKey === mainKey)
+      ? ({ id: "principal", label: song.title, audioKey: mainKey, order: -1 } as AudioTrack)
+      : null;
+
   const handlePlay = async (track: AudioTrack) => {
     const el = audioRef.current;
     if (!el) return;
@@ -230,6 +237,32 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
           </button>
         </div>
 
+        {/* el audio principal (el de Editar canción) también se ve acá, primero; si además es
+            una de las pistas, ya aparece en la lista con su check */}
+        {loadState === "ready" && mainTrack ? (
+          <div className="mb-2 flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5">
+            <button
+              onClick={() => void handlePlay(mainTrack)}
+              disabled={resolvingId === mainTrack.id}
+              aria-label={
+                playingId === mainTrack.id
+                  ? `Pausar ${mainTrack.label}`
+                  : `Reproducir ${mainTrack.label}`
+              }
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-elevated hover:text-primary disabled:opacity-50"
+            >
+              {playingId === mainTrack.id ? (
+                <Pause className="h-4 w-4" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
+            </button>
+            <span className="flex-1 truncate text-sm font-medium">{mainTrack.label}</span>
+            <span className="text-[10px] font-semibold tracking-wide text-primary uppercase">
+              Audio principal
+            </span>
+          </div>
+        ) : null}
         {loadState === "loading" ? (
           <div className="space-y-2">
             {Array.from({ length: 2 }).map((_, i) => (

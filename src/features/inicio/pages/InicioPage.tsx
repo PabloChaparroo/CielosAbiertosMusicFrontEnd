@@ -6,6 +6,7 @@ import { useApp } from "@/hooks/useApp";
 import { useAuth } from "@/core/auth/useAuth";
 import { currentMonthKey } from "@/lib/month";
 import { ProximasSection } from "../components/ProximasSection";
+import { TagList } from "@/components/common/TagList";
 
 export function InicioPage() {
   const { currentUser, songs, songsLoadState, setlists, setlistsLoadState, favorites, play } =
@@ -46,6 +47,37 @@ export function InicioPage() {
   const proximas = songs
     .filter((s) => s.esProxima)
     .sort((a, b) => (b.proximaDesde ?? "").localeCompare(a.proximaDesde ?? ""));
+
+  const latestSection = (
+    <section>
+      <h3 className="mb-4 font-display text-2xl font-semibold">Últimas canciones subidas</h3>
+      <div className="surface-card divide-y divide-border/60">
+        {latest.map((song) => (
+          <div
+            key={song.id}
+            className="flex items-center gap-4 p-3 transition-colors hover:bg-elevated/60"
+          >
+            <Cover song={song} size="sm" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-medium">{song.title}</p>
+              <p className="truncate text-sm text-muted-foreground">{song.artist}</p>
+            </div>
+            <div className="hidden sm:block">
+              <TagList tags={song.tags} />
+            </div>
+            <FavButton songId={song.id} />
+            <button
+              onClick={() => play(song)}
+              aria-label={`Reproducir ${song.title}`}
+              className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
+            >
+              <Play className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
 
   return (
     <AppLayout title="Inicio" subtitle={subtitle} bleed>
@@ -124,81 +156,85 @@ export function InicioPage() {
           <ProximasSection songs={proximas} />
           {/* grid-cols-1 explícito: sin columnas definidas, la columna toma el ancho del texto
             "truncate" más largo (títulos de Últimas subidas / favoritos) y la página se desborda en celular */}
-          <section
-            className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${
-              // alineadas con el post (debajo del título "Próxima a sacar")
-              proximas.length === 1 ? "lg:content-start lg:pt-[3.75rem]" : "xl:grid-cols-4"
-            }`}
-          >
-            {upcoming ? (
-              <Link
-                to="/setlists"
-                className="surface-card group p-5 hover:-translate-y-1 hover:border-primary/40"
-              >
-                <CalendarDays className="mb-3 h-5 w-5 text-primary" />
-                <p className="text-xs tracking-widest text-muted-foreground uppercase">
-                  Próxima lista
-                </p>
-                <p className="mt-1 font-display text-lg font-semibold">{upcoming.title}</p>
-                <p className="text-sm text-muted-foreground">
-                  {new Date(upcoming.date).toLocaleDateString("es-AR", {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                  })}{" "}
-                  · {upcoming.items.length} canciones
-                </p>
-              </Link>
-            ) : null}
+          <div className="space-y-10 lg:space-y-6">
+            <section
+              className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${
+                // alineadas con el post (debajo del título "Próxima a sacar")
+                proximas.length === 1 ? "lg:content-start lg:pt-[3.75rem]" : "xl:grid-cols-4"
+              }`}
+            >
+              {upcoming ? (
+                <Link
+                  to="/setlists"
+                  className="surface-card group p-5 hover:-translate-y-1 hover:border-primary/40"
+                >
+                  <CalendarDays className="mb-3 h-5 w-5 text-primary" />
+                  <p className="text-xs tracking-widest text-muted-foreground uppercase">
+                    Próxima lista
+                  </p>
+                  <p className="mt-1 font-display text-lg font-semibold">{upcoming.title}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {new Date(upcoming.date).toLocaleDateString("es-AR", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                    })}{" "}
+                    · {upcoming.items.length} canciones
+                  </p>
+                </Link>
+              ) : null}
 
-            {songOfMonth ? (
-              <div className="surface-card p-5">
-                <Flame className="mb-3 h-5 w-5 text-primary" />
-                <p className="text-xs tracking-widest text-muted-foreground uppercase">
-                  Canción del mes
-                </p>
-                <div className="mt-2 flex items-center gap-3">
-                  <Cover song={songOfMonth} size="sm" />
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold">{songOfMonth.title}</p>
-                    <p className="truncate text-sm text-muted-foreground">{songOfMonth.artist}</p>
+              {songOfMonth ? (
+                <div className="surface-card p-5">
+                  <Flame className="mb-3 h-5 w-5 text-primary" />
+                  <p className="text-xs tracking-widest text-muted-foreground uppercase">
+                    Canción del mes
+                  </p>
+                  <div className="mt-2 flex items-center gap-3">
+                    <Cover song={songOfMonth} size="sm" />
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold">{songOfMonth.title}</p>
+                      <p className="truncate text-sm text-muted-foreground">{songOfMonth.artist}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : null}
+              ) : null}
 
-            <Link
-              to="/escuchar"
-              className="surface-card p-5 hover:-translate-y-1 hover:border-primary/40"
-            >
-              <TrendingUp className="mb-3 h-5 w-5 text-primary" />
-              <p className="text-xs tracking-widest text-muted-foreground uppercase">
-                Últimas subidas
-              </p>
-              <p className="mt-1 font-display text-3xl font-semibold">{latest.length}</p>
-              <p className="truncate text-sm text-muted-foreground">
-                {latest.map((s) => s.title).join(" · ")}
-              </p>
-            </Link>
-
-            {isGuest ? null : (
               <Link
-                to="/favoritos"
+                to="/escuchar"
                 className="surface-card p-5 hover:-translate-y-1 hover:border-primary/40"
               >
-                <Heart className="mb-3 h-5 w-5 text-primary" />
+                <TrendingUp className="mb-3 h-5 w-5 text-primary" />
                 <p className="text-xs tracking-widest text-muted-foreground uppercase">
-                  Tus favoritos
+                  Últimas subidas
                 </p>
-                <p className="mt-1 font-display text-3xl font-semibold">{favSongs.length}</p>
+                <p className="mt-1 font-display text-3xl font-semibold">{latest.length}</p>
                 <p className="truncate text-sm text-muted-foreground">
-                  {favSongs.length
-                    ? favSongs.map((s) => s.title).join(" · ")
-                    : "Todavía sin favoritos"}
+                  {latest.map((s) => s.title).join(" · ")}
                 </p>
               </Link>
-            )}
-          </section>
+
+              {isGuest ? null : (
+                <Link
+                  to="/favoritos"
+                  className="surface-card p-5 hover:-translate-y-1 hover:border-primary/40"
+                >
+                  <Heart className="mb-3 h-5 w-5 text-primary" />
+                  <p className="text-xs tracking-widest text-muted-foreground uppercase">
+                    Tus favoritos
+                  </p>
+                  <p className="mt-1 font-display text-3xl font-semibold">{favSongs.length}</p>
+                  <p className="truncate text-sm text-muted-foreground">
+                    {favSongs.length
+                      ? favSongs.map((s) => s.title).join(" · ")
+                      : "Todavía sin favoritos"}
+                  </p>
+                </Link>
+              )}
+            </section>
+            {/* con una sola próxima, las últimas subidas completan la columna de la derecha */}
+            {proximas.length === 1 ? latestSection : null}
+          </div>
         </div>
 
         <section>
@@ -240,36 +276,7 @@ export function InicioPage() {
           </div>
         </section>
 
-        <section>
-          <h3 className="mb-4 font-display text-2xl font-semibold">Últimas canciones subidas</h3>
-          <div className="surface-card divide-y divide-border/60">
-            {latest.map((song) => (
-              <div
-                key={song.id}
-                className="flex items-center gap-4 p-3 transition-colors hover:bg-elevated/60"
-              >
-                <Cover song={song} size="sm" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{song.title}</p>
-                  <p className="truncate text-sm text-muted-foreground">{song.artist}</p>
-                </div>
-                <div className="hidden gap-1.5 sm:flex">
-                  {song.tags.map((t) => (
-                    <TagChip key={t} tag={t} />
-                  ))}
-                </div>
-                <FavButton songId={song.id} />
-                <button
-                  onClick={() => play(song)}
-                  aria-label={`Reproducir ${song.title}`}
-                  className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
-                >
-                  <Play className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
+        {proximas.length === 1 ? null : latestSection}
       </div>
     </AppLayout>
   );

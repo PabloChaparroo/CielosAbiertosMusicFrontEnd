@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { SongsService } from "@/features/canciones/services/songs.service";
 import {
   Check,
-  Clock,
   LayoutGrid,
   Layers,
   Link2,
@@ -17,7 +16,6 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, EmptyState, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import { Pager, usePaged } from "@/components/common/Pager";
-import { readYoutubeDuration } from "@/lib/youtube-duration";
 import type { Song, Tag } from "@/types";
 import { AudioTracksModal } from "../components/AudioTracksModal";
 import { ProximaButton } from "../components/ProximaButton";
@@ -90,26 +88,6 @@ export function EscucharPage() {
   // 30 por página; la búsqueda y los filtros miran todas las canciones
   const paged = usePaged(filtered, 30, `${query}|${tag}|${tipo}|${secuencia}`);
 
-  // duración de cada canción = la de su video principal de YouTube (se guarda en la base)
-  const [durationSync, setDurationSync] = useState<{ done: number; total: number } | null>(null);
-  const syncYoutubeDurations = async () => {
-    const withVideo = songs.filter((s) => s.youtubeVideoId);
-    setDurationSync({ done: 0, total: withVideo.length });
-    for (const [i, song] of withVideo.entries()) {
-      const seconds = await readYoutubeDuration(song.youtubeVideoId!);
-      if (seconds && seconds !== song.duration) {
-        try {
-          await SongsService.updateSong(song.id, { duration: seconds });
-          updateSong({ ...song, duration: seconds });
-        } catch {
-          // queda la duración anterior
-        }
-      }
-      setDurationSync({ done: i + 1, total: withVideo.length });
-    }
-    setDurationSync(null);
-  };
-
   return (
     <AppLayout
       title="Canciones"
@@ -117,19 +95,6 @@ export function EscucharPage() {
       actions={
         can("editSongs") ? (
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => void syncYoutubeDurations()}
-              disabled={durationSync !== null}
-              title="Toma la duración del video principal de YouTube de cada canción"
-              className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground disabled:opacity-70"
-            >
-              <Clock className="h-4 w-4" />
-              <span className="hidden sm:inline">
-                {durationSync
-                  ? `Duraciones ${durationSync.done}/${durationSync.total}`
-                  : "Duraciones de YouTube"}
-              </span>
-            </button>
             <button
               onClick={() => setModal(true)}
               className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"

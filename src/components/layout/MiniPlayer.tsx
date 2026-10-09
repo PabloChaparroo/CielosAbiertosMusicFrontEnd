@@ -37,7 +37,9 @@ export function MiniPlayer() {
   const lastBackRef = useRef(0);
   const [progress, setProgress] = useState(0);
   const [volume, setVolume] = useState(0.8);
-  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+  // URL firmada del audio y de qué key es: al cambiar de canción el <audio> conserva la anterior
+  // hasta que baja con el fundido (sacarle el src de golpe hacía un "crack")
+  const [resolved, setResolved] = useState<{ key: string; url: string } | null>(null);
   const [tracks, setTracks] = useState<AudioTrack[]>([]);
   const [tracksOpen, setTracksOpen] = useState(false);
   // videos de YouTube: los links relacionados de la canción cuya URL es de YouTube
@@ -124,13 +126,13 @@ export function MiniPlayer() {
   };
 
   useEffect(() => {
-    setResolvedUrl(null);
     setProgress(0);
-    if (!current?.audioKey) return;
+    const key = current?.audioKey;
+    if (!key) return;
     let cancelled = false;
-    StorageClient.getDownloadUrl(current.audioKey)
+    StorageClient.getDownloadUrl(key)
       .then((res) => {
-        if (!cancelled) setResolvedUrl(res.url);
+        if (!cancelled) setResolved({ key, url: res.url });
       })
       .catch(() => {
         /* sin audio reproducible para esta canción; el <audio> sin src ya tolera esto */
@@ -155,7 +157,9 @@ export function MiniPlayer() {
     if (!el) return;
     audioRef.current = el;
     const setVolume = (v: number) => (el.volume = Math.min(1, Math.max(0, v)));
-    if (isPlaying && resolvedUrl && !useYoutube) {
+    // el audio cargado es el de la canción actual (si no, todavía es el de la anterior)
+    const ready = resolved !== null && resolved.key === current?.audioKey;
+    if (isPlaying && ready && !useYoutube) {
       // si estaba bajando para pausar, se da vuelta desde donde quedó
       if (!el.paused && !fadeRef.current) return;
       fadeRef.current?.();
@@ -174,7 +178,7 @@ export function MiniPlayer() {
         fadeRef.current = null;
       });
     }
-  }, [isPlaying, current, audioRef, resolvedUrl, useYoutube]);
+  }, [isPlaying, current, audioRef, resolved, useYoutube]);
 
   useEffect(() => () => fadeRef.current?.(), []);
 
@@ -401,9 +405,11 @@ export function MiniPlayer() {
     <div className="fixed right-0 bottom-0 left-0 z-40 border-t border-border bg-card/95 backdrop-blur-xl lg:left-[272px]">
       <audio
         ref={localRef}
-        src={resolvedUrl ?? undefined}
+        src={resolved?.url}
         onEnded={() => playbackRef.current.handleEnded()}
         onTimeUpdate={(e) => {
+          // la canción anterior todavía bajando: no mueve la barra de la nueva
+          if (resolved?.key !== currentRef.current?.audioKey) return;
           const el = e.currentTarget;
           if (el.duration) setProgress((el.currentTime / el.duration) * 100);
           playbackRef.current.keepInLoop(el.currentTime);

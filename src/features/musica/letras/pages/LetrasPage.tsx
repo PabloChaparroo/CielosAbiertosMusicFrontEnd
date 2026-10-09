@@ -369,8 +369,13 @@ function SongLyricsDetail({
       return !v;
     });
 
-  /** Letra agrupada por sección: en dos columnas, cada sección va entera en una columna */
-  const renderLyrics = (className: string, fontSize?: number) => {
+  /**
+   * Letra agrupada por sección. En dos columnas (`columns`), cada sección va entera en una de dos
+   * columnas lado a lado, repartidas para que tengan una cantidad de renglones parecida, y los
+   * renglones no se cortan: si no entran en la pantalla, se desplaza de costado con el dedo o se
+   * aleja pellizcando (pedido de Pablo: antes la letra se apretaba para entrar).
+   */
+  const renderLyrics = (className: string, fontSize?: number, columns = false) => {
     const blocks: Array<{ title: string | null; lines: string[] }> = [];
     displayLyricsLines(song.chordpro).forEach((line) => {
       if (line.kind === "section") blocks.push({ title: line.value, lines: [] });
@@ -379,6 +384,43 @@ function SongLyricsDetail({
         blocks[blocks.length - 1]!.lines.push(line.value);
       }
     });
+    const renderBlock = (block: (typeof blocks)[number], b: number) => (
+      <div key={b} className="break-inside-avoid">
+        {block.title ? (
+          <div className="mt-6 mb-3 text-xl font-semibold tracking-widest text-primary">
+            {block.title}
+          </div>
+        ) : null}
+        {block.lines.map((line, i) => (
+          <div key={i} className="min-h-[1.5em] whitespace-pre">
+            {line || " "}
+          </div>
+        ))}
+      </div>
+    );
+    if (columns) {
+      // la primera columna se llena hasta la mitad de los renglones (contando los títulos)
+      const size = (block: (typeof blocks)[number]) => block.lines.length + (block.title ? 2 : 0);
+      const total = blocks.reduce((sum, block) => sum + size(block), 0);
+      let acc = 0;
+      let split = blocks.length;
+      for (let b = 0; b < blocks.length; b += 1) {
+        if (acc >= total / 2) {
+          split = b;
+          break;
+        }
+        acc += size(blocks[b]!);
+      }
+      return (
+        <div
+          className={`flex w-max items-start gap-16 ${className}`}
+          style={fontSize ? { fontSize } : undefined}
+        >
+          <div>{blocks.slice(0, split).map(renderBlock)}</div>
+          <div>{blocks.slice(split).map((block, b) => renderBlock(block, b + split))}</div>
+        </div>
+      );
+    }
     return (
       <div className={className} style={fontSize ? { fontSize } : undefined}>
         {blocks.map((block, b) => (
@@ -402,7 +444,7 @@ function SongLyricsDetail({
   if (fullscreen) {
     return (
       <div
-        className="fixed inset-0 z-50 overflow-y-auto bg-background px-5 py-8 sm:px-10 sm:py-10"
+        className="fixed inset-0 z-50 overflow-auto bg-background px-5 py-8 sm:px-10 sm:py-10"
         {...pinch}
       >
         <button
@@ -433,17 +475,18 @@ function SongLyricsDetail({
         ) : null}
         {/* Bloque centrado en la pantalla (horizontal, y vertical si la letra es corta), con el
             texto alineado a la izquierda adentro */}
-        <div className="flex min-h-full flex-col">
-          <div className="m-auto w-fit max-w-full pb-10">
+        {/* "safe": si la letra es más ancha que la pantalla (dos columnas), arranca desde el borde
+            izquierdo y se desplaza, en vez de quedar cortada de los dos lados */}
+        <div className="flex min-h-full flex-col items-center-safe">
+          <div
+            className={`my-auto pb-10 ${mode === "texto" && twoColumns ? "w-max" : "w-fit max-w-full"}`}
+          >
             <div className="mb-8 pr-12">
               <p className="text-sm text-muted-foreground">{song.artist}</p>
               <h2 className="font-display text-3xl font-semibold">{song.title}</h2>
             </div>
             {mode === "texto" ? (
-              renderLyrics(
-                twoColumns ? "leading-relaxed columns-2 gap-x-16" : "leading-relaxed",
-                lyricsSize,
-              )
+              renderLyrics("leading-relaxed", lyricsSize, twoColumns)
             ) : resolvedUrl ? (
               <img
                 src={resolvedUrl}

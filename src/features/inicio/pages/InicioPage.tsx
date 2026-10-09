@@ -47,25 +47,34 @@ export function InicioPage() {
       <section className="relative overflow-hidden">
         <div className="gradient-sky absolute inset-0" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
-        {/* el logo: arriba del título en celular, grande a la derecha en compu (mismo estilo que el login) */}
+        {/* el logo: al lado del título en celular, grande a la derecha en compu (mismo estilo que el login) */}
         <div className="relative flex flex-col gap-8 px-4 py-16 sm:px-8 sm:py-24 lg:flex-row lg:items-center lg:justify-between">
           <img
             src="/icon-512.png"
             alt="Cielos Abiertos"
             width={512}
             height={512}
-            className="glow h-24 w-24 rounded-full sm:h-32 sm:w-32 lg:order-last lg:mr-[6%] lg:h-72 lg:w-72 xl:h-80 xl:w-80"
+            className="glow hidden rounded-full lg:order-last lg:mr-[6%] lg:block lg:h-72 lg:w-72 xl:h-80 xl:w-80"
           />
           <div>
             <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/40 px-3 py-1 text-xs text-foreground/90 backdrop-blur">
               <Sparkles className="h-3.5 w-3.5 text-primary" />{" "}
               {currentUser.roles.map((r) => r.name).join(" · ") || "Sin rol"}
             </p>
-            <h2 className="font-display text-5xl leading-[0.95] font-bold sm:text-7xl">
-              Cielos
-              <br />
-              <span className="text-gradient-gold">Abiertos</span>
-            </h2>
+            <div className="flex items-center gap-5 sm:gap-8">
+              <h2 className="font-display text-5xl leading-[0.95] font-bold sm:text-7xl">
+                Cielos
+                <br />
+                <span className="text-gradient-gold">Abiertos</span>
+              </h2>
+              <img
+                src="/icon-192.png"
+                alt=""
+                width={192}
+                height={192}
+                className="glow h-24 w-24 shrink-0 rounded-full sm:h-32 sm:w-32 lg:hidden"
+              />
+            </div>
             <p className="mt-3 text-xs tracking-[0.3em] text-foreground/70 uppercase sm:text-sm">
               Ministerio de Adoración
             </p>

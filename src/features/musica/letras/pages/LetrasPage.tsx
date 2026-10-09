@@ -30,6 +30,7 @@ import {
   exitBrowserFullscreen,
   isBrowserFullscreen,
 } from "@/lib/browser-fullscreen";
+import { matchesSearch } from "@/lib/search";
 
 export function LetrasPage() {
   const { songs, can, updateSong, current, isPlaying, play, toggle } = useApp();
@@ -61,9 +62,7 @@ export function LetrasPage() {
   const filtered = useMemo(
     () =>
       availableSongs.filter(
-        (s) =>
-          s.title.toLowerCase().includes(query.toLowerCase()) ||
-          s.tags.some((t) => t.toLowerCase().includes(query.toLowerCase())),
+        (s) => matchesSearch(query, s.title) || matchesSearch(query, ...s.tags),
       ),
     [availableSongs, query],
   );

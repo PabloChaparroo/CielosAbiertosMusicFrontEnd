@@ -22,6 +22,7 @@ import type { Song, Tag } from "@/types";
 import { AudioTracksModal } from "../components/AudioTracksModal";
 import { SongLinksModal } from "../components/SongLinksModal";
 import { UploadModal } from "../components/UploadModal";
+import { matchesSearch } from "@/lib/search";
 
 /** Desplegable de filtro: dorado si tiene algo elegido */
 const filterSelectClass = (active: boolean) =>
@@ -81,8 +82,7 @@ export function EscucharPage() {
           (!tag || s.tags.includes(tag)) &&
           (!tipo || s.tipo === tipo) &&
           (!secuencia || (secuencia === "con") === s.trackCount > 0) &&
-          (s.title.toLowerCase().includes(query.toLowerCase()) ||
-            s.artist.toLowerCase().includes(query.toLowerCase())),
+          matchesSearch(query, s.title, s.artist),
       ),
     [songs, query, tag, tipo, secuencia],
   );

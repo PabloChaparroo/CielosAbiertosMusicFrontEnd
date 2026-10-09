@@ -40,6 +40,7 @@ import {
   exitBrowserFullscreen,
   isBrowserFullscreen,
 } from "@/lib/browser-fullscreen";
+import { matchesSearch } from "@/lib/search";
 
 export function AcordesPage() {
   const { songs, songsLoadState, current, isPlaying, play, toggle, can, updateSong } = useApp();
@@ -162,7 +163,7 @@ export function AcordesPage() {
   }, [song?.id]);
 
   const filtered = availableSongs.filter((s) =>
-    (s.title + s.artist).toLowerCase().includes(query.toLowerCase()),
+    matchesSearch(query, s.title + s.artist, s.title, s.artist),
   );
   // sin búsqueda, la canción abierta va primera en la lista
   const visibleSongs = query

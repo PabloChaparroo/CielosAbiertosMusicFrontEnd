@@ -19,6 +19,7 @@ import {
   SetlistTemplatesService,
   type SetlistTemplate,
 } from "../services/setlist-templates.service";
+import { matchesSearch } from "@/lib/search";
 
 /** "AAAA-MM-DD" en hora local */
 const localDay = (d: Date) => {
@@ -79,7 +80,7 @@ export function SetlistsPage() {
   const upcoming = sorted.filter((s) => s.isUpcoming && !isPast(s.date));
   const past = sorted
     .filter((s) => !s.isUpcoming || isPast(s.date))
-    .filter((s) => s.title.toLowerCase().includes(query.toLowerCase()));
+    .filter((s) => matchesSearch(query, s.title));
 
   const toggleUpcoming = (target: (typeof setlists)[number]) => {
     void updateSetlist({ ...target, isUpcoming: !target.isUpcoming });

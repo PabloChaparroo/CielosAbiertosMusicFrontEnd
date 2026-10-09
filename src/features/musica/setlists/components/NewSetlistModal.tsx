@@ -6,6 +6,7 @@ import { INSTRUMENTS } from "@/lib/instruments";
 import { useApp } from "@/hooks/useApp";
 import { SetlistsService } from "../services/setlists.service";
 import { EVENT_TYPES, type EventType, type Setlist, type SetlistItem } from "@/types";
+import { matchesSearch } from "@/lib/search";
 
 const inputCls =
   "w-full rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary/60";
@@ -141,7 +142,7 @@ export function NewSetlistModal({
   };
 
   const results = useMemo(() => {
-    const found = songs.filter((s) => s.title.toLowerCase().includes(query.toLowerCase()));
+    const found = songs.filter((s) => matchesSearch(query, s.title));
     if (leastPlayed)
       found.sort((a, b) => (playCounts.get(a.id) ?? 0) - (playCounts.get(b.id) ?? 0));
     return found.slice(0, 40);

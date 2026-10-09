@@ -7,10 +7,12 @@ import {
   Link2,
   List,
   Music4,
+  MoreHorizontal,
   Pencil,
   Play,
   Plus,
   Search,
+  X,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, EmptyState, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
@@ -35,6 +37,8 @@ const filterSelectClass = (active: boolean) =>
 
 export function EscucharPage() {
   const { songs, play, current, can, addSong, updateSong } = useApp();
+  // celular: fila con las acciones abiertas (una a la vez)
+  const [actionsOpen, setActionsOpen] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   // vista lista (con todos los datos) o tarjetas (portada, título y artista); se recuerda
   const [view, setView] = useState<"list" | "cards">(() => {
@@ -261,7 +265,7 @@ export function EscucharPage() {
             <div
               key={song.id}
               onClick={() => play(song)}
-              className={`group grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-2.5 transition-colors hover:bg-elevated/70 md:grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_56px_176px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_56px_176px] ${
+              className={`group relative grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-2.5 transition-colors hover:bg-elevated/70 md:grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_56px_176px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_56px_176px] ${
                 current?.id === song.id ? "bg-elevated/60" : ""
               }`}
             >
@@ -318,7 +322,28 @@ export function EscucharPage() {
               <span className="hidden text-right text-sm text-muted-foreground tabular-nums md:block">
                 {formatDuration(song.duration)}
               </span>
-              <div className="flex items-center justify-end gap-1 whitespace-nowrap">
+              {/* celular: un solo botón "⋯"; al tocarlo, las acciones entran desde la derecha
+                  sobre la fila. Compu: siempre a la vista */}
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setActionsOpen(song.id);
+                }}
+                aria-label={`Acciones de ${song.title}`}
+                aria-expanded={actionsOpen === song.id}
+                className="rounded-full p-2 text-muted-foreground transition-colors hover:text-primary md:hidden"
+              >
+                <MoreHorizontal className="h-5 w-5" />
+              </button>
+              <div
+                onClick={(event) => event.stopPropagation()}
+                className={`items-center justify-end gap-1 whitespace-nowrap md:static md:flex md:animate-none md:bg-transparent md:p-0 md:shadow-none ${
+                  actionsOpen === song.id
+                    ? "absolute inset-y-0 right-0 z-10 flex animate-in rounded-l-2xl bg-card/95 pr-2 pl-3 shadow-[-18px_0_24px_-14px_rgba(0,0,0,0.7)] backdrop-blur fade-in-0 slide-in-from-right-full duration-300"
+                    : "hidden"
+                }`}
+              >
                 {can("editSongs") ? <ProximaButton song={song} /> : null}
                 <FavButton songId={song.id} />
                 <button
@@ -363,6 +388,14 @@ export function EscucharPage() {
                   className="rounded-full p-2 text-muted-foreground hover:text-primary md:hidden"
                 >
                   <Play className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActionsOpen(null)}
+                  aria-label="Cerrar acciones"
+                  className="ml-1 rounded-full bg-secondary p-2 text-foreground md:hidden"
+                >
+                  <X className="h-4 w-4" />
                 </button>
               </div>
             </div>

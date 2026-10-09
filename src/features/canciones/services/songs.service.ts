@@ -26,6 +26,8 @@ export interface RawSong {
   coverKey?: string | null;
   audioKey: string | null;
   audioName?: string | null;
+  proximaDesde?: string | null;
+  esProxima?: boolean;
   chordpro: string;
   lyricsImageKey: string | null;
   tags: RawTag[];
@@ -62,6 +64,8 @@ export interface CreateSongInput {
   audioKey?: string;
   /** Vacío lo quita */
   audioName?: string;
+  /** Marca o desmarca "próxima a sacar" */
+  proximaASacar?: boolean;
   lyricsImageKey?: string;
   /** null quita la portada */
   coverKey?: string | null;
@@ -109,6 +113,8 @@ export function mapSong(raw: RawSong): Song {
     youtubeVideoId: youtubeVideoIdOf(raw.links ?? []),
     audioKey: raw.audioKey,
     audioName: raw.audioName ?? null,
+    proximaDesde: raw.proximaDesde ?? null,
+    esProxima: raw.esProxima ?? false,
     chordpro: raw.chordpro,
     lyricsImageKey: raw.lyricsImageKey,
     addedAt: raw.fechaHoraAlta,

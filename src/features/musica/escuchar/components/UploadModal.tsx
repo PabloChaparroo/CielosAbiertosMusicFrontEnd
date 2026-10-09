@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Music, Trash2, Upload, X } from "lucide-react";
+import { CheckCircle2, Music, Rocket, Trash2, Upload, X } from "lucide-react";
 import { useApp } from "@/hooks/useApp";
 import { ConfirmTypedDeleteModal } from "./ConfirmTypedDeleteModal";
 import { DeleteSongModal } from "./DeleteSongModal";
@@ -69,6 +69,7 @@ export function UploadModal({
   const [confirmRemoveAudio, setConfirmRemoveAudio] = useState(false);
   // nombre propio del audio principal (ej. "Audio Quién podrá"); vacío = el título de la canción
   const [audioName, setAudioName] = useState(song?.audioName ?? "");
+  const [proxima, setProxima] = useState(song?.esProxima ?? false);
   const [title, setTitle] = useState(song?.title ?? "");
   const [artist, setArtist] = useState(song?.artist ?? "");
   const [key, setKey] = useState(song?.key ?? "G");
@@ -214,6 +215,8 @@ export function UploadModal({
         tags,
         tipoId,
         ...(audioKey ? { audioKey, audioName: audioName.trim() } : {}),
+        // solo si cambió: volver a guardar no tiene que renovar la fecha de la marca
+        ...(proxima !== (song?.esProxima ?? false) ? { proximaASacar: proxima } : {}),
       };
 
       const saved = isEdit
@@ -378,6 +381,35 @@ export function UploadModal({
               />
             </Field>
           </div>
+
+          {/* sale destacada en Inicio hasta que la canción se toque en una lista que pase al historial */}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={proxima}
+            onClick={() => setProxima((value) => !value)}
+            disabled={saving}
+            className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors disabled:opacity-40 ${
+              proxima ? "border-primary/50 bg-primary/10" : "border-border hover:border-primary/40"
+            }`}
+          >
+            <Rocket
+              className={`h-5 w-5 shrink-0 ${proxima ? "text-primary" : "text-muted-foreground"}`}
+            />
+            <span className="flex-1">
+              <span className="block text-sm font-medium">Próxima a sacar</span>
+              <span className="block text-xs text-muted-foreground">
+                Sale destacada en Inicio hasta que se toque en una lista que pase al historial.
+              </span>
+            </span>
+            <span
+              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${proxima ? "bg-primary" : "bg-secondary"}`}
+            >
+              <span
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${proxima ? "left-[22px]" : "left-0.5"}`}
+              />
+            </span>
+          </button>
 
           <Field label="Compás">
             <select className={inputCls} value={compas} onChange={(e) => setCompas(e.target.value)}>

@@ -20,6 +20,7 @@ import { Pager, usePaged } from "@/components/common/Pager";
 import { readYoutubeDuration } from "@/lib/youtube-duration";
 import type { Song, Tag } from "@/types";
 import { AudioTracksModal } from "../components/AudioTracksModal";
+import { ProximaButton } from "../components/ProximaButton";
 import { SongLinksModal } from "../components/SongLinksModal";
 import { UploadModal } from "../components/UploadModal";
 import { matchesSearch } from "@/lib/search";
@@ -260,7 +261,8 @@ export function EscucharPage() {
                   {song.key} · {formatDuration(song.duration)}
                 </span>
                 {/* el corazón no reproduce */}
-                <span onClick={(e) => e.stopPropagation()}>
+                <span className="flex items-center" onClick={(e) => e.stopPropagation()}>
+                  {can("editSongs") ? <ProximaButton song={song} /> : null}
                   <FavButton songId={song.id} />
                 </span>
               </div>
@@ -335,6 +337,7 @@ export function EscucharPage() {
                 {formatDuration(song.duration)}
               </span>
               <div className="flex items-center justify-end gap-1 whitespace-nowrap">
+                {can("editSongs") ? <ProximaButton song={song} /> : null}
                 <FavButton songId={song.id} />
                 <button
                   onClick={(event) => {

@@ -5,6 +5,7 @@ import { Cover, FavButton, formatDuration, Skeletons, TagChip } from "@/componen
 import { useApp } from "@/hooks/useApp";
 import { useAuth } from "@/core/auth/useAuth";
 import { currentMonthKey } from "@/lib/month";
+import { ProximasSection } from "../components/ProximasSection";
 
 export function InicioPage() {
   const { currentUser, songs, songsLoadState, setlists, setlistsLoadState, favorites, play } =
@@ -106,6 +107,13 @@ export function InicioPage() {
       </section>
 
       <div className="space-y-10 px-4 py-8 sm:px-8">
+        {/* lo primero que se ve bajo la portada: las canciones que se van a sacar (las más
+            recientemente marcadas primero) */}
+        <ProximasSection
+          songs={songs
+            .filter((s) => s.esProxima)
+            .sort((a, b) => (b.proximaDesde ?? "").localeCompare(a.proximaDesde ?? ""))}
+        />
         {/* grid-cols-1 explícito: sin columnas definidas, la columna toma el ancho del texto
             "truncate" más largo (títulos de Últimas subidas / favoritos) y la página se desborda en celular */}
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">

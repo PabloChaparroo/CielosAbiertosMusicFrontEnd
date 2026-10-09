@@ -27,7 +27,7 @@ export function TagList({ tags, max = 2 }: { tags: string[]; max?: number }) {
   };
 
   return (
-    <div className="flex min-w-0 flex-nowrap items-center gap-1.5">
+    <div className="flex min-w-0 flex-nowrap items-center gap-1.5 overflow-hidden">
       {shown.map((t) => (
         <TagChip key={t} tag={t} />
       ))}

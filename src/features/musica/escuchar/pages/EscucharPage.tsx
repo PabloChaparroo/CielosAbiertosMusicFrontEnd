@@ -274,7 +274,11 @@ export function EscucharPage() {
                   </p>
                   <p className="truncate text-sm text-muted-foreground">{song.artist}</p>
                   {/* sin columna de temas (celular y pantallas medianas): van debajo del artista */}
-                  <div className="mt-1 2xl:hidden">
+                  {/* en celular entra 1 tema (y "+N"); en pantallas medianas, 2 */}
+                  <div className="mt-1 sm:hidden">
+                    <TagList tags={song.tags} max={1} />
+                  </div>
+                  <div className="mt-1 hidden sm:block 2xl:hidden">
                     <TagList tags={song.tags} />
                   </div>
                 </div>

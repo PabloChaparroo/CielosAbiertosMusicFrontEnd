@@ -48,10 +48,14 @@ export function LetrasPage() {
     document.addEventListener("pointerdown", closeOnOutsideTap);
     return () => document.removeEventListener("pointerdown", closeOnOutsideTap);
   }, []);
-  const scopedSongIds = useMemo(() => (songIds ? new Set(songIds.split(",")) : null), [songIds]);
+  // abierta desde una lista de canciones: solo esas, EN EL ORDEN DE LA LISTA (el equipo la sigue
+  // mientras toca), y la canción abierta no se mueve de lugar
+  const scopedOrder = useMemo(() => (songIds ? songIds.split(",") : null), [songIds]);
+  const scopedSongIds = useMemo(() => (scopedOrder ? new Set(scopedOrder) : null), [scopedOrder]);
   const availableSongs = useMemo(
-    () => (scopedSongIds ? songs.filter((item) => scopedSongIds.has(item.id)) : songs),
-    [songs, scopedSongIds],
+    () =>
+      scopedOrder ? scopedOrder.flatMap((id) => songs.find((item) => item.id === id) ?? []) : songs,
+    [songs, scopedOrder],
   );
 
   useEffect(() => {
@@ -68,10 +72,10 @@ export function LetrasPage() {
   );
   const visibleSongs = useMemo(
     () =>
-      query
+      query || scopedSongIds
         ? filtered
         : [...filtered].sort((a, b) => Number(b.id === selected) - Number(a.id === selected)),
-    [filtered, query, selected],
+    [filtered, query, selected, scopedSongIds],
   );
   // el buscador muestra de a 15: con muchas canciones no dibuja la lista entera
   const pagedList = usePaged(visibleSongs, 15, query);
@@ -101,7 +105,7 @@ export function LetrasPage() {
             <div className="min-h-0 overflow-y-auto p-2 lg:h-full">
               {!query && (
                 <p className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Recientes
+                  {scopedSongIds ? "Orden de la lista" : "Recientes"}
                 </p>
               )}
               {filtered.length === 0 ? (

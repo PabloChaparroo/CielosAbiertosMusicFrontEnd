@@ -83,7 +83,7 @@ export function LetrasPage() {
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <aside
           ref={searchPanelRef}
-          className="surface-card order-1 flex max-h-[55vh] flex-col overflow-hidden lg:order-1 lg:sticky lg:top-24 lg:max-h-[70vh]"
+          className="surface-card order-1 flex max-h-[55vh] flex-col overflow-hidden lg:order-1 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7.5rem)]"
         >
           <div className="relative border-b border-border/60 p-3">
             <Search className="absolute top-1/2 left-6 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -98,7 +98,7 @@ export function LetrasPage() {
           <div
             className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out lg:flex-1 lg:grid-rows-[1fr] lg:opacity-100 ${searchOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
           >
-            <div className="min-h-0 overflow-y-auto p-2 lg:max-h-[65vh]">
+            <div className="min-h-0 overflow-y-auto p-2 lg:h-full">
               {!query && (
                 <p className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Recientes

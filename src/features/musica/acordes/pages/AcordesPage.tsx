@@ -3,6 +3,7 @@ import {
   ArrowRightLeft,
   Check,
   FileDown,
+  Heart,
   ListMusic,
   Maximize2,
   Minus,
@@ -43,7 +44,8 @@ import {
 import { matchesSearch } from "@/lib/search";
 
 export function AcordesPage() {
-  const { songs, songsLoadState, current, isPlaying, play, toggle, can, updateSong } = useApp();
+  const { songs, songsLoadState, current, isPlaying, play, toggle, can, updateSong, favorites } =
+    useApp();
   const { songId: requestedSongId, songIds, editar } = useSearch({ from: "/acordes" });
   // "Editar" desde Letras abre el editor acá una sola vez, cuando la canción pedida ya cargó
   const autoEditDoneRef = useRef(false);
@@ -127,6 +129,10 @@ export function AcordesPage() {
   // canciones" se aplica recién en el return, después de todos los hooks.
   const ready = songsLoadState === "ready" && availableSongs.length > 0;
   const song = availableSongs.find((s) => s.id === songId) ?? availableSongs[0];
+  // al entrar sin canción elegida (ni lista), primero los favoritos, como en Letras. Sin
+  // favoritos, se abre la primera canción como siempre
+  const favoriteSongs = favorites.flatMap((id) => songs.find((s) => s.id === id) ?? []);
+  const showFavorites = !songId && !requestedSongId && !scopedSongIds && favoriteSongs.length > 0;
   // tono de partida: el del borrador si ya se lo pasó a otro tono, si no el de la canción
   const baseKey = editing && draftKey ? draftKey : song?.key;
   const targetKey = baseKey ? transposeKey(baseKey, semitones) : "C";
@@ -351,7 +357,9 @@ export function AcordesPage() {
                       play(s);
                     }}
                     className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors ${
-                      s.id === song.id ? "bg-primary/15 text-primary" : "hover:bg-elevated/70"
+                      !showFavorites && s.id === song.id
+                        ? "bg-primary/15 text-primary"
+                        : "hover:bg-elevated/70"
                     }`}
                   >
                     <button
@@ -408,285 +416,322 @@ export function AcordesPage() {
 
         {/* min-w-0: sin esto, una hoja más ancha que la pantalla estiraba la columna y cortaba la tarjeta de arriba */}
         <div className="order-2 min-w-0 space-y-5 lg:order-2">
-          <div className="surface-card flex flex-wrap items-center gap-3 p-4">
-            <div className="mr-auto min-w-0">
-              <div className="flex items-center gap-2">
-                <h2 className="truncate font-display text-2xl font-semibold">{song.title}</h2>
-                <FavButton songId={song.id} />
-                {/* en celular la lista (con su botón de reproducir) queda plegada: se reproduce desde acá */}
-                <div className="flex items-center gap-1 lg:hidden">
-                  <button
-                    type="button"
-                    onClick={() => (current?.id === song.id ? toggle() : play(song))}
-                    aria-label={
-                      current?.id === song.id && isPlaying
-                        ? `Pausar ${song.title}`
-                        : `Reproducir ${song.title}`
-                    }
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
-                  >
-                    {current?.id === song.id && isPlaying ? (
-                      <Pause className="h-4 w-4" />
-                    ) : (
-                      <Play className="ml-0.5 h-4 w-4" />
-                    )}
-                  </button>
-                  {song.trackCount > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (current?.id !== song.id) play(song);
-                        // después del render: el reproductor cierra el desplegable al cambiar de canción
-                        requestAnimationFrame(() =>
-                          window.dispatchEvent(new Event(OPEN_RELATED_TRACKS_EVENT)),
-                        );
-                      }}
-                      aria-label="Pistas relacionadas"
-                      title="Pistas relacionadas"
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-primary"
-                    >
-                      <ListMusic className="h-4 w-4" />
-                    </button>
-                  ) : null}
-                </div>
+          {showFavorites ? (
+            <div className="surface-card p-4 sm:p-6">
+              <div className="mb-3 flex items-center gap-2">
+                <Heart className="h-5 w-5 text-primary" />
+                <h2 className="font-display text-lg font-semibold">Tus favoritos</h2>
               </div>
-              <p className="truncate text-sm text-muted-foreground">
-                {song.artist} · original {song.key} · {song.compas} · {song.bpm} BPM
-              </p>
-            </div>
-
-            {/* "En vivo" y PDF en la tarjeta de la canción, igual que en Letras */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  void enterBrowserFullscreen();
-                  setLive(true);
-                }}
-                className="flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm hover:bg-secondary"
-              >
-                <Maximize2 className="h-4 w-4" /> <span className="hidden sm:inline">En vivo</span>
-              </button>
-              <button
-                // el PDF no depende del ancho de la pantalla: tamaño de siempre, salvo que se haya elegido a mano
-                onClick={() =>
-                  exportChordsPdf(song, {
-                    semitones,
-                    targetKey,
-                    mode,
-                    fontSize: manualFontSize ?? 25,
-                  })
-                }
-                className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
-              >
-                <FileDown className="h-4 w-4" /> <span className="hidden sm:inline">PDF</span>
-              </button>
-            </div>
-
-            <div className="flex items-center gap-1 rounded-full border border-border p-1">
-              <IconBtn onClick={() => setSemitones((s) => s - 1)} label="Bajar semitono">
-                <Minus className="h-4 w-4" />
-              </IconBtn>
-              <select
-                value={targetKey}
-                onChange={(e) => {
-                  const idxFrom = KEYS.indexOf(targetKey);
-                  const target = e.target.value;
-                  const semis = (((KEYS.indexOf(target) - idxFrom) % 12) + 12) % 12;
-                  setSemitones((s) => s + semis);
-                }}
-                className="rounded-full bg-transparent px-2 text-sm font-semibold text-primary outline-none"
-              >
-                {KEYS.map((k) => (
-                  <option key={k} value={k} className="bg-card text-foreground">
-                    {k}
-                  </option>
-                ))}
-              </select>
-              <IconBtn onClick={() => setSemitones((s) => s + 1)} label="Subir semitono">
-                <Plus className="h-4 w-4" />
-              </IconBtn>
-            </div>
-
-            <div className="flex items-center gap-1 rounded-full border border-border p-1">
-              <IconBtn onClick={() => changeFontSize(-2, 40)} label="Achicar letra">
-                <Minus className="h-4 w-4" />
-              </IconBtn>
-              <span className="w-10 text-center text-xs text-muted-foreground">{fontSize}px</span>
-              <IconBtn onClick={() => changeFontSize(2, 40)} label="Agrandar letra">
-                <Plus className="h-4 w-4" />
-              </IconBtn>
-            </div>
-
-            <div className="flex rounded-full border border-border p-0.5">
-              {(
-                [
-                  ["both", "Letra + acordes"],
-                  ["chords", "Solo acordes"],
-                ] as const
-              ).map(([v, label]) => (
-                <button
-                  key={v}
-                  onClick={() => setMode(v)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                    mode === v ? "gradient-gold text-primary-foreground" : "text-muted-foreground"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            {can("editSongs") && !editing ? (
-              <button
-                type="button"
-                onClick={handleStartEditing}
-                className="flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
-              >
-                <Pencil className="h-4 w-4" /> Editar
-              </button>
-            ) : null}
-            {/* Guardar/Cancelar arriba, a mano sin importar lo larga que sea la canción */}
-            {editing ? (
-              <>
-                {/* el selector de tono solo cambia la vista: esto reescribe el texto para guardarlo así */}
-                {((semitones % 12) + 12) % 12 ? (
+              <div className="divide-y divide-border/60">
+                {favoriteSongs.map((item) => (
                   <button
+                    key={item.id}
                     type="button"
-                    onClick={handleTransposeDraft}
-                    disabled={saving}
-                    title="Reescribe los acordes del texto en este tono; al guardar, la canción queda en este tono"
-                    className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105 disabled:opacity-50"
+                    onClick={() => setSongId(item.id)}
+                    className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-elevated/70"
                   >
-                    <ArrowRightLeft className="h-4 w-4" /> Pasar el texto a {targetKey}
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={handleCancelEditing}
-                  disabled={saving}
-                  className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
-                >
-                  <X className="h-4 w-4" /> Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleSaveChords()}
-                  disabled={saving}
-                  className="flex items-center gap-2 rounded-full border border-primary/50 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
-                >
-                  <Check className="h-4 w-4" /> {saving ? "Guardando…" : "Guardar"}
-                </button>
-              </>
-            ) : null}
-          </div>
-
-          {editing ? (
-            <div className="space-y-3">
-              {saveError ? (
-                <p role="alert" className="text-sm text-destructive">
-                  {saveError}
-                </p>
-              ) : null}
-              <div className="surface-card flex flex-wrap items-center gap-2 p-3">
-                <span className="mr-1 text-xs font-semibold text-muted-foreground">Secciones:</span>
-                {sectionShortcuts.map((section) => (
-                  <button
-                    key={section}
-                    type="button"
-                    onClick={() => insertAtCursor(`[${section}]`, true)}
-                    className="rounded-full border border-primary/40 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
-                  >
-                    {section}
+                    <Cover song={item} size="sm" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{item.title}</span>
+                      <span className="block truncate text-sm text-muted-foreground">
+                        {item.artist}
+                      </span>
+                    </span>
+                    <span className="text-xs text-muted-foreground">{item.key}</span>
                   </button>
                 ))}
-              </div>
-              <div className="surface-card flex flex-wrap items-center gap-2 p-3">
-                <span className="mr-1 text-xs font-semibold text-muted-foreground">
-                  Acordes en {targetKey}:
-                </span>
-                {chordShortcuts.map((chord) => (
-                  <button
-                    key={chord}
-                    type="button"
-                    onClick={() => insertAtCursor(`[${chord}]`, false)}
-                    className="rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-white/60 hover:bg-white/10"
-                  >
-                    {chord}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => insertAtCursor(" - ", false)}
-                  className="rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-white/60 hover:bg-white/10"
-                >
-                  -
-                </button>
-                <button
-                  type="button"
-                  onClick={() => insertAtCursor(":]", false)}
-                  className="rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-white/60 hover:bg-white/10"
-                >
-                  :]
-                </button>
-                {/* comilla recta: pegada al acorde ([''Bm]) se dibuja arriba; el teclado del celular pone la curva */}
-                <button
-                  type="button"
-                  onClick={() => insertAtCursor("'", false)}
-                  title="Comilla: pegada al acorde ([''Bm]) aparece arriba de él"
-                  className="rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-white/60 hover:bg-white/10"
-                >
-                  &apos;
-                </button>
-                {["%", "x3", "x4", "Sube Tono", "Baja Tono"].map((marker) => (
-                  <button
-                    key={marker}
-                    type="button"
-                    onClick={() => insertAtCursor(`[${marker}]`, false)}
-                    className="rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-white/60 hover:bg-white/10"
-                  >
-                    {marker}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  title="Anotación al costado de la línea, ej. (coro 2)"
-                  onClick={() => insertAtCursor(" ()", false, 1)}
-                  className="rounded-full border border-sky/50 px-3 py-1.5 text-xs font-semibold text-sky transition-colors hover:bg-sky/10"
-                >
-                  ↱ nota
-                </button>
-                <button
-                  type="button"
-                  onClick={() => insertAtCursor("    ", false)}
-                  className="rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-white/60 hover:bg-white/10"
-                >
-                  Tab
-                </button>
-              </div>
-              <div className="grid items-start gap-4 xl:grid-cols-2">
-                <ChordProEditor
-                  textareaRef={chordInputRef}
-                  value={draft}
-                  onChange={setDraft}
-                  className="min-h-[max(420px,60vh)] w-full rounded-2xl border border-border bg-card p-6 font-mono xl:min-h-[calc(100vh-8rem)] text-lg leading-relaxed whitespace-pre-wrap outline-none focus:border-primary/50"
-                />
-                <div
-                  ref={sheetBoxRef}
-                  className="surface-card overflow-auto p-5 sm:p-6 xl:sticky xl:top-24 xl:max-h-[calc(100vh-8rem)]"
-                >
-                  <p className="mb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                    Vista previa
-                  </p>
-                  <ChordSheet lines={draftLines} fontSize={fontSize} mode={mode} />
-                </div>
               </div>
             </div>
           ) : (
-            <div ref={sheetBoxRef} className="surface-card overflow-x-auto p-5 sm:p-8">
-              <ChordSheet lines={lines} fontSize={fontSize} mode={mode} />
-            </div>
-          )}
+            <>
+              <div className="surface-card flex flex-wrap items-center gap-3 p-4">
+                <div className="mr-auto min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h2 className="truncate font-display text-2xl font-semibold">{song.title}</h2>
+                    <FavButton songId={song.id} />
+                    {/* en celular la lista (con su botón de reproducir) queda plegada: se reproduce desde acá */}
+                    <div className="flex items-center gap-1 lg:hidden">
+                      <button
+                        type="button"
+                        onClick={() => (current?.id === song.id ? toggle() : play(song))}
+                        aria-label={
+                          current?.id === song.id && isPlaying
+                            ? `Pausar ${song.title}`
+                            : `Reproducir ${song.title}`
+                        }
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                      >
+                        {current?.id === song.id && isPlaying ? (
+                          <Pause className="h-4 w-4" />
+                        ) : (
+                          <Play className="ml-0.5 h-4 w-4" />
+                        )}
+                      </button>
+                      {song.trackCount > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (current?.id !== song.id) play(song);
+                            // después del render: el reproductor cierra el desplegable al cambiar de canción
+                            requestAnimationFrame(() =>
+                              window.dispatchEvent(new Event(OPEN_RELATED_TRACKS_EVENT)),
+                            );
+                          }}
+                          aria-label="Pistas relacionadas"
+                          title="Pistas relacionadas"
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-primary"
+                        >
+                          <ListMusic className="h-4 w-4" />
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                  <p className="truncate text-sm text-muted-foreground">
+                    {song.artist} · original {song.key} · {song.compas} · {song.bpm} BPM
+                  </p>
+                </div>
 
-          {canSeeAnnotations ? <Annotations songId={song.id} /> : null}
+                {/* "En vivo" y PDF en la tarjeta de la canción, igual que en Letras */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      void enterBrowserFullscreen();
+                      setLive(true);
+                    }}
+                    className="flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm hover:bg-secondary"
+                  >
+                    <Maximize2 className="h-4 w-4" />{" "}
+                    <span className="hidden sm:inline">En vivo</span>
+                  </button>
+                  <button
+                    // el PDF no depende del ancho de la pantalla: tamaño de siempre, salvo que se haya elegido a mano
+                    onClick={() =>
+                      exportChordsPdf(song, {
+                        semitones,
+                        targetKey,
+                        mode,
+                        fontSize: manualFontSize ?? 25,
+                      })
+                    }
+                    className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
+                  >
+                    <FileDown className="h-4 w-4" /> <span className="hidden sm:inline">PDF</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-1 rounded-full border border-border p-1">
+                  <IconBtn onClick={() => setSemitones((s) => s - 1)} label="Bajar semitono">
+                    <Minus className="h-4 w-4" />
+                  </IconBtn>
+                  <select
+                    value={targetKey}
+                    onChange={(e) => {
+                      const idxFrom = KEYS.indexOf(targetKey);
+                      const target = e.target.value;
+                      const semis = (((KEYS.indexOf(target) - idxFrom) % 12) + 12) % 12;
+                      setSemitones((s) => s + semis);
+                    }}
+                    className="rounded-full bg-transparent px-2 text-sm font-semibold text-primary outline-none"
+                  >
+                    {KEYS.map((k) => (
+                      <option key={k} value={k} className="bg-card text-foreground">
+                        {k}
+                      </option>
+                    ))}
+                  </select>
+                  <IconBtn onClick={() => setSemitones((s) => s + 1)} label="Subir semitono">
+                    <Plus className="h-4 w-4" />
+                  </IconBtn>
+                </div>
+
+                <div className="flex items-center gap-1 rounded-full border border-border p-1">
+                  <IconBtn onClick={() => changeFontSize(-2, 40)} label="Achicar letra">
+                    <Minus className="h-4 w-4" />
+                  </IconBtn>
+                  <span className="w-10 text-center text-xs text-muted-foreground">
+                    {fontSize}px
+                  </span>
+                  <IconBtn onClick={() => changeFontSize(2, 40)} label="Agrandar letra">
+                    <Plus className="h-4 w-4" />
+                  </IconBtn>
+                </div>
+
+                <div className="flex rounded-full border border-border p-0.5">
+                  {(
+                    [
+                      ["both", "Letra + acordes"],
+                      ["chords", "Solo acordes"],
+                    ] as const
+                  ).map(([v, label]) => (
+                    <button
+                      key={v}
+                      onClick={() => setMode(v)}
+                      className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                        mode === v
+                          ? "gradient-gold text-primary-foreground"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {can("editSongs") && !editing ? (
+                  <button
+                    type="button"
+                    onClick={handleStartEditing}
+                    className="flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+                  >
+                    <Pencil className="h-4 w-4" /> Editar
+                  </button>
+                ) : null}
+                {/* Guardar/Cancelar arriba, a mano sin importar lo larga que sea la canción */}
+                {editing ? (
+                  <>
+                    {/* el selector de tono solo cambia la vista: esto reescribe el texto para guardarlo así */}
+                    {((semitones % 12) + 12) % 12 ? (
+                      <button
+                        type="button"
+                        onClick={handleTransposeDraft}
+                        disabled={saving}
+                        title="Reescribe los acordes del texto en este tono; al guardar, la canción queda en este tono"
+                        className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105 disabled:opacity-50"
+                      >
+                        <ArrowRightLeft className="h-4 w-4" /> Pasar el texto a {targetKey}
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={handleCancelEditing}
+                      disabled={saving}
+                      className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                    >
+                      <X className="h-4 w-4" /> Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleSaveChords()}
+                      disabled={saving}
+                      className="flex items-center gap-2 rounded-full border border-primary/50 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+                    >
+                      <Check className="h-4 w-4" /> {saving ? "Guardando…" : "Guardar"}
+                    </button>
+                  </>
+                ) : null}
+              </div>
+
+              {editing ? (
+                <div className="space-y-3">
+                  {saveError ? (
+                    <p role="alert" className="text-sm text-destructive">
+                      {saveError}
+                    </p>
+                  ) : null}
+                  <div className="surface-card flex flex-wrap items-center gap-2 p-3">
+                    <span className="mr-1 text-xs font-semibold text-muted-foreground">
+                      Secciones:
+                    </span>
+                    {sectionShortcuts.map((section) => (
+                      <button
+                        key={section}
+                        type="button"
+                        onClick={() => insertAtCursor(`[${section}]`, true)}
+                        className="rounded-full border border-primary/40 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                      >
+                        {section}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="surface-card flex flex-wrap items-center gap-2 p-3">
+                    <span className="mr-1 text-xs font-semibold text-muted-foreground">
+                      Acordes en {targetKey}:
+                    </span>
+                    {chordShortcuts.map((chord) => (
+                      <button
+                        key={chord}
+                        type="button"
+                        onClick={() => insertAtCursor(`[${chord}]`, false)}
+                        className="rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-white/60 hover:bg-white/10"
+                      >
+                        {chord}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => insertAtCursor(" - ", false)}
+                      className="rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-white/60 hover:bg-white/10"
+                    >
+                      -
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => insertAtCursor(":]", false)}
+                      className="rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-white/60 hover:bg-white/10"
+                    >
+                      :]
+                    </button>
+                    {/* comilla recta: pegada al acorde ([''Bm]) se dibuja arriba; el teclado del celular pone la curva */}
+                    <button
+                      type="button"
+                      onClick={() => insertAtCursor("'", false)}
+                      title="Comilla: pegada al acorde ([''Bm]) aparece arriba de él"
+                      className="rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-white/60 hover:bg-white/10"
+                    >
+                      &apos;
+                    </button>
+                    {["%", "x3", "x4", "Sube Tono", "Baja Tono"].map((marker) => (
+                      <button
+                        key={marker}
+                        type="button"
+                        onClick={() => insertAtCursor(`[${marker}]`, false)}
+                        className="rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-white/60 hover:bg-white/10"
+                      >
+                        {marker}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      title="Anotación al costado de la línea, ej. (coro 2)"
+                      onClick={() => insertAtCursor(" ()", false, 1)}
+                      className="rounded-full border border-sky/50 px-3 py-1.5 text-xs font-semibold text-sky transition-colors hover:bg-sky/10"
+                    >
+                      ↱ nota
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => insertAtCursor("    ", false)}
+                      className="rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-white/60 hover:bg-white/10"
+                    >
+                      Tab
+                    </button>
+                  </div>
+                  <div className="grid items-start gap-4 xl:grid-cols-2">
+                    <ChordProEditor
+                      textareaRef={chordInputRef}
+                      value={draft}
+                      onChange={setDraft}
+                      className="min-h-[max(420px,60vh)] w-full rounded-2xl border border-border bg-card p-6 font-mono xl:min-h-[calc(100vh-8rem)] text-lg leading-relaxed whitespace-pre-wrap outline-none focus:border-primary/50"
+                    />
+                    <div
+                      ref={sheetBoxRef}
+                      className="surface-card overflow-auto p-5 sm:p-6 xl:sticky xl:top-24 xl:max-h-[calc(100vh-8rem)]"
+                    >
+                      <p className="mb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                        Vista previa
+                      </p>
+                      <ChordSheet lines={draftLines} fontSize={fontSize} mode={mode} />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div ref={sheetBoxRef} className="surface-card overflow-x-auto p-5 sm:p-8">
+                  <ChordSheet lines={lines} fontSize={fontSize} mode={mode} />
+                </div>
+              )}
+
+              {canSeeAnnotations ? <Annotations songId={song.id} /> : null}
+            </>
+          )}
         </div>
       </div>
     </AppLayout>

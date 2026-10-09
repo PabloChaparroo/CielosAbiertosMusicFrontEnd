@@ -328,6 +328,11 @@ export function UploadModal({
                     ) : null}
                   </div>
                 ) : null}
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  ¿Más audios de la canción, cada uno con su nombre (secuencia, batería, guitarra…)?
+                  Subilos en <span className="font-medium text-foreground">Pistas</span> (ícono de
+                  capas en la lista).
+                </p>
                 {!audioFile && !savedAudioKey && isEdit ? (
                   <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Music className="h-3.5 w-3.5" /> Todavía sin audio cargado.

@@ -11,6 +11,7 @@ import {
 import type { AudioTrack } from "@/features/canciones/types/audio-track";
 import { useApp } from "@/hooks/useApp";
 import type { Song } from "@/types";
+import { trackNameFromFile } from "@/features/canciones/lib/track-name";
 import { ConfirmTypedDeleteModal } from "./ConfirmTypedDeleteModal";
 
 const inputCls =
@@ -93,6 +94,8 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
       return;
     }
     setAudioFile(file);
+    // el nombre se completa con el del archivo (se puede cambiar antes de subir)
+    if (!label.trim()) setLabel(trackNameFromFile(file.name));
   };
 
   const handleUpload = async () => {
@@ -333,7 +336,7 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
             </p>
             <input
               className={inputCls}
-              placeholder="Nombre de la pista, ej. Click y guía"
+              placeholder="Nombre de la pista, ej. Batería, Guitarra, Click y guía"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               disabled={saving}

@@ -42,6 +42,10 @@ export function InicioPage() {
   const latest = [...songs].slice(0, 5);
   const songOfMonth = top[0];
   const favSongs = songs.filter((s) => favorites.includes(s.id));
+  // próximas a sacar: las más recientemente marcadas primero
+  const proximas = songs
+    .filter((s) => s.esProxima)
+    .sort((a, b) => (b.proximaDesde ?? "").localeCompare(a.proximaDesde ?? ""));
 
   return (
     <AppLayout title="Inicio" subtitle={subtitle} bleed>
@@ -107,85 +111,95 @@ export function InicioPage() {
       </section>
 
       <div className="space-y-10 px-4 py-8 sm:px-8">
-        {/* lo primero que se ve bajo la portada: las canciones que se van a sacar (las más
-            recientemente marcadas primero) */}
-        <ProximasSection
-          songs={songs
-            .filter((s) => s.esProxima)
-            .sort((a, b) => (b.proximaDesde ?? "").localeCompare(a.proximaDesde ?? ""))}
-        />
-        {/* grid-cols-1 explícito: sin columnas definidas, la columna toma el ancho del texto
+        {/* con una sola próxima a sacar, en compu las 4 tarjetas van al lado del post (2 x 2)
+            para no dejar vacío el costado; con varias, los posts llenan la fila y las tarjetas
+            van abajo; sin ninguna, las tarjetas van a lo largo como siempre */}
+        <div
+          className={
+            proximas.length === 1
+              ? "space-y-10 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0"
+              : "space-y-10"
+          }
+        >
+          <ProximasSection songs={proximas} />
+          {/* grid-cols-1 explícito: sin columnas definidas, la columna toma el ancho del texto
             "truncate" más largo (títulos de Últimas subidas / favoritos) y la página se desborda en celular */}
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {upcoming ? (
-            <Link
-              to="/setlists"
-              className="surface-card group p-5 hover:-translate-y-1 hover:border-primary/40"
-            >
-              <CalendarDays className="mb-3 h-5 w-5 text-primary" />
-              <p className="text-xs tracking-widest text-muted-foreground uppercase">
-                Próxima lista
-              </p>
-              <p className="mt-1 font-display text-lg font-semibold">{upcoming.title}</p>
-              <p className="text-sm text-muted-foreground">
-                {new Date(upcoming.date).toLocaleDateString("es-AR", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                })}{" "}
-                · {upcoming.items.length} canciones
-              </p>
-            </Link>
-          ) : null}
+          <section
+            className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${
+              // alineadas con el post (debajo del título "Próxima a sacar")
+              proximas.length === 1 ? "lg:content-start lg:pt-[3.75rem]" : "xl:grid-cols-4"
+            }`}
+          >
+            {upcoming ? (
+              <Link
+                to="/setlists"
+                className="surface-card group p-5 hover:-translate-y-1 hover:border-primary/40"
+              >
+                <CalendarDays className="mb-3 h-5 w-5 text-primary" />
+                <p className="text-xs tracking-widest text-muted-foreground uppercase">
+                  Próxima lista
+                </p>
+                <p className="mt-1 font-display text-lg font-semibold">{upcoming.title}</p>
+                <p className="text-sm text-muted-foreground">
+                  {new Date(upcoming.date).toLocaleDateString("es-AR", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                  })}{" "}
+                  · {upcoming.items.length} canciones
+                </p>
+              </Link>
+            ) : null}
 
-          {songOfMonth ? (
-            <div className="surface-card p-5">
-              <Flame className="mb-3 h-5 w-5 text-primary" />
-              <p className="text-xs tracking-widest text-muted-foreground uppercase">
-                Canción del mes
-              </p>
-              <div className="mt-2 flex items-center gap-3">
-                <Cover song={songOfMonth} size="sm" />
-                <div className="min-w-0">
-                  <p className="truncate font-semibold">{songOfMonth.title}</p>
-                  <p className="truncate text-sm text-muted-foreground">{songOfMonth.artist}</p>
+            {songOfMonth ? (
+              <div className="surface-card p-5">
+                <Flame className="mb-3 h-5 w-5 text-primary" />
+                <p className="text-xs tracking-widest text-muted-foreground uppercase">
+                  Canción del mes
+                </p>
+                <div className="mt-2 flex items-center gap-3">
+                  <Cover song={songOfMonth} size="sm" />
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">{songOfMonth.title}</p>
+                    <p className="truncate text-sm text-muted-foreground">{songOfMonth.artist}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : null}
+            ) : null}
 
-          <Link
-            to="/escuchar"
-            className="surface-card p-5 hover:-translate-y-1 hover:border-primary/40"
-          >
-            <TrendingUp className="mb-3 h-5 w-5 text-primary" />
-            <p className="text-xs tracking-widest text-muted-foreground uppercase">
-              Últimas subidas
-            </p>
-            <p className="mt-1 font-display text-3xl font-semibold">{latest.length}</p>
-            <p className="truncate text-sm text-muted-foreground">
-              {latest.map((s) => s.title).join(" · ")}
-            </p>
-          </Link>
-
-          {isGuest ? null : (
             <Link
-              to="/favoritos"
+              to="/escuchar"
               className="surface-card p-5 hover:-translate-y-1 hover:border-primary/40"
             >
-              <Heart className="mb-3 h-5 w-5 text-primary" />
+              <TrendingUp className="mb-3 h-5 w-5 text-primary" />
               <p className="text-xs tracking-widest text-muted-foreground uppercase">
-                Tus favoritos
+                Últimas subidas
               </p>
-              <p className="mt-1 font-display text-3xl font-semibold">{favSongs.length}</p>
+              <p className="mt-1 font-display text-3xl font-semibold">{latest.length}</p>
               <p className="truncate text-sm text-muted-foreground">
-                {favSongs.length
-                  ? favSongs.map((s) => s.title).join(" · ")
-                  : "Todavía sin favoritos"}
+                {latest.map((s) => s.title).join(" · ")}
               </p>
             </Link>
-          )}
-        </section>
+
+            {isGuest ? null : (
+              <Link
+                to="/favoritos"
+                className="surface-card p-5 hover:-translate-y-1 hover:border-primary/40"
+              >
+                <Heart className="mb-3 h-5 w-5 text-primary" />
+                <p className="text-xs tracking-widest text-muted-foreground uppercase">
+                  Tus favoritos
+                </p>
+                <p className="mt-1 font-display text-3xl font-semibold">{favSongs.length}</p>
+                <p className="truncate text-sm text-muted-foreground">
+                  {favSongs.length
+                    ? favSongs.map((s) => s.title).join(" · ")
+                    : "Todavía sin favoritos"}
+                </p>
+              </Link>
+            )}
+          </section>
+        </div>
 
         <section>
           <div className="mb-4 flex items-end justify-between">

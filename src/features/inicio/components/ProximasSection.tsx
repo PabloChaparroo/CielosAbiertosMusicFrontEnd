@@ -50,7 +50,12 @@ export function ProximasSection({ songs }: { songs: Song[] }) {
       </div>
 
       {/* celular: carrusel con snap (la siguiente asoma); compu: posts de a 2 o 3 por fila */}
-      <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 [scrollbar-width:none] sm:-mx-8 sm:px-8 lg:mx-0 lg:grid lg:snap-none lg:grid-cols-2 lg:overflow-visible lg:px-0 2xl:grid-cols-3">
+      <div
+        className={`-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 [scrollbar-width:none] sm:-mx-8 sm:px-8 lg:mx-0 lg:grid lg:snap-none lg:overflow-visible lg:px-0 ${
+          // una sola: ocupa su mitad de la fila (al lado van las tarjetas de Inicio)
+          single ? "lg:grid-cols-1" : "lg:grid-cols-2 2xl:grid-cols-3"
+        }`}
+      >
         {songs.map((song) => (
           <ProximaPost key={song.id} song={song} single={single} />
         ))}

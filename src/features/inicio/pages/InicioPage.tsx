@@ -61,19 +61,22 @@ export function InicioPage() {
               <Sparkles className="h-3.5 w-3.5 text-primary" />{" "}
               {currentUser.roles.map((r) => r.name).join(" · ") || "Sin rol"}
             </p>
-            <div className="flex items-center gap-5 sm:gap-8">
+            <div className="flex items-center gap-4">
               <h2 className="font-display text-5xl leading-[0.95] font-bold sm:text-7xl">
                 Cielos
                 <br />
                 <span className="text-gradient-gold">Abiertos</span>
               </h2>
-              <img
-                src="/icon-192.png"
-                alt=""
-                width={192}
-                height={192}
-                className="glow h-24 w-24 shrink-0 rounded-full sm:h-32 sm:w-32 lg:hidden"
-              />
+              {/* centrado en el espacio libre a la derecha del título */}
+              <div className="flex flex-1 justify-center lg:hidden">
+                <img
+                  src="/icon-192.png"
+                  alt=""
+                  width={192}
+                  height={192}
+                  className="glow h-24 w-24 shrink-0 rounded-full sm:h-32 sm:w-32"
+                />
+              </div>
             </div>
             <p className="mt-3 text-xs tracking-[0.3em] text-foreground/70 uppercase sm:text-sm">
               Ministerio de Adoración

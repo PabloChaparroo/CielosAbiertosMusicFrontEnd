@@ -10,6 +10,7 @@ import {
   Play,
   RectangleVertical,
   Search,
+  Heart,
   Type as TypeIcon,
   Upload,
   X,
@@ -33,7 +34,7 @@ import {
 import { matchesSearch } from "@/lib/search";
 
 export function LetrasPage() {
-  const { songs, can, updateSong, current, isPlaying, play, toggle } = useApp();
+  const { songs, can, updateSong, current, isPlaying, play, toggle, favorites } = useApp();
   const { songId: requestedSongId, songIds } = useSearch({ from: "/letras" });
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -50,6 +51,11 @@ export function LetrasPage() {
   }, []);
   // abierta desde una lista de canciones: solo esas, EN EL ORDEN DE LA LISTA (el equipo la sigue
   // mientras toca), y la canción abierta no se mueve de lugar
+  // favoritos (en el orden en que se marcaron): se muestran cuando no hay canción elegida
+  const favoriteSongs = useMemo(
+    () => favorites.flatMap((id) => songs.find((s) => s.id === id) ?? []),
+    [favorites, songs],
+  );
   const scopedOrder = useMemo(() => (songIds ? songIds.split(",") : null), [songIds]);
   const scopedSongIds = useMemo(() => (scopedOrder ? new Set(scopedOrder) : null), [scopedOrder]);
   const availableSongs = useMemo(
@@ -179,19 +185,19 @@ export function LetrasPage() {
           {song ? (
             <SongLyricsDetail song={song} canEdit={can("editSongs")} onSave={updateSong} />
           ) : (
-            // sin canción elegida: las últimas subidas (mismo orden que "Últimas subidas" de Inicio)
+            // sin canción elegida: tus favoritos, para abrir su letra de un toque
             <div className="surface-card p-4 sm:p-6">
               <div className="mb-3 flex items-center gap-2">
-                <TypeIcon className="h-5 w-5 text-primary" />
-                <h2 className="font-display text-lg font-semibold">Últimas canciones subidas</h2>
+                <Heart className="h-5 w-5 text-primary" />
+                <h2 className="font-display text-lg font-semibold">Tus favoritos</h2>
               </div>
-              {availableSongs.length === 0 ? (
+              {favoriteSongs.length === 0 ? (
                 <p className="py-10 text-center text-sm text-muted-foreground">
-                  Todavía no hay canciones.
+                  Todavía no tenés favoritos. Tocá el corazón de una canción para tenerla acá.
                 </p>
               ) : (
                 <div className="divide-y divide-border/60">
-                  {availableSongs.slice(0, 8).map((item) => (
+                  {favoriteSongs.map((item) => (
                     <button
                       key={item.id}
                       type="button"

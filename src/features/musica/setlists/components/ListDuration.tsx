@@ -13,7 +13,7 @@ export function ListDuration({ songs, className = "" }: { songs: Song[]; classNa
   const known = songs.length - missing;
   return (
     <span
-      className={`inline-flex items-center gap-1.5 text-xs text-muted-foreground ${className}`}
+      className={`inline-flex items-center gap-1.5 text-xs whitespace-nowrap text-muted-foreground ${className}`}
       title={
         missing
           ? `Suma de las secuencias. ${missing} ${missing === 1 ? "canción no tiene" : "canciones no tienen"} audio para medir.`

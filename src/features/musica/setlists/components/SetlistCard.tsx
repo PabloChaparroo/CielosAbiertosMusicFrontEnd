@@ -40,7 +40,7 @@ export function SetlistCard({
       className={`surface-card w-full p-5 text-left hover:-translate-y-1 hover:border-primary/40 ${muted ? "opacity-80" : ""}`}
     >
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0 flex-1">
           <span
             className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${eventColor[s.type]}`}
           >
@@ -56,17 +56,16 @@ export function SetlistCard({
               minute: "2-digit",
             })}
           </p>
+          {/* cuánto dura tocar toda la lista (suma de las secuencias) */}
+          <ListDuration
+            songs={s.items.flatMap((it) => songs.find((so) => so.id === it.songId) ?? [])}
+            className="mt-1"
+          />
         </div>
-        <div className="flex items-start gap-3 text-right text-xs text-muted-foreground">
+        <div className="flex shrink-0 items-start gap-3 text-right text-xs text-muted-foreground">
           <div>
             <p className="font-semibold text-foreground">{s.items.length}</p>
             canciones
-            {/* cuánto dura tocar toda la lista (suma de las secuencias) */}
-            <div className="mt-1">
-              <ListDuration
-                songs={s.items.flatMap((it) => songs.find((so) => so.id === it.songId) ?? [])}
-              />
-            </div>
           </div>
           {onSaveTemplate ? (
             <button

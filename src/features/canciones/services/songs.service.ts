@@ -145,6 +145,11 @@ export const SongsService = {
     return apiRequest(`/canciones/${id}/definitivo`, { method: "DELETE" });
   },
 
+  /** Saca el audio principal y borra su archivo (si no es también una pista) */
+  removeSongAudio(id: string): Promise<void> {
+    return apiRequest(`/canciones/${id}/audio`, { method: "DELETE" });
+  },
+
   async updateSong(id: string, dto: UpdateSongInput): Promise<Song> {
     const updated = await apiRequest<RawSong>(`/canciones/${id}`, { method: "PATCH", body: dto });
     return mapSong(updated);

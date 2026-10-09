@@ -9,6 +9,7 @@ import { StorageClient } from "@/lib/storage-client";
 import { SongsService, type TipoCancion } from "@/features/canciones/services/songs.service";
 import { validateAudioFile } from "@/features/canciones/lib/audio-validation";
 import { readAudioDuration, readFileDuration } from "@/features/canciones/lib/audio-duration";
+import { trackNameFromFile } from "@/features/canciones/lib/track-name";
 import type { Song, Tag } from "@/types";
 
 const COVER_PALETTE = [
@@ -66,6 +67,8 @@ export function UploadModal({
   // audio principal guardado: se vacía al eliminarlo, así Guardar no lo vuelve a poner
   const [savedAudioKey, setSavedAudioKey] = useState(song?.audioKey ?? null);
   const [confirmRemoveAudio, setConfirmRemoveAudio] = useState(false);
+  // nombre propio del audio principal (ej. "Audio Quién podrá"); vacío = el título de la canción
+  const [audioName, setAudioName] = useState(song?.audioName ?? "");
   const [title, setTitle] = useState(song?.title ?? "");
   const [artist, setArtist] = useState(song?.artist ?? "");
   const [key, setKey] = useState(song?.key ?? "G");
@@ -162,6 +165,8 @@ export function UploadModal({
       return;
     }
     setAudioFile(file);
+    // el nombre del audio se completa con el del archivo (se puede cambiar)
+    if (!audioName.trim()) setAudioName(trackNameFromFile(file.name));
     const requestId = ++durationRequestRef.current;
     void readFileDuration(file).then((seconds) => applyAudioDuration(seconds, requestId));
   };
@@ -208,7 +213,7 @@ export function UploadModal({
         // sin temas elegidos va vacío (antes se ponía "Adoración", que es un tipo y ya no es tema)
         tags,
         tipoId,
-        ...(audioKey ? { audioKey } : {}),
+        ...(audioKey ? { audioKey, audioName: audioName.trim() } : {}),
       };
 
       const saved = isEdit
@@ -328,11 +333,16 @@ export function UploadModal({
                     ) : null}
                   </div>
                 ) : null}
-                <p className="mt-1.5 text-xs text-muted-foreground">
-                  ¿Más audios de la canción, cada uno con su nombre (secuencia, batería, guitarra…)?
-                  Subilos en <span className="font-medium text-foreground">Pistas</span> (ícono de
-                  capas en la lista).
-                </p>
+                {audioFile || savedAudioKey ? (
+                  <input
+                    className={`${inputCls} mt-2`}
+                    placeholder={`Nombre del audio (si queda vacío: ${title.trim() || "el título"})`}
+                    value={audioName}
+                    onChange={(e) => setAudioName(e.target.value)}
+                    disabled={saving}
+                    aria-label="Nombre del audio"
+                  />
+                ) : null}
                 {!audioFile && !savedAudioKey && isEdit ? (
                   <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Music className="h-3.5 w-3.5" /> Todavía sin audio cargado.
@@ -481,7 +491,8 @@ export function UploadModal({
           onConfirm={async () => {
             await SongsService.removeSongAudio(song.id);
             setSavedAudioKey(null);
-            updateSong({ ...song, audioKey: null });
+            setAudioName("");
+            updateSong({ ...song, audioKey: null, audioName: null });
             setConfirmRemoveAudio(false);
           }}
         >

@@ -72,7 +72,7 @@ export function MiniPlayer() {
   const activeAudioLabel = useYoutube
     ? undefined
     : isMainAudio
-      ? current?.title
+      ? current?.audioName || current?.title
       : activeTrack?.label;
   const localRef = useRef<HTMLAudioElement | null>(null);
 
@@ -366,7 +366,7 @@ export function MiniPlayer() {
       ? [
           {
             key: mainAudioKey,
-            label: `Original — ${current.title}`,
+            label: current.audioName || `Original — ${current.title}`,
             kind: "audio" as const,
             active: isMainAudio && !useYoutube,
           },
@@ -447,7 +447,9 @@ export function MiniPlayer() {
                 ) : (
                   <span className="w-3.5" />
                 )}
-                <span className="min-w-0 flex-1 truncate">{current.title}</span>
+                <span className="min-w-0 flex-1 truncate">
+                  {current.audioName || current.title}
+                </span>
                 {isMainAudio && !useYoutube ? <span className="text-xs">Activo</span> : null}
               </button>
             ) : null}

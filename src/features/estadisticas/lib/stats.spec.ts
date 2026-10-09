@@ -28,6 +28,7 @@ function song(title: string, tags: Tag[], playsByMonth: Record<string, number>):
     tags,
     cover: "",
     audioKey: null,
+    audioName: null,
     chordpro: "",
     lyricsImageKey: null,
     coverKey: null,

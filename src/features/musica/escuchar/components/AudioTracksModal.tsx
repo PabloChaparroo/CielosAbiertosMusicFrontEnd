@@ -187,7 +187,12 @@ export function AudioTracksModal({ song, onClose }: { song: Song; onClose: () =>
   const mainKey = latestSong().audioKey;
   const mainTrack: AudioTrack | null =
     mainKey && !tracks.some((t) => t.audioKey === mainKey)
-      ? ({ id: "principal", label: song.title, audioKey: mainKey, order: -1 } as AudioTrack)
+      ? ({
+          id: "principal",
+          label: latestSong().audioName || song.title,
+          audioKey: mainKey,
+          order: -1,
+        } as AudioTrack)
       : null;
 
   const handlePlay = async (track: AudioTrack) => {

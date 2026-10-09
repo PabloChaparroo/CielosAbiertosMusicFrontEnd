@@ -25,6 +25,7 @@ export interface RawSong {
   /** Ausente en respuestas de un backend anterior a la migración AddSongCoverKey */
   coverKey?: string | null;
   audioKey: string | null;
+  audioName?: string | null;
   chordpro: string;
   lyricsImageKey: string | null;
   tags: RawTag[];
@@ -59,6 +60,8 @@ export interface CreateSongInput {
   tags: string[];
   tipoId: string;
   audioKey?: string;
+  /** Vacío lo quita */
+  audioName?: string;
   lyricsImageKey?: string;
   /** null quita la portada */
   coverKey?: string | null;
@@ -105,6 +108,7 @@ export function mapSong(raw: RawSong): Song {
     coverKey: raw.coverKey ?? null,
     youtubeVideoId: youtubeVideoIdOf(raw.links ?? []),
     audioKey: raw.audioKey,
+    audioName: raw.audioName ?? null,
     chordpro: raw.chordpro,
     lyricsImageKey: raw.lyricsImageKey,
     addedAt: raw.fechaHoraAlta,

@@ -28,6 +28,8 @@ export interface Song {
   coverKey: string | null;
   /** Key del objeto en S3/MinIO, no una URL reproducible — hay que resolverla con StorageClient.getDownloadUrl() antes de reproducir. null si la canción no tiene audio cargado. */
   audioKey: string | null;
+  /** Nombre propio del audio principal (ej. "Audio Quién podrá"); null = se muestra el título */
+  audioName: string | null;
   /** ChordPro-style body: chords inside [] before the syllable */
   chordpro: string;
   /** Key del objeto en S3/MinIO, no una URL — mismo criterio que audioKey. null si la canción no tiene foto de letra cargada. */

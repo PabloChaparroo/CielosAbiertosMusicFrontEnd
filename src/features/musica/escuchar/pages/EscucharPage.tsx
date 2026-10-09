@@ -15,6 +15,7 @@ import {
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, EmptyState, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
 import { TagList } from "@/components/common/TagList";
+import { hasSequence } from "@/features/canciones/lib/sequence";
 import { useApp } from "@/hooks/useApp";
 import { Pager, usePaged } from "@/components/common/Pager";
 import type { Song, Tag } from "@/types";
@@ -81,7 +82,7 @@ export function EscucharPage() {
         (s) =>
           (!tag || s.tags.includes(tag)) &&
           (!tipo || s.tipo === tipo) &&
-          (!secuencia || (secuencia === "con") === s.trackCount > 0) &&
+          (!secuencia || (secuencia === "con") === hasSequence(s)) &&
           matchesSearch(query, s.title, s.artist),
       ),
     [songs, query, tag, tipo, secuencia],
@@ -286,11 +287,11 @@ export function EscucharPage() {
               </span>
               {/* secuencia: check amarillo si tiene pistas (multitracks), "-" si no */}
               <span className="hidden justify-center md:flex">
-                {song.trackCount > 0 ? (
+                {hasSequence(song) ? (
                   <Check
                     className="h-5 w-5 text-primary"
                     strokeWidth={3}
-                    aria-label={`Con secuencia (${song.trackCount} pistas)`}
+                    aria-label="Con secuencia (tiene audio cargado)"
                   />
                 ) : (
                   <span className="text-base text-foreground" aria-label="Sin secuencia">

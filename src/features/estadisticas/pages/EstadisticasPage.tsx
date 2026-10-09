@@ -15,6 +15,7 @@ import {
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, Skeletons } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
+import { hasSequence } from "@/features/canciones/lib/sequence";
 import { SongHistoryPanel } from "../components/SongHistoryPanel";
 import {
   historicRanking,
@@ -62,6 +63,55 @@ const tooltipStyle = {
   fontSize: 12,
 };
 
+/** Ranking de canciones con barras (se lee bien en celular) */
+function TopCard({
+  title,
+  subtitle,
+  rows,
+}: {
+  title: string;
+  subtitle: string;
+  rows: ReturnType<typeof topSongsInMonths>;
+}) {
+  const max = rows[0]?.plays ?? 1;
+  return (
+    <div className="surface-card p-5">
+      <h3 className="font-display text-lg font-semibold">{title}</h3>
+      <p className="mb-4 text-xs text-muted-foreground first-letter:uppercase">{subtitle}</p>
+      {rows.length ? (
+        <ol className="space-y-2.5">
+          {rows.map((row, i) => (
+            <li key={row.song.id} className="flex items-center gap-3">
+              <span className="w-5 text-center font-display text-sm font-semibold text-primary">
+                {i + 1}
+              </span>
+              <Cover song={row.song} size="none" className="h-9 w-9 shrink-0 shadow-none" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="truncate text-sm font-medium">{row.song.title}</p>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {row.plays} {row.plays === 1 ? "vez" : "veces"}
+                  </span>
+                </div>
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className="h-full rounded-full gradient-gold"
+                    style={{ width: `${(row.plays / max) * 100}%` }}
+                  />
+                </div>
+              </div>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="py-10 text-center text-sm text-muted-foreground">
+          No se tocó ninguna canción con secuencia en este período.
+        </p>
+      )}
+    </div>
+  );
+}
+
 const selectCls = "rounded-full border border-border bg-secondary px-3 py-1.5 text-xs capitalize";
 
 /**
@@ -78,7 +128,11 @@ export function EstadisticasPage() {
   const [to, setTo] = useState(thisMonth);
 
   // canciones con `playsByMonth` = veces que se tocó, según las listas pasadas
-  const played = useMemo(() => playsFromSetlists(songs, setlists), [songs, setlists]);
+  // solo canciones con secuencia (al menos un audio cargado): las demás no cuentan
+  const played = useMemo(
+    () => playsFromSetlists(songs.filter(hasSequence), setlists),
+    [songs, setlists],
+  );
 
   // meses para elegir: desde la lista pasada más vieja (o un año atrás) hasta el actual
   const monthOptions = useMemo(() => {
@@ -100,10 +154,11 @@ export function EstadisticasPage() {
       : `${monthLabel(from <= to ? from : to)} a ${monthLabel(from <= to ? to : from)}`;
 
   const top = useMemo(() => topSongsInMonths(played, months), [played, months]);
+  const lastThree = useMemo(() => recentMonths(3), []);
+  const topLastThree = useMemo(() => topSongsInMonths(played, lastThree), [played, lastThree]);
   const byTag = useMemo(() => playsByTagInMonths(played, months), [played, months]);
   const trend = useMemo(() => monthlyTrend(played, recentMonths(12)), [played]);
   const ranking = useMemo(() => historicRanking(played).filter((r) => r.plays > 0), [played]);
-  const maxTop = top[0]?.plays ?? 1;
 
   if (songsLoadState !== "ready" || setlistsLoadState === "loading") {
     return (
@@ -178,43 +233,17 @@ export function EstadisticasPage() {
       }
     >
       <div className="grid gap-5 xl:grid-cols-2">
-        {/* más tocadas del período: lista con barras (se lee bien en celular) */}
-        <div className="surface-card p-5">
-          <h3 className="font-display text-lg font-semibold">Más tocadas</h3>
-          <p className="mb-4 text-xs text-muted-foreground capitalize">{periodLabel}</p>
-          {top.length ? (
-            <ol className="space-y-2.5">
-              {top.map((row, i) => (
-                <li key={row.song.id} className="flex items-center gap-3">
-                  <span className="w-5 text-center font-display text-sm font-semibold text-primary">
-                    {i + 1}
-                  </span>
-                  <Cover song={row.song} size="none" className="h-9 w-9 shrink-0 shadow-none" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <p className="truncate text-sm font-medium">{row.song.title}</p>
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        {row.plays} {row.plays === 1 ? "vez" : "veces"}
-                      </span>
-                    </div>
-                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-secondary">
-                      <div
-                        className="h-full rounded-full gradient-gold"
-                        style={{ width: `${(row.plays / maxTop) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <p className="py-10 text-center text-sm text-muted-foreground">
-              No se tocó ninguna canción en este período (todavía no hay listas pasadas).
-            </p>
-          )}
-        </div>
+        {/* más tocadas: la del período elegido y, al lado, la de los últimos 3 meses */}
+        <TopCard title="Más tocadas" subtitle={periodLabel} rows={top} />
+        <TopCard
+          title="Más tocadas · últimos 3 meses"
+          subtitle={`${monthLabel(lastThree[0]!)} a ${monthLabel(lastThree[2]!)}`}
+          rows={topLastThree}
+        />
 
-        <SongHistoryPanel />
+        <div className="xl:col-span-2">
+          <SongHistoryPanel />
+        </div>
 
         <Panel title={`Por tema · ${periodLabel}`}>
           {byTag.length ? (

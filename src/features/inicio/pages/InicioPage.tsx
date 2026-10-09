@@ -209,15 +209,18 @@ export function InicioPage() {
                   <span className="text-xs text-muted-foreground">
                     {formatDuration(song.duration)} · {song.key}
                   </span>
-                  <FavButton songId={song.id} />
+                  {/* play abajo, al lado del corazón (no sobre la portada); siempre visible */}
+                  <div className="flex items-center gap-1">
+                    <FavButton songId={song.id} />
+                    <button
+                      onClick={() => play(song)}
+                      aria-label={`Reproducir ${song.title}`}
+                      className="flex h-8 w-8 items-center justify-center rounded-full gradient-gold text-primary-foreground shadow-md transition-transform hover:scale-110 active:scale-95"
+                    >
+                      <Play className="ml-0.5 h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={() => play(song)}
-                  aria-label={`Reproducir ${song.title}`}
-                  className="absolute top-[46%] right-6 flex h-11 w-11 translate-y-2 items-center justify-center rounded-full gradient-gold text-primary-foreground opacity-0 shadow-lg transition-all group-hover:translate-y-0 group-hover:opacity-100"
-                >
-                  <Play className="ml-0.5 h-4 w-4" />
-                </button>
               </div>
             ))}
           </div>

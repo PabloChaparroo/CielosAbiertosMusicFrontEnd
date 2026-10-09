@@ -2,6 +2,7 @@ import { BookmarkPlus, CalendarCheck, CalendarX } from "lucide-react";
 import { Avatar } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import type { EventType, Setlist } from "@/types";
+import { ListDuration } from "./ListDuration";
 
 const eventColor: Record<EventType, string> = {
   "Culto Domingo a la mañana": "bg-primary/15 text-primary border-primary/40",
@@ -60,6 +61,12 @@ export function SetlistCard({
           <div>
             <p className="font-semibold text-foreground">{s.items.length}</p>
             canciones
+            {/* cuánto dura tocar toda la lista (suma de las secuencias) */}
+            <div className="mt-1">
+              <ListDuration
+                songs={s.items.flatMap((it) => songs.find((so) => so.id === it.songId) ?? [])}
+              />
+            </div>
           </div>
           {onSaveTemplate ? (
             <button

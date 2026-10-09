@@ -8,6 +8,7 @@ import { SetlistsService } from "../services/setlists.service";
 import { EVENT_TYPES, type EventType, type Setlist, type SetlistItem } from "@/types";
 import { matchesSearch } from "@/lib/search";
 import { hasSequence } from "@/features/canciones/lib/sequence";
+import { ListDuration } from "./ListDuration";
 
 const inputCls =
   "w-full rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary/60";
@@ -334,7 +335,10 @@ export function NewSetlistModal({
               <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                 Orden del servicio
               </p>
-              <span className="text-xs text-muted-foreground">{pickedSongs.length} canciones</span>
+              <span className="flex items-center gap-3 text-xs text-muted-foreground">
+                <ListDuration songs={pickedSongs} />
+                {pickedSongs.length} canciones
+              </span>
             </div>
             {pickedSongs.length === 0 ? (
               <p className="rounded-xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground">

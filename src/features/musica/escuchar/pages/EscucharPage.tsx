@@ -90,6 +90,38 @@ export function EscucharPage() {
   // 30 por página; la búsqueda y los filtros miran todas las canciones
   const paged = usePaged(filtered, 30, `${query}|${tag}|${tipo}|${secuencia}`);
 
+  // lista / tarjetas: en celular va al lado del buscador, en compu al final de los filtros
+  const renderViewToggle = (className: string) => (
+    <div
+      className={`shrink-0 rounded-full border border-border p-0.5 ${className}`}
+      role="group"
+      aria-label="Vista"
+    >
+      {(
+        [
+          ["list", List, "Vista en lista"],
+          ["cards", LayoutGrid, "Vista en tarjetas"],
+        ] as const
+      ).map(([value, Icon, label]) => (
+        <button
+          key={value}
+          type="button"
+          onClick={() => changeView(value)}
+          aria-pressed={view === value}
+          aria-label={label}
+          title={label}
+          className={`rounded-full p-1.5 transition-colors ${
+            view === value
+              ? "gradient-gold text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Icon className="h-4 w-4" />
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <AppLayout
       title="Canciones"
@@ -107,26 +139,30 @@ export function EscucharPage() {
         ) : null
       }
     >
-      <div className="mb-6 flex flex-wrap items-center gap-2">
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar canción o artista…"
-            className="h-9 w-full rounded-full border border-border bg-card pr-4 pl-10 text-sm outline-none transition-colors focus:border-primary/60"
-          />
+      {/* celular: buscador + vista en una fila, y los filtros en otra que se desliza de costado;
+          compu: todo en una fila */}
+      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-2">
+          <div className="relative min-w-0 flex-1 sm:w-72 sm:flex-none">
+            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar canción o artista…"
+              className="h-9 w-full rounded-full border border-border bg-card pr-4 pl-10 text-sm outline-none transition-colors focus:border-primary/60"
+            />
+          </div>
+          {renderViewToggle("flex sm:hidden")}
         </div>
-        {/* tipo, secuencia y temas al lado del buscador (abajo en celular) */}
-        <div className="contents">
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] sm:mx-0 sm:flex-1 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
           {tipos.length ? (
             <select
               value={tipo ?? ""}
               onChange={(e) => setTipo(e.target.value || null)}
               aria-label="Filtrar por tipo"
-              className={filterSelectClass(tipo !== null)}
+              className={`shrink-0 ${filterSelectClass(tipo !== null)}`}
             >
-              <option value="">Todos los tipos</option>
+              <option value="">Tipo: todos</option>
               {tipos.map((t) => (
                 <option key={t} value={t}>
                   {t}
@@ -138,9 +174,9 @@ export function EscucharPage() {
             value={secuencia ?? ""}
             onChange={(e) => setSecuencia((e.target.value || null) as "con" | "sin" | null)}
             aria-label="Filtrar por secuencia"
-            className={filterSelectClass(secuencia !== null)}
+            className={`shrink-0 ${filterSelectClass(secuencia !== null)}`}
           >
-            <option value="">Con y sin secuencia</option>
+            <option value="">Secuencia: todas</option>
             <option value="con">Con secuencia</option>
             <option value="sin">Sin secuencia</option>
           </select>
@@ -149,43 +185,16 @@ export function EscucharPage() {
             value={tag ?? ""}
             onChange={(e) => setTag(e.target.value || null)}
             aria-label="Filtrar por tema"
-            className={filterSelectClass(tag !== null)}
+            className={`shrink-0 ${filterSelectClass(tag !== null)}`}
           >
-            <option value="">Todos los temas</option>
+            <option value="">Tema: todos</option>
             {allTags.map((t) => (
               <option key={t} value={t}>
                 {t}
               </option>
             ))}
           </select>
-          <div
-            className="ml-auto flex rounded-full border border-border p-0.5"
-            role="group"
-            aria-label="Vista"
-          >
-            {(
-              [
-                ["list", List, "Vista en lista"],
-                ["cards", LayoutGrid, "Vista en tarjetas"],
-              ] as const
-            ).map(([value, Icon, label]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => changeView(value)}
-                aria-pressed={view === value}
-                aria-label={label}
-                title={label}
-                className={`rounded-full p-1.5 transition-colors ${
-                  view === value
-                    ? "gradient-gold text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-              </button>
-            ))}
-          </div>
+          {renderViewToggle("ml-auto hidden sm:flex")}
         </div>
       </div>
 

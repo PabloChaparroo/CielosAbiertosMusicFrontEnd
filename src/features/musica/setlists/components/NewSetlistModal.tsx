@@ -9,6 +9,7 @@ import { EVENT_TYPES, type EventType, type Setlist, type SetlistItem } from "@/t
 import { matchesSearch } from "@/lib/search";
 import { hasSequence } from "@/features/canciones/lib/sequence";
 import { ListDuration } from "./ListDuration";
+import { visibleTeam } from "@/features/equipo/lib/visible-team";
 
 const inputCls =
   "w-full rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary/60";
@@ -55,7 +56,7 @@ export function NewSetlistModal({
   /** Lista predefinida de la que se parte: trae el título y las canciones (con su tono) */
   initial?: { title: string; items: SetlistItem[] } | undefined;
 }) {
-  const { songs, users, currentUser, setlists } = useApp();
+  const { songs, users, currentUser, setlists, can } = useApp();
   // "Menos tocadas": ordena por cuántas veces se tocó cada canción en los setlists de los
   // últimos 5 meses (de menos a más)
   const [leastPlayed, setLeastPlayed] = useState(false);
@@ -151,7 +152,11 @@ export function NewSetlistModal({
     return found.slice(0, 40);
   }, [songs, query, leastPlayed, playCounts]);
 
-  const activeUsers = useMemo(() => users.filter((u) => !u.fechaHoraBaja), [users]);
+  // equipo para elegir: activos, y sin los admins si quien arma la lista no es admin
+  const activeUsers = useMemo(
+    () => visibleTeam(users, can("manageRoles")).filter((u) => !u.fechaHoraBaja),
+    [users, can],
+  );
   const pickedSongs = picked
     .map((id) => songs.find((song) => song.id === id))
     .filter((song): song is (typeof songs)[number] => Boolean(song));

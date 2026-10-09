@@ -19,4 +19,6 @@ export interface User {
   fechaHoraBaja: string | null;
   /** Instrumentos que toca (puede ser más de uno); puede faltar en respuestas viejas */
   instruments?: string[];
+  /** Tiene un rol que administra roles (lo calcula GET /equipo): solo lo ven otros admins */
+  isAdmin?: boolean;
 }

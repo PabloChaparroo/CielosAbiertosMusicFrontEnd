@@ -237,7 +237,7 @@ export function EscucharPage() {
         </div>
       ) : (
         <div className="surface-card overflow-x-auto">
-          <div className="hidden grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_56px_140px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_56px_140px] gap-4 border-b border-border/60 px-4 py-3 text-[11px] tracking-widest text-muted-foreground uppercase md:grid">
+          <div className="hidden grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_56px_176px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_56px_176px] gap-4 border-b border-border/60 px-4 py-3 text-[11px] tracking-widest text-muted-foreground uppercase md:grid">
             <span>#</span>
             <span>Título</span>
             <span className="hidden 2xl:block">Temas</span>
@@ -251,7 +251,7 @@ export function EscucharPage() {
             <div
               key={song.id}
               onClick={() => play(song)}
-              className={`group grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-2.5 transition-colors hover:bg-elevated/70 md:grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_56px_140px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_56px_140px] ${
+              className={`group grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-2.5 transition-colors hover:bg-elevated/70 md:grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_56px_176px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_56px_176px] ${
                 current?.id === song.id ? "bg-elevated/60" : ""
               }`}
             >

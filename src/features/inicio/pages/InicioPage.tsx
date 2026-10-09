@@ -47,38 +47,48 @@ export function InicioPage() {
       <section className="relative overflow-hidden">
         <div className="gradient-sky absolute inset-0" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
-        <div className="relative px-4 py-16 sm:px-8 sm:py-24">
-          <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/40 px-3 py-1 text-xs text-foreground/90 backdrop-blur">
-            <Sparkles className="h-3.5 w-3.5 text-primary" />{" "}
-            {currentUser.roles.map((r) => r.name).join(" · ") || "Sin rol"}
-          </p>
-          <h2 className="font-display text-5xl leading-[0.95] font-bold sm:text-7xl">
-            Cielos
-            <br />
-            <span className="text-gradient-gold">Abiertos</span>
-          </h2>
-          <p className="mt-3 text-xs tracking-[0.3em] text-foreground/70 uppercase sm:text-sm">
-            Ministerio de Adoración
-          </p>
-          <p className="mt-4 max-w-md text-base text-foreground/80 sm:text-lg">
-            Adorando en espíritu y en verdad. Todo el repertorio del ministerio, listo para el
-            próximo servicio.
-          </p>
-          <div className="mt-7 flex flex-wrap gap-3">
-            <Link
-              to="/acordes"
-              className="rounded-full gradient-gold px-6 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
-            >
-              Ir a Acordes
-            </Link>
-            {canSeeSetlists ? (
+        {/* el logo: arriba del título en celular, grande a la derecha en compu (mismo estilo que el login) */}
+        <div className="relative flex flex-col gap-8 px-4 py-16 sm:px-8 sm:py-24 lg:flex-row lg:items-center lg:justify-between">
+          <img
+            src="/icon-512.png"
+            alt="Cielos Abiertos"
+            width={512}
+            height={512}
+            className="glow h-24 w-24 rounded-full sm:h-32 sm:w-32 lg:order-last lg:mr-[6%] lg:h-72 lg:w-72 xl:h-80 xl:w-80"
+          />
+          <div>
+            <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/40 px-3 py-1 text-xs text-foreground/90 backdrop-blur">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />{" "}
+              {currentUser.roles.map((r) => r.name).join(" · ") || "Sin rol"}
+            </p>
+            <h2 className="font-display text-5xl leading-[0.95] font-bold sm:text-7xl">
+              Cielos
+              <br />
+              <span className="text-gradient-gold">Abiertos</span>
+            </h2>
+            <p className="mt-3 text-xs tracking-[0.3em] text-foreground/70 uppercase sm:text-sm">
+              Ministerio de Adoración
+            </p>
+            <p className="mt-4 max-w-md text-base text-foreground/80 sm:text-lg">
+              Adorando en espíritu y en verdad. Todo el repertorio del ministerio, listo para el
+              próximo servicio.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
               <Link
-                to="/setlists"
-                className="rounded-full border border-border bg-background/50 px-6 py-3 text-sm font-semibold backdrop-blur transition-colors hover:bg-secondary"
+                to="/acordes"
+                className="rounded-full gradient-gold px-6 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
               >
-                Ver listas
+                Ir a Acordes
               </Link>
-            ) : null}
+              {canSeeSetlists ? (
+                <Link
+                  to="/setlists"
+                  className="rounded-full border border-border bg-background/50 px-6 py-3 text-sm font-semibold backdrop-blur transition-colors hover:bg-secondary"
+                >
+                  Ver listas
+                </Link>
+              ) : null}
+            </div>
           </div>
         </div>
       </section>

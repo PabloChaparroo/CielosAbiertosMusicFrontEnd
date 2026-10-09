@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, EmptyState, FavButton, formatDuration, TagChip } from "@/components/common/ui-bits";
+import { TagList } from "@/components/common/TagList";
 import { useApp } from "@/hooks/useApp";
 import { Pager, usePaged } from "@/components/common/Pager";
 import type { Song, Tag } from "@/types";
@@ -271,12 +272,14 @@ export function EscucharPage() {
                     {song.title}
                   </p>
                   <p className="truncate text-sm text-muted-foreground">{song.artist}</p>
+                  {/* sin columna de temas (celular y pantallas medianas): van debajo del artista */}
+                  <div className="mt-1 2xl:hidden">
+                    <TagList tags={song.tags} />
+                  </div>
                 </div>
               </div>
-              <div className="hidden flex-wrap gap-1.5 2xl:flex">
-                {song.tags.map((t) => (
-                  <TagChip key={t} tag={t} />
-                ))}
+              <div className="hidden min-w-0 2xl:block">
+                <TagList tags={song.tags} />
               </div>
               <span className="hidden truncate text-sm text-muted-foreground md:block">
                 {song.tipo}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SongsService } from "@/features/canciones/services/songs.service";
 import {
   Check,
@@ -39,6 +39,24 @@ export function EscucharPage() {
   const { songs, play, current, can, addSong, updateSong } = useApp();
   // celular: fila con las acciones abiertas (una a la vez)
   const [actionsOpen, setActionsOpen] = useState<string | null>(null);
+  // tocar en cualquier otro lado las cierra. Ese toque solo cierra: si cae sobre otra canción no
+  // la reproduce (closedAtRef, lo mira el click de la fila)
+  const closedAtRef = useRef(0);
+  useEffect(() => {
+    if (!actionsOpen) return;
+    const closeOnOutside = (event: PointerEvent) => {
+      const panel = document.querySelector(`[data-actions-panel="${actionsOpen}"]`);
+      if (panel?.contains(event.target as Node)) return;
+      closedAtRef.current = Date.now();
+      setActionsOpen(null);
+    };
+    document.addEventListener("pointerdown", closeOnOutside);
+    return () => document.removeEventListener("pointerdown", closeOnOutside);
+  }, [actionsOpen]);
+  const playRow = (song: Song) => {
+    if (Date.now() - closedAtRef.current < 600) return;
+    play(song);
+  };
   const [query, setQuery] = useState("");
   // vista lista (con todos los datos) o tarjetas (portada, título y artista); se recuerda
   const [view, setView] = useState<"list" | "cards">(() => {
@@ -264,7 +282,7 @@ export function EscucharPage() {
           {paged.pageItems.map((song, i) => (
             <div
               key={song.id}
-              onClick={() => play(song)}
+              onClick={() => playRow(song)}
               className={`group relative grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-2.5 transition-colors hover:bg-elevated/70 md:grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_56px_176px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_56px_176px] ${
                 current?.id === song.id ? "bg-elevated/60" : ""
               }`}
@@ -337,6 +355,7 @@ export function EscucharPage() {
                 <MoreHorizontal className="h-5 w-5" />
               </button>
               <div
+                data-actions-panel={song.id}
                 onClick={(event) => event.stopPropagation()}
                 className={`items-center justify-end gap-1 whitespace-nowrap md:static md:flex md:animate-none md:bg-transparent md:p-0 md:shadow-none ${
                   actionsOpen === song.id

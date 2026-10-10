@@ -320,8 +320,10 @@ function isPackableLine(pairs: ChordPair[]): boolean {
 /**
  * Compases de una línea como `chartBars`, pero sin perder las notas: "[Bm](interludio)" → la
  * nota va con el acorde de antes (Bm); si está antes del primer acorde, con el primero.
+ * `joinsNext`: la línea termina con "-" después de su último acorde ("Tú[A/C#],-"), así que ese
+ * acorde va en el mismo compás que el primero de la línea siguiente.
  */
-function lineBars(pairs: ChordPair[]): ChartBar[] {
+function lineBars(pairs: ChordPair[]): { bars: ChartBar[]; joinsNext: boolean } {
   const bars: ChartBar[] = [];
   let pending: ChordPair[] = [];
   let joinsNext = false;
@@ -353,7 +355,7 @@ function lineBars(pairs: ChordPair[]): ChartBar[] {
     }
     if (pair.text.includes("-")) joinsNext = true;
   });
-  return bars;
+  return { bars, joinsNext };
 }
 
 /** Compás de la vuelta que se escribe, con las notas de todas sus repeticiones (sin repetir) */
@@ -416,11 +418,22 @@ export function packChartRows(lines: ParsedLine[]): ParsedLine[] {
     // compases de las líneas del tramo (saltando las vacías)
     const bars: ChartBar[] = [];
     let last = i;
+    // la línea anterior terminó con "-": su último acorde y el primero de esta van juntos
+    let joinsPrevious = false;
     for (let j = i; j < lines.length; j += 1) {
       const next = lines[j]!;
       if (next.kind === "blank") continue;
       if (next.kind !== "line" || !isPackableLine(next.pairs)) break;
-      bars.push(...lineBars(next.pairs));
+      const { bars: own, joinsNext } = lineBars(next.pairs);
+      const previous = bars[bars.length - 1];
+      if (joinsPrevious && previous && own.length) {
+        const first = own.shift()!;
+        previous.pairs[previous.pairs.length - 1]!.text = "-";
+        previous.pairs.push(...first.pairs);
+        previous.key += ` - ${first.key}`;
+      }
+      bars.push(...own);
+      joinsPrevious = joinsNext;
       last = j;
     }
     // las repeticiones se buscan solo por los acordes: una nota "(…)" no corta el patrón

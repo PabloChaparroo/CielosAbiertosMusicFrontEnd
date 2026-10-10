@@ -192,6 +192,15 @@ describe("packChartRows — Solo acordes: filas de 4 compases, repeticiones con 
     expect(endOf(lines[1]!)).toBe(":]");
   });
 
+  it("un '-' al final de la línea junta su último acorde con el primero de la siguiente", () => {
+    const lines = chart(
+      "{Verso}",
+      "Me[Em]nguar -  para que cresc[D+]as  Tú[A/C#],-",
+      "[C] Y cada dia seré[Am]  -  más como Tú [G]",
+    );
+    expect(lines.map(barsOf)).toEqual([[], ["Em - D+", "A/C# - C", "Am - G"]]);
+  });
+
   it("una nota '(…)' no corta el patrón y queda justo antes (arriba) del acorde que nombra", () => {
     const lines = chart(
       "{Coro}",
@@ -244,15 +253,15 @@ describe("packChartRows — Solo acordes: filas de 4 compases, repeticiones con 
       "La sa[Em]biduria suya [A] es",
     ];
     const lines = chart("{Coro}", ...vuelta, "", ...vuelta, "[C] [A4]");
-    // la vuelta (9 compases) va una vez, en filas de 4, con ":]" al final; después sigue el resto
+    // la vuelta (8 compases: "cru[Bm]z -" termina con "-", así que Bm va con la A de la línea
+    // siguiente) va una vez, en filas de 4, con ":]" al final; después sigue el resto
     expect(lines.map(barsOf)).toEqual([
       [],
-      ["D/F# - G", "D/F#", "G - A/C#", "Bm"],
-      ["A", "G - A/C#", "D", "Em"],
-      ["A"],
+      ["D/F# - G", "D/F#", "G - A/C#", "Bm - A"],
+      ["G - A/C#", "D", "Em", "A"],
       ["C", "A4"],
     ]);
-    expect(endOf(lines[3]!)).toBe(":]");
+    expect(endOf(lines[2]!)).toBe(":]");
   });
 
   it("el coro de Pablo: | D - A | E - F#m | tres veces seguidas → x3, y sigue el final", () => {

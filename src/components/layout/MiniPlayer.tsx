@@ -416,7 +416,8 @@ export function MiniPlayer() {
         }}
       />
       {tracksOpen && hasRelated ? (
-        <div className="absolute right-4 bottom-full mb-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-card p-3 shadow-2xl">
+        // aparece subiendo desde el botón que lo abre
+        <div className="absolute right-4 bottom-full mb-2 w-80 max-w-[calc(100vw-2rem)] origin-bottom-right rounded-2xl border border-border bg-card p-3 shadow-2xl animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2 duration-200">
           <p className="mb-2 flex items-center gap-2 px-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
             <ListMusic className="h-3.5 w-3.5" /> Pistas relacionadas
           </p>

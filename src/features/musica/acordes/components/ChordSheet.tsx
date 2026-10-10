@@ -343,7 +343,11 @@ export function ChordSheet({
       <div
         key={i}
         className="flex flex-nowrap whitespace-nowrap"
-        style={{ marginBottom: `${fontSize * 0.18}px` }}
+        style={{
+          marginBottom: `${fontSize * 0.18}px`,
+          // lo de arriba de un acorde ("['A]") necesita lugar sobre todo el renglón, no solo su columna
+          paddingTop: line.pairs.some((p) => p.above) ? `${fontSize * 0.7}px` : undefined,
+        }}
       >
         {line.pairs.map((p, j) =>
           // la nota va en la fila de los acordes sin ocupar lugar (ver placeNotes)
@@ -358,14 +362,6 @@ export function ChordSheet({
             </span>
           ) : (
             <span key={j} className="inline-flex flex-col">
-              {p.above ? (
-                <span
-                  className="font-normal whitespace-pre text-primary"
-                  style={{ fontSize: fontSize * 0.7, lineHeight: `${fontSize * 0.7}px` }}
-                >
-                  {p.above}
-                </span>
-              ) : null}
               <span
                 className="relative font-medium whitespace-pre text-primary"
                 style={{
@@ -377,6 +373,15 @@ export function ChordSheet({
                   left: chordNudge[j] ? `${chordNudge[j]}ch` : undefined,
                 }}
               >
+                {/* arriba del acorde sin ocupar lugar: el acorde y su letra no bajan */}
+                {p.above ? (
+                  <span
+                    className="absolute bottom-full left-0 font-normal whitespace-pre text-primary"
+                    style={{ fontSize: fontSize * 0.7, lineHeight: `${fontSize * 0.7}px` }}
+                  >
+                    {p.above}
+                  </span>
+                ) : null}
                 {p.chord || " "}
               </span>
               <span className="whitespace-pre" style={{ lineHeight: `${fontSize}px` }}>

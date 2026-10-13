@@ -95,10 +95,21 @@ export function FloatingVideoFrame({
         </button>
       </div>
       <div
-        className={pinnedRect ? "h-full w-full" : ""}
+        className={pinnedRect ? "h-full w-full" : "relative overflow-hidden"}
         style={pinnedRect ? undefined : large ? floatLargeStyle : FLOAT_SMALL}
       >
-        {children}
+        {/* chica: el video 16:9 cubre el cuadrado recortando los costados, sin franjas negras
+            arriba y abajo (el iframe mide 356×200, sigue cumpliendo el mínimo de YouTube). Siempre
+            el mismo div, solo cambian las clases: así el iframe no se vuelve a crear */}
+        <div
+          className={
+            pinnedRect || large
+              ? "h-full w-full"
+              : "absolute inset-y-0 left-1/2 aspect-video h-full -translate-x-1/2"
+          }
+        >
+          {children}
+        </div>
       </div>
     </div>
   );

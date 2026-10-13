@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ChevronUp,
   ListMusic,
+  Maximize2,
   Pause,
   Play,
   SkipBack,
@@ -402,7 +403,9 @@ export function MiniPlayer() {
   const seconds = (progress / 100) * duration;
 
   return (
-    <div className="fixed right-0 bottom-0 left-0 z-40 border-t border-border bg-card/95 backdrop-blur-xl lg:left-[272px]">
+    // estilo vidrio: flota separado de los bordes, translúcido y con desenfoque; en celular, una
+    // píldora (portada, título, favorito, abrir y play); desde sm, barra con todos los controles
+    <div className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 rounded-full border border-white/10 bg-card/55 shadow-[0_12px_40px_-12px_rgba(0,0,0,.8)] ring-1 ring-black/20 backdrop-blur-2xl backdrop-saturate-150 sm:inset-x-4 sm:rounded-3xl lg:left-[288px]">
       <audio
         ref={localRef}
         src={resolved?.url}
@@ -497,19 +500,19 @@ export function MiniPlayer() {
           </div>
         </div>
       ) : null}
-      <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
+      <div className="mx-auto flex max-w-7xl items-center gap-2 py-2 pr-2 pl-2 sm:gap-4 sm:px-4 sm:py-3">
         <button
           type="button"
           onClick={openTitle}
           aria-label="Abrir reproductor"
           className="shrink-0"
         >
-          <Cover song={current} size="sm" />
+          <Cover song={current} size="sm" className="rounded-full sm:rounded-lg" />
         </button>
         <button
           type="button"
           onClick={openTitle}
-          className="min-w-0 w-40 cursor-pointer text-left sm:w-56"
+          className="min-w-0 flex-1 cursor-pointer text-left sm:w-56 sm:flex-none"
           aria-label="Abrir reproductor a pantalla completa"
         >
           <p className="truncate text-sm font-semibold">{activeAudioLabel ?? current.title}</p>
@@ -607,9 +610,17 @@ export function MiniPlayer() {
         </div>
 
         <button
+          type="button"
+          onClick={openTitle}
+          aria-label="Abrir reproductor a pantalla completa"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-primary sm:hidden"
+        >
+          <Maximize2 className="h-4 w-4" />
+        </button>
+        <button
           onClick={toggle}
           aria-label={isPlaying ? "Pausar" : "Reproducir"}
-          className="flex h-10 w-10 items-center justify-center rounded-full gradient-gold text-primary-foreground sm:hidden"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full gradient-gold text-primary-foreground shadow-lg shadow-primary/40 sm:hidden"
         >
           {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="ml-0.5 h-4 w-4" />}
         </button>

@@ -41,6 +41,8 @@ import {
   exitBrowserFullscreen,
   isBrowserFullscreen,
 } from "@/lib/browser-fullscreen";
+import { ListNav, listNeighbors } from "@/components/common/ListNav";
+import { canRotateScreen } from "@/lib/screen-orientation";
 import { matchesSearch } from "@/lib/search";
 
 export function AcordesPage() {
@@ -278,7 +280,11 @@ export function AcordesPage() {
 
   if (live) {
     return (
-      <div className="fixed inset-0 z-50 overflow-y-auto bg-black px-5 py-10 sm:px-10" {...pinch}>
+      <div
+        key={song.id}
+        className="fixed inset-0 z-50 overflow-y-auto bg-black px-5 py-10 sm:px-10"
+        {...pinch}
+      >
         <button
           onClick={() => {
             setLive(false);
@@ -289,6 +295,11 @@ export function AcordesPage() {
         >
           <X className="h-5 w-5" />
         </button>
+        <ListNav
+          {...listNeighbors(scopedOrder ? availableSongs : null, song.id, setSongId)}
+          dark
+          className="fixed top-4 left-4"
+        />
         <div className="fixed bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 backdrop-blur">
           <IconBtn onClick={() => changeFontSize(-2, 48)} label="Achicar">
             <Minus className="h-4 w-4" />
@@ -311,7 +322,11 @@ export function AcordesPage() {
             el ajuste de tamaño necesita un ancho que no dependa del propio contenido. */}
         <div ref={sheetBoxRef} className="flex min-h-full flex-col pb-16">
           <div className="m-auto w-fit max-w-full">
-            <h2 className="mb-8 font-display text-2xl text-white">{song.title}</h2>
+            <h2
+              className={`mb-8 font-display text-2xl text-white ${scopedOrder || canRotateScreen() ? "pt-10" : ""}`}
+            >
+              {song.title}
+            </h2>
             <ChordSheet lines={lines} fontSize={fontSize} mode={mode} dark />
           </div>
         </div>

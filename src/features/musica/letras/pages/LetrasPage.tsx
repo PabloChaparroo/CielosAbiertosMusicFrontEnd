@@ -31,6 +31,8 @@ import {
   exitBrowserFullscreen,
   isBrowserFullscreen,
 } from "@/lib/browser-fullscreen";
+import { ListNav, listNeighbors } from "@/components/common/ListNav";
+import { canRotateScreen } from "@/lib/screen-orientation";
 import { matchesSearch } from "@/lib/search";
 
 export function LetrasPage() {
@@ -183,7 +185,12 @@ export function LetrasPage() {
 
         <div className="order-2 min-w-0 lg:order-2">
           {song ? (
-            <SongLyricsDetail song={song} canEdit={can("editSongs")} onSave={updateSong} />
+            <SongLyricsDetail
+              song={song}
+              canEdit={can("editSongs")}
+              onSave={updateSong}
+              {...listNeighbors(scopedOrder ? availableSongs : null, song.id, setSelected)}
+            />
           ) : (
             // sin canción elegida: tus favoritos, para abrir su letra de un toque
             <div className="surface-card p-4 sm:p-6">
@@ -253,10 +260,15 @@ function SongLyricsDetail({
   song,
   canEdit,
   onSave,
+  onPrev,
+  onNext,
 }: {
   song: Song;
   canEdit: boolean;
   onSave: (s: Song) => void;
+  /** canción anterior/siguiente de la lista (solo si se entró desde una lista) */
+  onPrev?: (() => void) | undefined;
+  onNext?: (() => void) | undefined;
 }) {
   // Si ya tiene foto cargada, arranca mostrándola — es lo más útil; si no,
   // arranca en texto. El texto (chordpro) nunca se borra al subir una foto:
@@ -285,8 +297,8 @@ function SongLyricsDetail({
   const abortRef = useRef<AbortController | null>(null);
   const navigate = useNavigate();
 
+  // la pantalla completa se mantiene al cambiar de canción: así se pasa a la siguiente de la lista
   useEffect(() => {
-    setFullscreen(false);
     setMode(song.lyricsImageKey ? "imagen" : "texto");
     setSaveError(null);
   }, [song.id, song.lyricsImageKey]);
@@ -454,6 +466,8 @@ function SongLyricsDetail({
   if (fullscreen) {
     return (
       <div
+        // key: al pasar a otra canción de la lista, arranca desde arriba
+        key={song.id}
         className="fixed inset-0 z-50 overflow-auto bg-background px-5 py-8 sm:px-10 sm:py-10"
         {...pinch}
       >
@@ -468,6 +482,7 @@ function SongLyricsDetail({
         >
           <X className="h-5 w-5" />
         </button>
+        <ListNav onPrev={onPrev} onNext={onNext} className="fixed top-4 left-4" />
         {mode === "texto" ? (
           <button
             type="button"
@@ -491,7 +506,7 @@ function SongLyricsDetail({
           <div
             className={`my-auto pb-10 ${mode === "texto" && twoColumns ? "w-max" : "w-fit max-w-full"}`}
           >
-            <div className="mb-8 pr-12">
+            <div className={`mb-8 pr-12 ${onPrev || onNext || canRotateScreen() ? "pt-10" : ""}`}>
               <p className="text-sm text-muted-foreground">{song.artist}</p>
               <h2 className="font-display text-3xl font-semibold">{song.title}</h2>
             </div>

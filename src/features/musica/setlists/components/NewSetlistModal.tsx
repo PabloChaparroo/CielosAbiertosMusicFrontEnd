@@ -130,11 +130,11 @@ export function NewSetlistModal({
     });
     return counts;
   }, [setlists]);
-  // Sugerencias: las menos tocadas en 5 meses que todavía no están en la lista
+  // Sugerencias: las menos tocadas en 5 meses que todavía no están en la lista (solo con secuencia)
   const suggestions = useMemo(
     () =>
       songs
-        .filter((s) => !picked.includes(s.id))
+        .filter((s) => hasSequence(s) && !picked.includes(s.id))
         .sort((a, b) => (playCounts.get(a.id) ?? 0) - (playCounts.get(b.id) ?? 0))
         .slice(0, 6),
     [songs, picked, playCounts],
@@ -145,8 +145,8 @@ export function NewSetlistModal({
   };
 
   const results = useMemo(() => {
-    // a una lista solo entran canciones con secuencia (al menos un audio cargado)
-    const found = songs.filter((s) => hasSequence(s) && matchesSearch(query, s.title));
+    // al buscar entran todas, con o sin secuencia: a veces hay que tocar una que todavía no tiene audio
+    const found = songs.filter((s) => matchesSearch(query, s.title));
     if (leastPlayed)
       found.sort((a, b) => (playCounts.get(a.id) ?? 0) - (playCounts.get(b.id) ?? 0));
     return found.slice(0, 40);
@@ -314,7 +314,10 @@ export function NewSetlistModal({
                   <Cover song={s} size="sm" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{s.title}</p>
-                    <p className="truncate text-xs text-muted-foreground">{s.artist}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {s.artist}
+                      {hasSequence(s) ? "" : " · Sin secuencia"}
+                    </p>
                     {repeatedWarning(s.id) ? (
                       <p className="truncate text-[11px] text-amber-400">
                         ⚠ {repeatedWarning(s.id)}

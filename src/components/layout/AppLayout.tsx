@@ -32,7 +32,7 @@ export function AppLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <aside className="fixed top-0 left-0 hidden h-screen w-[272px] border-r border-sidebar-border lg:block">
+      <aside className="fixed top-0 left-0 hidden h-screen w-[272px] border-r border-white/10 lg:block">
         <SidebarContent onOpenPerfil={() => setShowPerfil(true)} />
       </aside>
       <MobileSidebar
@@ -42,8 +42,15 @@ export function AppLayout({
       />
 
       <main className="lg:pl-[272px]">
-        <header className="sticky top-0 z-30 border-b border-border/70 bg-background/80 backdrop-blur-xl">
-          <div className="flex items-center gap-3 px-4 py-4 sm:px-8">
+        <header className="sticky top-0 z-30 overflow-hidden border-b border-border/70 bg-background/80 backdrop-blur-xl">
+          {/* brillo dorado tenue arriba a la izquierda, el mismo del menú lateral */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -top-24 -left-16 h-56 w-72 rounded-full bg-primary/10 blur-3xl"
+          />
+          {/* flex-wrap + min-w-40 en el título: si las acciones no entran al lado (ej. Estadísticas en
+              celular), bajan a una segunda fila en vez de cortar el título */}
+          <div className="relative flex flex-wrap items-center gap-x-3 gap-y-3 px-4 py-4 sm:px-8">
             <button
               onClick={() => setOpen(true)}
               aria-label="Abrir menú"
@@ -51,13 +58,15 @@ export function AppLayout({
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="min-w-0 flex-1">
+            <div className="min-w-40 flex-1">
               <h1 className="truncate font-display text-xl font-semibold sm:text-2xl">{title}</h1>
               {subtitle ? (
                 <p className="truncate text-xs text-muted-foreground sm:text-sm">{subtitle}</p>
               ) : null}
             </div>
-            {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
+            {actions ? (
+              <div className="flex max-w-full flex-wrap items-center gap-2">{actions}</div>
+            ) : null}
           </div>
         </header>
 

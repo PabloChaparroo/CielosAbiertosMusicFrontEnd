@@ -12,6 +12,7 @@ import {
   Play,
   Plus,
   Search,
+  SlidersHorizontal,
   X,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -27,16 +28,52 @@ import { SongLinksModal } from "../components/SongLinksModal";
 import { UploadModal } from "../components/UploadModal";
 import { matchesSearch } from "@/lib/search";
 
-/** Desplegable de filtro: dorado si tiene algo elegido */
-const filterSelectClass = (active: boolean) =>
-  `h-9 rounded-full border px-3 text-sm font-semibold outline-none transition-colors focus:border-primary/60 ${
-    active
-      ? "border-primary/50 bg-primary/15 text-primary"
-      : "border-border bg-card text-muted-foreground hover:text-foreground"
-  }`;
+/** Grupo de opciones del panel de filtros: pastillas para tocar, con "Todos" para no filtrar */
+function FilterGroup({
+  title,
+  options,
+  value,
+  onChange,
+  allLabel,
+}: {
+  title: string;
+  options: ReadonlyArray<readonly [string, string]>;
+  value: string | null;
+  onChange: (value: string | null) => void;
+  allLabel: string;
+}) {
+  const pill = (active: boolean) =>
+    `rounded-full border px-3.5 py-1.5 text-sm transition-colors ${
+      active
+        ? "border-primary/50 bg-primary/15 font-medium text-primary"
+        : "border-white/10 bg-white/[0.03] text-muted-foreground hover:border-white/20 hover:text-foreground"
+    }`;
+  return (
+    <section>
+      <p className="mb-2 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
+        {title}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => onChange(null)} className={pill(value === null)}>
+          {allLabel}
+        </button>
+        {options.map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onChange(value === key ? null : key)}
+            className={pill(value === key)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 export function EscucharPage() {
-  const { songs, play, current, can, addSong, updateSong } = useApp();
+  const { songs, play, current, isPlaying, can, addSong, updateSong } = useApp();
   // celular: fila con las acciones abiertas (una a la vez)
   const [actionsOpen, setActionsOpen] = useState<string | null>(null);
   // tocar en cualquier otro lado las cierra. Ese toque solo cierra: si cae sobre otra canción no
@@ -111,6 +148,20 @@ export function EscucharPage() {
   );
   // 30 por página; la búsqueda y los filtros miran todas las canciones
   const paged = usePaged(filtered, 30, `${query}|${tag}|${tipo}|${secuencia}`);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  // filtros elegidos, para mostrarlos como pastillas que se quitan de un toque
+  const activeFilters = [
+    ...(tipo ? [{ label: tipo, clear: () => setTipo(null) }] : []),
+    ...(secuencia
+      ? [
+          {
+            label: secuencia === "con" ? "Con secuencia" : "Sin secuencia",
+            clear: () => setSecuencia(null),
+          },
+        ]
+      : []),
+    ...(tag ? [{ label: tag, clear: () => setTag(null) }] : []),
+  ];
 
   // lista / tarjetas: en celular va al lado del buscador, en compu al final de los filtros
   const renderViewToggle = (className: string) => (
@@ -161,64 +212,131 @@ export function EscucharPage() {
         ) : null
       }
     >
-      {/* celular: buscador + vista en una fila, y los filtros en otra que se desliza de costado;
-          compu: todo en una fila */}
-      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center">
+      {/* buscador + vista arriba; abajo, el botón "Filtros" (abre un panel) y los filtros activos
+          como pastillas doradas que se quitan con ✕ */}
+      <div className="mb-6 space-y-3">
         <div className="flex items-center gap-2">
-          <div className="relative min-w-0 flex-1 sm:w-72 sm:flex-none">
-            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <div className="relative min-w-0 flex-1 sm:max-w-md">
+            {/* z-10: el input con backdrop-blur se pinta encima y tapaba la lupa */}
+            <Search className="pointer-events-none absolute top-1/2 left-3.5 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Buscar canción o artista…"
-              className="h-9 w-full rounded-full border border-border bg-card pr-4 pl-10 text-sm outline-none transition-colors focus:border-primary/60"
+              className="h-10 w-full rounded-full border border-white/10 bg-white/[0.04] pr-4 pl-10 text-sm backdrop-blur-xl outline-none transition-colors focus:border-primary/50 focus:bg-white/[0.06]"
             />
           </div>
-          {renderViewToggle("flex sm:hidden")}
+          {renderViewToggle("flex")}
         </div>
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] sm:mx-0 sm:flex-1 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
-          {tipos.length ? (
-            <select
-              value={tipo ?? ""}
-              onChange={(e) => setTipo(e.target.value || null)}
-              aria-label="Filtrar por tipo"
-              className={`shrink-0 ${filterSelectClass(tipo !== null)}`}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setFiltersOpen(true)}
+            className={`flex h-9 items-center gap-2 rounded-full border px-4 text-sm font-medium backdrop-blur-xl transition-colors ${
+              activeFilters.length
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "border-white/10 bg-white/[0.04] text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <SlidersHorizontal className="h-4 w-4" /> Filtros
+            {activeFilters.length ? (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground">
+                {activeFilters.length}
+              </span>
+            ) : null}
+          </button>
+          {activeFilters.map((filter) => (
+            <button
+              key={filter.label}
+              type="button"
+              onClick={filter.clear}
+              aria-label={`Quitar filtro ${filter.label}`}
+              className="flex h-9 animate-in items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 pr-2.5 pl-3.5 text-sm text-primary fade-in-0 zoom-in-95 duration-200 hover:bg-primary/20"
             >
-              <option value="">Tipo: todos</option>
-              {tipos.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          ) : null}
-          <select
-            value={secuencia ?? ""}
-            onChange={(e) => setSecuencia((e.target.value || null) as "con" | "sin" | null)}
-            aria-label="Filtrar por secuencia"
-            className={`shrink-0 ${filterSelectClass(secuencia !== null)}`}
-          >
-            <option value="">Secuencia: todas</option>
-            <option value="con">Con secuencia</option>
-            <option value="sin">Sin secuencia</option>
-          </select>
-          {/* temas: son muchos (catálogo del backend), van en un desplegable */}
-          <select
-            value={tag ?? ""}
-            onChange={(e) => setTag(e.target.value || null)}
-            aria-label="Filtrar por tema"
-            className={`shrink-0 ${filterSelectClass(tag !== null)}`}
-          >
-            <option value="">Tema: todos</option>
-            {allTags.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-          {renderViewToggle("ml-auto hidden sm:flex")}
+              {filter.label} <X className="h-3.5 w-3.5" />
+            </button>
+          ))}
         </div>
       </div>
+
+      {filtersOpen ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
+          <div
+            onClick={() => setFiltersOpen(false)}
+            className="absolute inset-0 animate-in bg-black/50 backdrop-blur-sm fade-in-0 duration-200"
+          />
+          <div
+            role="dialog"
+            aria-label="Filtros"
+            className="relative flex max-h-[85vh] w-full max-w-lg animate-in flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-card/80 shadow-2xl backdrop-blur-2xl backdrop-saturate-150 duration-300 fade-in-0 slide-in-from-bottom-8 sm:rounded-3xl sm:zoom-in-95 sm:slide-in-from-bottom-0"
+          >
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -top-24 -left-16 h-56 w-72 rounded-full bg-primary/10 blur-3xl"
+            />
+            <div className="relative flex items-center justify-between px-6 pt-5 pb-3">
+              <h2 className="font-display text-lg font-semibold">Filtros</h2>
+              <button
+                type="button"
+                onClick={() => setFiltersOpen(false)}
+                aria-label="Cerrar filtros"
+                className="rounded-full p-2 text-muted-foreground hover:bg-white/10 hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="relative min-h-0 flex-1 space-y-5 overflow-y-auto px-6 pb-4">
+              {tipos.length ? (
+                <FilterGroup
+                  title="Tipo"
+                  options={tipos.map((t) => [t, t] as const)}
+                  value={tipo}
+                  onChange={setTipo}
+                  allLabel="Todos"
+                />
+              ) : null}
+              <FilterGroup
+                title="Secuencia"
+                options={[
+                  ["con", "Con secuencia"],
+                  ["sin", "Sin secuencia"],
+                ]}
+                value={secuencia}
+                onChange={(v) => setSecuencia(v as "con" | "sin" | null)}
+                allLabel="Todas"
+              />
+              <FilterGroup
+                title="Tema"
+                options={allTags.map((t) => [t, t] as const)}
+                value={tag}
+                onChange={setTag}
+                allLabel="Todos"
+              />
+            </div>
+            <div className="relative flex items-center gap-3 border-t border-white/10 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setTipo(null);
+                  setSecuencia(null);
+                  setTag(null);
+                }}
+                disabled={!activeFilters.length}
+                className="rounded-full px-4 py-2 text-sm text-muted-foreground hover:text-foreground disabled:opacity-40"
+              >
+                Limpiar
+              </button>
+              <button
+                type="button"
+                onClick={() => setFiltersOpen(false)}
+                className="ml-auto h-10 rounded-full gradient-gold px-5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
+              >
+                Ver {filtered.length} {filtered.length === 1 ? "canción" : "canciones"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {filtered.length === 0 ? (
         <EmptyState
@@ -229,7 +347,7 @@ export function EscucharPage() {
       ) : view === "cards" ? (
         // tarjetas como en Favoritos: tocar la tarjeta reproduce
         <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-5 lg:grid-cols-7 2xl:grid-cols-9">
-          {paged.pageItems.map((song) => (
+          {paged.pageItems.map((song, i) => (
             <div
               key={song.id}
               role="button"
@@ -239,24 +357,55 @@ export function EscucharPage() {
                 if (e.key === "Enter") play(song);
               }}
               aria-label={`Reproducir ${song.title}`}
-              className={`surface-card group relative cursor-pointer rounded-lg p-2 hover:-translate-y-1 hover:border-primary/40 ${
-                current?.id === song.id ? "border-primary/60" : ""
+              // entran escalonadas; la que suena con borde y brillo dorados, y al pasar el mouse
+              // un brillo dorado suave
+              style={{ animationDelay: `${Math.min(i, 9) * 30}ms` }}
+              className={`surface-card group relative animate-in cursor-pointer overflow-hidden rounded-xl p-2 transition-all fill-mode-both fade-in-0 zoom-in-95 duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_10px_30px_-12px] hover:shadow-primary/40 ${
+                current?.id === song.id
+                  ? "border-primary/70 bg-gradient-to-b from-primary/[0.12] to-transparent shadow-[0_0_24px_-6px] shadow-primary/50"
+                  : ""
               }`}
             >
-              <Cover
-                song={song}
-                size="none"
-                className="mb-2 aspect-square w-full rounded-md shadow-none"
-              />
+              <div className="relative mb-2">
+                <Cover
+                  song={song}
+                  size="none"
+                  className="aspect-square w-full rounded-lg shadow-none transition-transform duration-500 group-hover:scale-[1.03]"
+                />
+                {/* sobre la portada: ecualizador dorado si suena; si no, ▶︎ dorado al pasar el mouse */}
+                <span
+                  aria-hidden
+                  className={`absolute inset-0 flex items-center justify-center rounded-lg bg-gradient-to-t from-black/60 via-black/10 to-transparent transition-opacity ${
+                    current?.id === song.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                  }`}
+                >
+                  {current?.id === song.id ? (
+                    <span className="flex h-5 items-end gap-0.5">
+                      {[0, 150, 300].map((delay) => (
+                        <span
+                          key={delay}
+                          className={`h-5 w-1 rounded-full bg-primary shadow-[0_0_6px] shadow-primary ${isPlaying ? "eq-bar" : "scale-y-50"}`}
+                          style={{ animationDelay: `${delay}ms` }}
+                        />
+                      ))}
+                    </span>
+                  ) : (
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full gradient-gold text-primary-foreground shadow-lg shadow-primary/40">
+                      <Play className="ml-0.5 h-4 w-4 fill-current" />
+                    </span>
+                  )}
+                </span>
+              </div>
               <p
-                className={`truncate text-sm font-semibold ${current?.id === song.id ? "text-primary" : ""}`}
+                className={`truncate text-sm font-semibold ${current?.id === song.id ? "text-gradient-gold" : ""}`}
               >
                 {song.title}
               </p>
               <p className="truncate text-xs text-muted-foreground">{song.artist}</p>
-              <div className="mt-1.5 flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">
-                  {song.key} · {formatDuration(song.duration)}
+              <div className="mt-1.5 flex items-center justify-between gap-1">
+                {/* solo la duración, como en el listado (sin tono) */}
+                <span className="text-xs whitespace-nowrap text-muted-foreground tabular-nums">
+                  {formatDuration(song.duration)}
                 </span>
                 {/* el corazón no reproduce */}
                 <span className="flex items-center" onClick={(e) => e.stopPropagation()}>
@@ -283,10 +432,19 @@ export function EscucharPage() {
             <div
               key={song.id}
               onClick={() => playRow(song)}
-              className={`group relative grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-2.5 transition-colors hover:bg-elevated/70 md:grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_56px_176px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_56px_176px] ${
-                current?.id === song.id ? "bg-elevated/60" : ""
+              // entran escalonadas (hasta 8 filas, después todas juntas)
+              style={{ animationDelay: `${Math.min(i, 8) * 35}ms` }}
+              className={`group relative grid animate-in grid-cols-[1fr_auto] items-center gap-3 px-4 py-3 transition-colors fill-mode-both fade-in-0 slide-in-from-bottom-1 duration-300 hover:bg-white/[0.03] md:grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_56px_176px] md:gap-4 md:py-2.5 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_56px_176px] ${
+                current?.id === song.id ? "bg-white/[0.05]" : ""
               }`}
             >
+              {/* la que suena: barra dorada a la izquierda */}
+              {current?.id === song.id ? (
+                <span
+                  aria-hidden
+                  className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-primary shadow-[0_0_12px] shadow-primary/60"
+                />
+              ) : null}
               <button
                 onClick={() => play(song)}
                 aria-label={`Reproducir ${song.title}`}
@@ -296,19 +454,49 @@ export function EscucharPage() {
                 <Play className="hidden h-3.5 w-3.5 group-hover:block" />
               </button>
               <div className="flex min-w-0 items-center gap-3">
-                <Cover song={song} size="sm" />
+                <div className="relative shrink-0">
+                  <Cover
+                    song={song}
+                    size="sm"
+                    className="h-14 w-14 rounded-xl md:h-11 md:w-11 md:rounded-lg"
+                  />
+                  {/* celular: sonando → ecualizador; si no, ▶︎ al tocar/pasar */}
+                  <span
+                    aria-hidden
+                    className={`absolute inset-0 flex items-center justify-center rounded-xl bg-black/45 transition-opacity md:hidden ${
+                      current?.id === song.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                    }`}
+                  >
+                    {current?.id === song.id ? (
+                      <span className="flex h-4 items-end gap-0.5">
+                        {[0, 150, 300].map((delay) => (
+                          <span
+                            key={delay}
+                            className={`h-4 w-1 rounded-full bg-primary ${isPlaying ? "eq-bar" : "scale-y-50"}`}
+                            style={{ animationDelay: `${delay}ms` }}
+                          />
+                        ))}
+                      </span>
+                    ) : (
+                      <Play className="ml-0.5 h-5 w-5 fill-white text-white" />
+                    )}
+                  </span>
+                </div>
                 <div className="min-w-0">
                   <p
-                    className={`truncate font-medium ${current?.id === song.id ? "text-primary" : ""}`}
+                    className={`truncate text-[15px] font-semibold md:text-base md:font-medium ${current?.id === song.id ? "text-primary" : ""}`}
                   >
                     {song.title}
                   </p>
                   <p className="truncate text-sm text-muted-foreground">{song.artist}</p>
                   {/* sin columna de temas (celular y pantallas medianas): van debajo del artista */}
                   {/* en celular entra 1 tema (y "+N"); en pantallas medianas, 2 */}
-                  <div className="mt-1 sm:hidden">
-                    <TagList tags={song.tags} max={1} />
-                  </div>
+                  {/* celular: temas como texto liviano ("Fe · Restauración"), sin pastillas */}
+                  {song.tags.length ? (
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground/70 sm:hidden">
+                      {song.tags.slice(0, 2).join(" · ")}
+                    </p>
+                  ) : null}
                   <div className="mt-1 hidden sm:block 2xl:hidden">
                     <TagList tags={song.tags} />
                   </div>
@@ -350,8 +538,12 @@ export function EscucharPage() {
                 }}
                 aria-label={`Acciones de ${song.title}`}
                 aria-expanded={actionsOpen === song.id}
-                className="rounded-full p-2 text-muted-foreground transition-colors hover:text-primary md:hidden"
+                className="flex items-center gap-2 rounded-full py-1 pr-1 pl-2 text-muted-foreground transition-colors hover:text-primary md:hidden"
               >
+                {/* duración a la vista, como en un reproductor */}
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {formatDuration(song.duration)}
+                </span>
                 <MoreHorizontal className="h-5 w-5" />
               </button>
               <div

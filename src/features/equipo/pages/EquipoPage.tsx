@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, Mail, Pencil, Plus, Users } from "lucide-react";
+import { ArrowLeft, Mail, Pencil, Plus, UserX, Users } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Avatar, EmptyState, RoleBadge, Skeletons } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
@@ -204,15 +204,18 @@ export function EquipoPage() {
             {i}
           </button>
         ))}
+        {/* corto ("Bajas", con ícono) para que entre en la misma fila que los roles en celular */}
         <button
           onClick={() => setShowBajas((v) => !v)}
-          className={`ml-auto rounded-full border px-3 py-1.5 text-xs transition-colors ${
+          aria-pressed={showBajas}
+          title={showBajas ? "Ocultar dados de baja" : "Mostrar dados de baja"}
+          className={`ml-auto flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors ${
             showBajas
               ? "border-destructive/50 bg-destructive/10 text-destructive"
               : "border-border text-muted-foreground hover:text-foreground"
           }`}
         >
-          {showBajas ? "Ocultar dados de baja" : "Mostrar dados de baja"}
+          <UserX className="h-3.5 w-3.5" /> Bajas
         </button>
       </div>
 

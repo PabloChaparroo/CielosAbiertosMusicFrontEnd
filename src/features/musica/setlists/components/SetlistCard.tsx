@@ -37,7 +37,8 @@ export function SetlistCard({
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") onClick();
       }}
-      className={`surface-card w-full p-5 text-left hover:-translate-y-1 hover:border-primary/40 ${muted ? "opacity-80" : ""}`}
+      // min-w-0: si no, la línea larga de canciones (truncate) estira la tarjeta y la página en celular
+      className={`surface-card w-full min-w-0 p-5 text-left hover:-translate-y-1 hover:border-primary/40 ${muted ? "opacity-80" : ""}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -46,7 +47,7 @@ export function SetlistCard({
           >
             {s.type}
           </span>
-          <h3 className="mt-2 font-display text-lg font-semibold">{s.title}</h3>
+          <h3 className="mt-2 font-display text-lg font-semibold break-words">{s.title}</h3>
           <p className="text-sm text-muted-foreground">
             {new Date(s.date).toLocaleString("es-AR", {
               weekday: "long",
@@ -101,7 +102,7 @@ export function SetlistCard({
           ) : null}
         </div>
       </div>
-      <div className="mt-4 flex -space-x-2">
+      <div className="mt-4 flex min-w-0 items-center -space-x-2">
         {s.teamIds.map((id) => {
           const u = users.find((x) => x.id === id);
           if (!u) return null;
@@ -114,7 +115,9 @@ export function SetlistCard({
             />
           );
         })}
-        <span className="pl-4 text-xs text-muted-foreground">Lidera {leader?.name}</span>
+        <span className="min-w-0 truncate pl-4 text-xs text-muted-foreground">
+          Lidera {leader?.name}
+        </span>
       </div>
       <p className="mt-3 truncate text-sm text-muted-foreground">
         {s.items.map((i) => songs.find((so) => so.id === i.songId)?.title).join(" · ")}

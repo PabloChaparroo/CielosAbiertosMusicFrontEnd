@@ -41,6 +41,7 @@ import {
   exitBrowserFullscreen,
   isBrowserFullscreen,
 } from "@/lib/browser-fullscreen";
+import { GoldParticles } from "@/components/common/GoldParticles";
 import { ListNav, listNeighbors } from "@/components/common/ListNav";
 import { canRotateScreen } from "@/lib/screen-orientation";
 import { matchesSearch } from "@/lib/search";
@@ -339,8 +340,10 @@ export function AcordesPage() {
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <aside
           ref={searchPanelRef}
-          className="surface-card order-1 flex max-h-[55vh] flex-col overflow-hidden lg:order-1 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7.5rem)]"
+          className="surface-card relative order-1 flex max-h-[55vh] flex-col overflow-hidden lg:order-1 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7.5rem)]"
         >
+          {/* partículas doradas detrás del buscador y la lista */}
+          <GoldParticles />
           <div className="relative border-b border-border/60 p-3">
             <Search className="absolute top-1/2 left-6 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -352,7 +355,7 @@ export function AcordesPage() {
             />
           </div>
           <div
-            className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out lg:flex-1 lg:grid-rows-[1fr] lg:opacity-100 ${searchOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+            className={`relative grid transition-[grid-template-rows,opacity] duration-200 ease-out lg:flex-1 lg:grid-rows-[1fr] lg:opacity-100 ${searchOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
           >
             <div className="min-h-0 overflow-y-auto p-2 lg:h-full">
               {!query && (
@@ -459,180 +462,200 @@ export function AcordesPage() {
             </div>
           ) : (
             <>
-              <div className="surface-card flex flex-wrap items-center gap-3 p-4">
-                <div className="mr-auto min-w-0">
-                  <div className="flex items-center gap-2">
+              {/* Tarjeta de la canción en tres bloques: la canción (y escucharla), cómo se ve la hoja
+                  (tono, tamaño, modo) y las acciones (En vivo, PDF, Editar). Todos los controles con
+                  el mismo alto (h-10) y borde, para que se vean parejos */}
+              <div className="surface-card divide-y divide-border/60">
+                <div className="flex items-center gap-3 p-4">
+                  <div className="min-w-0 flex-1">
                     <h2 className="truncate font-display text-2xl font-semibold">{song.title}</h2>
+                    <p className="truncate text-sm text-muted-foreground">
+                      {song.artist} · original {song.key} · {song.compas} · {song.bpm} BPM
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
                     <FavButton songId={song.id} />
                     {/* en celular la lista (con su botón de reproducir) queda plegada: se reproduce desde acá */}
-                    <div className="flex items-center gap-1 lg:hidden">
+                    {song.trackCount > 0 ? (
                       <button
                         type="button"
-                        onClick={() => (current?.id === song.id ? toggle() : play(song))}
-                        aria-label={
-                          current?.id === song.id && isPlaying
-                            ? `Pausar ${song.title}`
-                            : `Reproducir ${song.title}`
-                        }
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                        onClick={() => {
+                          if (current?.id !== song.id) play(song);
+                          // después del render: el reproductor cierra el desplegable al cambiar de canción
+                          requestAnimationFrame(() =>
+                            window.dispatchEvent(new Event(OPEN_RELATED_TRACKS_EVENT)),
+                          );
+                        }}
+                        aria-label="Pistas relacionadas"
+                        title="Pistas relacionadas"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-primary lg:hidden"
                       >
-                        {current?.id === song.id && isPlaying ? (
-                          <Pause className="h-4 w-4" />
-                        ) : (
-                          <Play className="ml-0.5 h-4 w-4" />
-                        )}
-                      </button>
-                      {song.trackCount > 0 ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (current?.id !== song.id) play(song);
-                            // después del render: el reproductor cierra el desplegable al cambiar de canción
-                            requestAnimationFrame(() =>
-                              window.dispatchEvent(new Event(OPEN_RELATED_TRACKS_EVENT)),
-                            );
-                          }}
-                          aria-label="Pistas relacionadas"
-                          title="Pistas relacionadas"
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-primary"
-                        >
-                          <ListMusic className="h-4 w-4" />
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                  <p className="truncate text-sm text-muted-foreground">
-                    {song.artist} · original {song.key} · {song.compas} · {song.bpm} BPM
-                  </p>
-                </div>
-
-                {/* "En vivo" y PDF en la tarjeta de la canción, igual que en Letras */}
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      void enterBrowserFullscreen();
-                      setLive(true);
-                    }}
-                    className="flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm hover:bg-secondary"
-                  >
-                    <Maximize2 className="h-4 w-4" />{" "}
-                    <span className="hidden sm:inline">En vivo</span>
-                  </button>
-                  <button
-                    // el PDF no depende del ancho de la pantalla: tamaño de siempre, salvo que se haya elegido a mano
-                    onClick={() =>
-                      exportChordsPdf(song, {
-                        semitones,
-                        targetKey,
-                        mode,
-                        fontSize: manualFontSize ?? 25,
-                      })
-                    }
-                    className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
-                  >
-                    <FileDown className="h-4 w-4" /> <span className="hidden sm:inline">PDF</span>
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-1 rounded-full border border-border p-1">
-                  <IconBtn onClick={() => setSemitones((s) => s - 1)} label="Bajar semitono">
-                    <Minus className="h-4 w-4" />
-                  </IconBtn>
-                  <select
-                    value={targetKey}
-                    onChange={(e) => {
-                      const idxFrom = KEYS.indexOf(targetKey);
-                      const target = e.target.value;
-                      const semis = (((KEYS.indexOf(target) - idxFrom) % 12) + 12) % 12;
-                      setSemitones((s) => s + semis);
-                    }}
-                    className="rounded-full bg-transparent px-2 text-sm font-semibold text-primary outline-none"
-                  >
-                    {KEYS.map((k) => (
-                      <option key={k} value={k} className="bg-card text-foreground">
-                        {k}
-                      </option>
-                    ))}
-                  </select>
-                  <IconBtn onClick={() => setSemitones((s) => s + 1)} label="Subir semitono">
-                    <Plus className="h-4 w-4" />
-                  </IconBtn>
-                </div>
-
-                <div className="flex items-center gap-1 rounded-full border border-border p-1">
-                  <IconBtn onClick={() => changeFontSize(-2, 40)} label="Achicar letra">
-                    <Minus className="h-4 w-4" />
-                  </IconBtn>
-                  <span className="w-10 text-center text-xs text-muted-foreground">
-                    {fontSize}px
-                  </span>
-                  <IconBtn onClick={() => changeFontSize(2, 40)} label="Agrandar letra">
-                    <Plus className="h-4 w-4" />
-                  </IconBtn>
-                </div>
-
-                <div className="flex rounded-full border border-border p-0.5">
-                  {(
-                    [
-                      ["both", "Letra + acordes"],
-                      ["chords", "Solo acordes"],
-                    ] as const
-                  ).map(([v, label]) => (
-                    <button
-                      key={v}
-                      onClick={() => setMode(v)}
-                      className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                        mode === v
-                          ? "gradient-gold text-primary-foreground"
-                          : "text-muted-foreground"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                {can("editSongs") && !editing ? (
-                  <button
-                    type="button"
-                    onClick={handleStartEditing}
-                    className="flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
-                  >
-                    <Pencil className="h-4 w-4" /> Editar
-                  </button>
-                ) : null}
-                {/* Guardar/Cancelar arriba, a mano sin importar lo larga que sea la canción */}
-                {editing ? (
-                  <>
-                    {/* el selector de tono solo cambia la vista: esto reescribe el texto para guardarlo así */}
-                    {((semitones % 12) + 12) % 12 ? (
-                      <button
-                        type="button"
-                        onClick={handleTransposeDraft}
-                        disabled={saving}
-                        title="Reescribe los acordes del texto en este tono; al guardar, la canción queda en este tono"
-                        className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105 disabled:opacity-50"
-                      >
-                        <ArrowRightLeft className="h-4 w-4" /> Pasar el texto a {targetKey}
+                        <ListMusic className="h-4 w-4" />
                       </button>
                     ) : null}
                     <button
                       type="button"
-                      onClick={handleCancelEditing}
-                      disabled={saving}
-                      className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                      onClick={() => (current?.id === song.id ? toggle() : play(song))}
+                      aria-label={
+                        current?.id === song.id && isPlaying
+                          ? `Pausar ${song.title}`
+                          : `Reproducir ${song.title}`
+                      }
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full gradient-gold text-primary-foreground lg:hidden"
                     >
-                      <X className="h-4 w-4" /> Cancelar
+                      {current?.id === song.id && isPlaying ? (
+                        <Pause className="h-4 w-4" />
+                      ) : (
+                        <Play className="ml-0.5 h-4 w-4" />
+                      )}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleSaveChords()}
-                      disabled={saving}
-                      className="flex items-center gap-2 rounded-full border border-primary/50 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
-                    >
-                      <Check className="h-4 w-4" /> {saving ? "Guardando…" : "Guardar"}
-                    </button>
-                  </>
-                ) : null}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-3 p-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
+                      Tono
+                    </span>
+                    <div className="flex h-10 items-center gap-1 rounded-full border border-border px-1">
+                      <IconBtn onClick={() => setSemitones((s) => s - 1)} label="Bajar semitono">
+                        <Minus className="h-4 w-4" />
+                      </IconBtn>
+                      <select
+                        value={targetKey}
+                        onChange={(e) => {
+                          const idxFrom = KEYS.indexOf(targetKey);
+                          const target = e.target.value;
+                          const semis = (((KEYS.indexOf(target) - idxFrom) % 12) + 12) % 12;
+                          setSemitones((s) => s + semis);
+                        }}
+                        aria-label="Tono"
+                        className="w-12 appearance-none bg-transparent text-center text-sm font-semibold text-primary outline-none"
+                      >
+                        {KEYS.map((k) => (
+                          <option key={k} value={k} className="bg-card text-foreground">
+                            {k}
+                          </option>
+                        ))}
+                      </select>
+                      <IconBtn onClick={() => setSemitones((s) => s + 1)} label="Subir semitono">
+                        <Plus className="h-4 w-4" />
+                      </IconBtn>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
+                      Letra
+                    </span>
+                    <div className="flex h-10 items-center gap-1 rounded-full border border-border px-1">
+                      <IconBtn onClick={() => changeFontSize(-2, 40)} label="Achicar letra">
+                        <Minus className="h-4 w-4" />
+                      </IconBtn>
+                      <span className="w-12 text-center text-sm text-muted-foreground">
+                        {fontSize}px
+                      </span>
+                      <IconBtn onClick={() => changeFontSize(2, 40)} label="Agrandar letra">
+                        <Plus className="h-4 w-4" />
+                      </IconBtn>
+                    </div>
+                  </div>
+
+                  <div className="flex h-10 w-full rounded-full border border-border p-1 sm:w-auto">
+                    {(
+                      [
+                        ["both", "Letra + acordes"],
+                        ["chords", "Solo acordes"],
+                      ] as const
+                    ).map(([v, label]) => (
+                      <button
+                        key={v}
+                        onClick={() => setMode(v)}
+                        className={`flex-1 rounded-full px-4 text-sm font-medium transition-colors sm:flex-none ${
+                          mode === v
+                            ? "gradient-gold text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 p-4">
+                  {!editing ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void enterBrowserFullscreen();
+                          setLive(true);
+                        }}
+                        className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full gradient-gold px-4 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105 sm:flex-none"
+                      >
+                        <Maximize2 className="h-4 w-4" /> En vivo
+                      </button>
+                      <button
+                        type="button"
+                        // el PDF no depende del ancho de la pantalla: tamaño de siempre, salvo que se haya elegido a mano
+                        onClick={() =>
+                          exportChordsPdf(song, {
+                            semitones,
+                            targetKey,
+                            mode,
+                            fontSize: manualFontSize ?? 25,
+                          })
+                        }
+                        className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full border border-border px-4 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary sm:flex-none"
+                      >
+                        <FileDown className="h-4 w-4" /> PDF
+                      </button>
+                      {can("editSongs") ? (
+                        <button
+                          type="button"
+                          onClick={handleStartEditing}
+                          className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full border border-border px-4 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary sm:flex-none"
+                        >
+                          <Pencil className="h-4 w-4" /> Editar
+                        </button>
+                      ) : null}
+                    </>
+                  ) : null}
+                  {/* Guardar/Cancelar arriba, a mano sin importar lo larga que sea la canción */}
+                  {editing ? (
+                    <>
+                      {/* el selector de tono solo cambia la vista: esto reescribe el texto para guardarlo así */}
+                      {((semitones % 12) + 12) % 12 ? (
+                        <button
+                          type="button"
+                          onClick={handleTransposeDraft}
+                          disabled={saving}
+                          title="Reescribe los acordes del texto en este tono; al guardar, la canción queda en este tono"
+                          className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105 disabled:opacity-50"
+                        >
+                          <ArrowRightLeft className="h-4 w-4" /> Pasar el texto a {targetKey}
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={handleCancelEditing}
+                        disabled={saving}
+                        className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                      >
+                        <X className="h-4 w-4" /> Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleSaveChords()}
+                        disabled={saving}
+                        className="flex items-center gap-2 rounded-full border border-primary/50 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+                      >
+                        <Check className="h-4 w-4" /> {saving ? "Guardando…" : "Guardar"}
+                      </button>
+                    </>
+                  ) : null}
+                </div>
               </div>
 
               {editing ? (

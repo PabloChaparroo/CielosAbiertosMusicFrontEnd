@@ -163,7 +163,7 @@ export function SetlistsPage() {
             description="Creá la próxima lista de canciones para que el equipo la tenga a mano."
           />
         ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
             {upcoming.map((s) => (
               <SetlistCard
                 key={s.id}
@@ -191,7 +191,7 @@ export function SetlistsPage() {
             description="Guardá una lista de Próximos o del Historial para reutilizarla."
           />
         ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
             {templates.map((t) => (
               <div key={t.id} className="surface-card p-5">
                 <div className="flex items-start justify-between gap-3">
@@ -247,7 +247,7 @@ export function SetlistsPage() {
             />
           </div>
         </div>
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
           {past.map((s) => (
             <SetlistCard
               key={s.id}

@@ -12,6 +12,7 @@ import {
   Play,
   Plus,
   Search,
+  SlidersHorizontal,
   X,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -27,13 +28,49 @@ import { SongLinksModal } from "../components/SongLinksModal";
 import { UploadModal } from "../components/UploadModal";
 import { matchesSearch } from "@/lib/search";
 
-/** Desplegable de filtro: dorado si tiene algo elegido */
-const filterSelectClass = (active: boolean) =>
-  `h-9 rounded-full border px-3 text-sm font-semibold outline-none transition-colors focus:border-primary/60 ${
-    active
-      ? "border-primary/50 bg-primary/15 text-primary"
-      : "border-border bg-card text-muted-foreground hover:text-foreground"
-  }`;
+/** Grupo de opciones del panel de filtros: pastillas para tocar, con "Todos" para no filtrar */
+function FilterGroup({
+  title,
+  options,
+  value,
+  onChange,
+  allLabel,
+}: {
+  title: string;
+  options: ReadonlyArray<readonly [string, string]>;
+  value: string | null;
+  onChange: (value: string | null) => void;
+  allLabel: string;
+}) {
+  const pill = (active: boolean) =>
+    `rounded-full border px-3.5 py-1.5 text-sm transition-colors ${
+      active
+        ? "border-primary/50 bg-primary/15 font-medium text-primary"
+        : "border-white/10 bg-white/[0.03] text-muted-foreground hover:border-white/20 hover:text-foreground"
+    }`;
+  return (
+    <section>
+      <p className="mb-2 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
+        {title}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => onChange(null)} className={pill(value === null)}>
+          {allLabel}
+        </button>
+        {options.map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onChange(value === key ? null : key)}
+            className={pill(value === key)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 export function EscucharPage() {
   const { songs, play, current, isPlaying, can, addSong, updateSong } = useApp();
@@ -111,6 +148,20 @@ export function EscucharPage() {
   );
   // 30 por página; la búsqueda y los filtros miran todas las canciones
   const paged = usePaged(filtered, 30, `${query}|${tag}|${tipo}|${secuencia}`);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  // filtros elegidos, para mostrarlos como pastillas que se quitan de un toque
+  const activeFilters = [
+    ...(tipo ? [{ label: tipo, clear: () => setTipo(null) }] : []),
+    ...(secuencia
+      ? [
+          {
+            label: secuencia === "con" ? "Con secuencia" : "Sin secuencia",
+            clear: () => setSecuencia(null),
+          },
+        ]
+      : []),
+    ...(tag ? [{ label: tag, clear: () => setTag(null) }] : []),
+  ];
 
   // lista / tarjetas: en celular va al lado del buscador, en compu al final de los filtros
   const renderViewToggle = (className: string) => (
@@ -161,64 +212,130 @@ export function EscucharPage() {
         ) : null
       }
     >
-      {/* celular: buscador + vista en una fila, y los filtros en otra que se desliza de costado;
-          compu: todo en una fila */}
-      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center">
+      {/* buscador + vista arriba; abajo, el botón "Filtros" (abre un panel) y los filtros activos
+          como pastillas doradas que se quitan con ✕ */}
+      <div className="mb-6 space-y-3">
         <div className="flex items-center gap-2">
-          <div className="relative min-w-0 flex-1 sm:w-72 sm:flex-none">
-            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <div className="relative min-w-0 flex-1 sm:max-w-md">
+            <Search className="absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Buscar canción o artista…"
-              className="h-9 w-full rounded-full border border-border bg-card pr-4 pl-10 text-sm outline-none transition-colors focus:border-primary/60"
+              className="h-10 w-full rounded-full border border-white/10 bg-white/[0.04] pr-4 pl-10 text-sm backdrop-blur-xl outline-none transition-colors focus:border-primary/50 focus:bg-white/[0.06]"
             />
           </div>
-          {renderViewToggle("flex sm:hidden")}
+          {renderViewToggle("flex")}
         </div>
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] sm:mx-0 sm:flex-1 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
-          {tipos.length ? (
-            <select
-              value={tipo ?? ""}
-              onChange={(e) => setTipo(e.target.value || null)}
-              aria-label="Filtrar por tipo"
-              className={`shrink-0 ${filterSelectClass(tipo !== null)}`}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setFiltersOpen(true)}
+            className={`flex h-9 items-center gap-2 rounded-full border px-4 text-sm font-medium backdrop-blur-xl transition-colors ${
+              activeFilters.length
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "border-white/10 bg-white/[0.04] text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <SlidersHorizontal className="h-4 w-4" /> Filtros
+            {activeFilters.length ? (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground">
+                {activeFilters.length}
+              </span>
+            ) : null}
+          </button>
+          {activeFilters.map((filter) => (
+            <button
+              key={filter.label}
+              type="button"
+              onClick={filter.clear}
+              aria-label={`Quitar filtro ${filter.label}`}
+              className="flex h-9 animate-in items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 pr-2.5 pl-3.5 text-sm text-primary fade-in-0 zoom-in-95 duration-200 hover:bg-primary/20"
             >
-              <option value="">Tipo: todos</option>
-              {tipos.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          ) : null}
-          <select
-            value={secuencia ?? ""}
-            onChange={(e) => setSecuencia((e.target.value || null) as "con" | "sin" | null)}
-            aria-label="Filtrar por secuencia"
-            className={`shrink-0 ${filterSelectClass(secuencia !== null)}`}
-          >
-            <option value="">Secuencia: todas</option>
-            <option value="con">Con secuencia</option>
-            <option value="sin">Sin secuencia</option>
-          </select>
-          {/* temas: son muchos (catálogo del backend), van en un desplegable */}
-          <select
-            value={tag ?? ""}
-            onChange={(e) => setTag(e.target.value || null)}
-            aria-label="Filtrar por tema"
-            className={`shrink-0 ${filterSelectClass(tag !== null)}`}
-          >
-            <option value="">Tema: todos</option>
-            {allTags.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-          {renderViewToggle("ml-auto hidden sm:flex")}
+              {filter.label} <X className="h-3.5 w-3.5" />
+            </button>
+          ))}
         </div>
       </div>
+
+      {filtersOpen ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
+          <div
+            onClick={() => setFiltersOpen(false)}
+            className="absolute inset-0 animate-in bg-black/50 backdrop-blur-sm fade-in-0 duration-200"
+          />
+          <div
+            role="dialog"
+            aria-label="Filtros"
+            className="relative flex max-h-[85vh] w-full max-w-lg animate-in flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-card/80 shadow-2xl backdrop-blur-2xl backdrop-saturate-150 duration-300 fade-in-0 slide-in-from-bottom-8 sm:rounded-3xl sm:zoom-in-95 sm:slide-in-from-bottom-0"
+          >
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -top-24 -left-16 h-56 w-72 rounded-full bg-primary/10 blur-3xl"
+            />
+            <div className="relative flex items-center justify-between px-6 pt-5 pb-3">
+              <h2 className="font-display text-lg font-semibold">Filtros</h2>
+              <button
+                type="button"
+                onClick={() => setFiltersOpen(false)}
+                aria-label="Cerrar filtros"
+                className="rounded-full p-2 text-muted-foreground hover:bg-white/10 hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="relative min-h-0 flex-1 space-y-5 overflow-y-auto px-6 pb-4">
+              {tipos.length ? (
+                <FilterGroup
+                  title="Tipo"
+                  options={tipos.map((t) => [t, t] as const)}
+                  value={tipo}
+                  onChange={setTipo}
+                  allLabel="Todos"
+                />
+              ) : null}
+              <FilterGroup
+                title="Secuencia"
+                options={[
+                  ["con", "Con secuencia"],
+                  ["sin", "Sin secuencia"],
+                ]}
+                value={secuencia}
+                onChange={(v) => setSecuencia(v as "con" | "sin" | null)}
+                allLabel="Todas"
+              />
+              <FilterGroup
+                title="Tema"
+                options={allTags.map((t) => [t, t] as const)}
+                value={tag}
+                onChange={setTag}
+                allLabel="Todos"
+              />
+            </div>
+            <div className="relative flex items-center gap-3 border-t border-white/10 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setTipo(null);
+                  setSecuencia(null);
+                  setTag(null);
+                }}
+                disabled={!activeFilters.length}
+                className="rounded-full px-4 py-2 text-sm text-muted-foreground hover:text-foreground disabled:opacity-40"
+              >
+                Limpiar
+              </button>
+              <button
+                type="button"
+                onClick={() => setFiltersOpen(false)}
+                className="ml-auto h-10 rounded-full gradient-gold px-5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
+              >
+                Ver {filtered.length} {filtered.length === 1 ? "canción" : "canciones"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {filtered.length === 0 ? (
         <EmptyState

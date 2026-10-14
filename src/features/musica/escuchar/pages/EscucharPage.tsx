@@ -36,7 +36,7 @@ const filterSelectClass = (active: boolean) =>
   }`;
 
 export function EscucharPage() {
-  const { songs, play, current, can, addSong, updateSong } = useApp();
+  const { songs, play, current, isPlaying, can, addSong, updateSong } = useApp();
   // celular: fila con las acciones abiertas (una a la vez)
   const [actionsOpen, setActionsOpen] = useState<string | null>(null);
   // tocar en cualquier otro lado las cierra. Ese toque solo cierra: si cae sobre otra canción no
@@ -283,10 +283,19 @@ export function EscucharPage() {
             <div
               key={song.id}
               onClick={() => playRow(song)}
-              className={`group relative grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-2.5 transition-colors hover:bg-elevated/70 md:grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_56px_176px] 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_56px_176px] ${
-                current?.id === song.id ? "bg-elevated/60" : ""
+              // entran escalonadas (hasta 8 filas, después todas juntas)
+              style={{ animationDelay: `${Math.min(i, 8) * 35}ms` }}
+              className={`group relative grid animate-in grid-cols-[1fr_auto] items-center gap-3 px-4 py-3 transition-colors fill-mode-both fade-in-0 slide-in-from-bottom-1 duration-300 hover:bg-white/[0.03] md:grid-cols-[40px_minmax(0,1fr)_100px_80px_150px_56px_176px] md:gap-4 md:py-2.5 2xl:grid-cols-[40px_minmax(220px,1fr)_200px_100px_80px_150px_56px_176px] ${
+                current?.id === song.id ? "bg-white/[0.05]" : ""
               }`}
             >
+              {/* la que suena: barra dorada a la izquierda */}
+              {current?.id === song.id ? (
+                <span
+                  aria-hidden
+                  className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-primary shadow-[0_0_12px] shadow-primary/60"
+                />
+              ) : null}
               <button
                 onClick={() => play(song)}
                 aria-label={`Reproducir ${song.title}`}
@@ -296,19 +305,49 @@ export function EscucharPage() {
                 <Play className="hidden h-3.5 w-3.5 group-hover:block" />
               </button>
               <div className="flex min-w-0 items-center gap-3">
-                <Cover song={song} size="sm" />
+                <div className="relative shrink-0">
+                  <Cover
+                    song={song}
+                    size="sm"
+                    className="h-14 w-14 rounded-xl md:h-11 md:w-11 md:rounded-lg"
+                  />
+                  {/* celular: sonando → ecualizador; si no, ▶︎ al tocar/pasar */}
+                  <span
+                    aria-hidden
+                    className={`absolute inset-0 flex items-center justify-center rounded-xl bg-black/45 transition-opacity md:hidden ${
+                      current?.id === song.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                    }`}
+                  >
+                    {current?.id === song.id ? (
+                      <span className="flex h-4 items-end gap-0.5">
+                        {[0, 150, 300].map((delay) => (
+                          <span
+                            key={delay}
+                            className={`h-4 w-1 rounded-full bg-primary ${isPlaying ? "eq-bar" : "scale-y-50"}`}
+                            style={{ animationDelay: `${delay}ms` }}
+                          />
+                        ))}
+                      </span>
+                    ) : (
+                      <Play className="ml-0.5 h-5 w-5 fill-white text-white" />
+                    )}
+                  </span>
+                </div>
                 <div className="min-w-0">
                   <p
-                    className={`truncate font-medium ${current?.id === song.id ? "text-primary" : ""}`}
+                    className={`truncate text-[15px] font-semibold md:text-base md:font-medium ${current?.id === song.id ? "text-primary" : ""}`}
                   >
                     {song.title}
                   </p>
                   <p className="truncate text-sm text-muted-foreground">{song.artist}</p>
                   {/* sin columna de temas (celular y pantallas medianas): van debajo del artista */}
                   {/* en celular entra 1 tema (y "+N"); en pantallas medianas, 2 */}
-                  <div className="mt-1 sm:hidden">
-                    <TagList tags={song.tags} max={1} />
-                  </div>
+                  {/* celular: temas como texto liviano ("Fe · Restauración"), sin pastillas */}
+                  {song.tags.length ? (
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground/70 sm:hidden">
+                      {song.tags.slice(0, 2).join(" · ")}
+                    </p>
+                  ) : null}
                   <div className="mt-1 hidden sm:block 2xl:hidden">
                     <TagList tags={song.tags} />
                   </div>
@@ -350,8 +389,15 @@ export function EscucharPage() {
                 }}
                 aria-label={`Acciones de ${song.title}`}
                 aria-expanded={actionsOpen === song.id}
-                className="rounded-full p-2 text-muted-foreground transition-colors hover:text-primary md:hidden"
+                className="flex items-center gap-2 rounded-full py-1 pr-1 pl-2 text-muted-foreground transition-colors hover:text-primary md:hidden"
               >
+                {/* tono y duración a mano, sin abrir la canción */}
+                <span className="flex flex-col items-end gap-0.5">
+                  <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-primary/15 px-1.5 text-[11px] font-semibold text-primary">
+                    {song.key}
+                  </span>
+                  <span className="text-[11px] tabular-nums">{formatDuration(song.duration)}</span>
+                </span>
                 <MoreHorizontal className="h-5 w-5" />
               </button>
               <div

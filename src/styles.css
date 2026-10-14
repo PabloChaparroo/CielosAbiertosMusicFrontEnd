@@ -249,7 +249,37 @@
   animation: hero-particle 8s ease-in-out infinite;
 }
 
+/* Inicio: partículas que suben desde abajo de la pantalla hasta arriba, balanceándose apenas */
+@keyframes rising-particle {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  10% {
+    opacity: 0.6;
+  }
+  50% {
+    transform: translate(12px, -55vh);
+  }
+  85% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-6px, -110vh);
+  }
+}
+
+@utility rising-particle {
+  opacity: 0;
+  box-shadow: 0 0 8px var(--primary);
+  animation: rising-particle 18s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .rising-particle {
+    display: none;
+  }
   .hero-halo,
   .hero-particle {
     animation: none;

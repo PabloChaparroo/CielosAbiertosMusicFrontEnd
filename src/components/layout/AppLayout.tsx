@@ -48,7 +48,9 @@ export function AppLayout({
             aria-hidden
             className="pointer-events-none absolute -top-24 -left-16 h-56 w-72 rounded-full bg-primary/10 blur-3xl"
           />
-          <div className="relative flex items-center gap-3 px-4 py-4 sm:px-8">
+          {/* flex-wrap + min-w-40 en el título: si las acciones no entran al lado (ej. Estadísticas en
+              celular), bajan a una segunda fila en vez de cortar el título */}
+          <div className="relative flex flex-wrap items-center gap-x-3 gap-y-3 px-4 py-4 sm:px-8">
             <button
               onClick={() => setOpen(true)}
               aria-label="Abrir menú"
@@ -56,13 +58,15 @@ export function AppLayout({
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="min-w-0 flex-1">
+            <div className="min-w-40 flex-1">
               <h1 className="truncate font-display text-xl font-semibold sm:text-2xl">{title}</h1>
               {subtitle ? (
                 <p className="truncate text-xs text-muted-foreground sm:text-sm">{subtitle}</p>
               ) : null}
             </div>
-            {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
+            {actions ? (
+              <div className="flex max-w-full flex-wrap items-center gap-2">{actions}</div>
+            ) : null}
           </div>
         </header>
 

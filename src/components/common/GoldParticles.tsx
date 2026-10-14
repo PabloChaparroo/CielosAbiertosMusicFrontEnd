@@ -12,7 +12,7 @@ const PARTICLES = [
 ];
 
 /**
- * Partículas doradas que flotan, como en la portada de Inicio. Van como fondo de un contenedor
+ * Partículas doradas que flotan sobre un sombreado dorado tenue, como en la portada de Inicio. Van como fondo de un contenedor
  * con `relative`: el contenido que va encima también tiene que llevar `relative`. Con "reducir
  * movimiento" quedan quietas (ver `hero-particle` en styles.css).
  */
@@ -22,6 +22,9 @@ export function GoldParticles({ className = "" }: { className?: string }) {
       aria-hidden
       className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`}
     >
+      {/* sombreado dorado tenue desde arriba: sin él las partículas solas quedaban sueltas */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_90%_45%_at_20%_0%,color-mix(in_oklch,var(--primary)_16%,transparent),transparent_75%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_35%_at_90%_100%,color-mix(in_oklch,var(--primary)_9%,transparent),transparent_75%)]" />
       {PARTICLES.map((p, i) => (
         <span
           key={i}

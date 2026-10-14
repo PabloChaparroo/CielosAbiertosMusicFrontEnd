@@ -217,7 +217,8 @@ export function EscucharPage() {
       <div className="mb-6 space-y-3">
         <div className="flex items-center gap-2">
           <div className="relative min-w-0 flex-1 sm:max-w-md">
-            <Search className="absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            {/* z-10: el input con backdrop-blur se pinta encima y tapaba la lupa */}
+            <Search className="pointer-events-none absolute top-1/2 left-3.5 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}

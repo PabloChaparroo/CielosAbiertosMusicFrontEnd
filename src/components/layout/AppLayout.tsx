@@ -65,7 +65,8 @@ export function AppLayout({
           // entrada del módulo: aparece subiendo un poco
           className={
             "animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out " +
-            (bleed ? "" : "px-4 py-6 sm:px-8 sm:py-8 ") +
+            (bleed ? "" : "px-4 pt-6 sm:px-8 sm:pt-8 ") +
+            // lugar para el reproductor de abajo (antes "sm:py-8" lo pisaba desde sm y tapaba el final)
             (current ? "pb-32" : "pb-16")
           }
         >

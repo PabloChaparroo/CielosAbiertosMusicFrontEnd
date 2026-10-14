@@ -1,3 +1,5 @@
+import { releaseScreenOrientation } from "./screen-orientation";
+
 type FullscreenElementWithWebkit = HTMLElement & {
   webkitRequestFullscreen?: () => Promise<void> | void;
 };
@@ -26,6 +28,8 @@ export async function enterBrowserFullscreen(): Promise<boolean> {
 }
 
 export async function exitBrowserFullscreen(): Promise<void> {
+  // si se giró la pantalla desde la app, vuelve a girar sola
+  releaseScreenOrientation();
   const fullscreenDocument = document as FullscreenDocumentWithWebkit;
   try {
     if (document.exitFullscreen && document.fullscreenElement) {

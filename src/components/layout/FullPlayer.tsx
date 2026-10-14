@@ -196,6 +196,7 @@ export function FullPlayer({
                   <Cover
                     song={current}
                     size="none"
+                    hd
                     className="aspect-square w-full rounded-2xl shadow-none"
                   />
                 )}

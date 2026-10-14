@@ -93,10 +93,13 @@ export function Cover({
   song,
   size = "md",
   className,
+  hd = size === "lg",
 }: {
   song: Pick<Song, "cover" | "coverKey"> & { youtubeVideoId?: string | null };
   size?: "sm" | "md" | "lg" | "none";
   className?: string;
+  /** Miniatura de YouTube en alta resolución (portadas grandes); por defecto solo con size "lg" */
+  hd?: boolean;
 }) {
   // la miniatura de YouTube manda: no se sube ni se guarda ninguna imagen
   const youtubeId = song.youtubeVideoId ?? null;
@@ -136,10 +139,11 @@ export function Cover({
     };
   }, [coverKey]);
 
-  // miniatura de YouTube: la chica (16:9, sin franjas) en listados; la grande en la vista
-  // grande, con la chica de respaldo (no todos los videos tienen la de alta resolución)
+  // miniatura de YouTube: en listados la hqdefault (480×360; la mqdefault de 320×180 se veía
+  // borrosa recortada en cuadrado en pantallas de alta densidad); en la vista grande la
+  // maxresdefault, con la hqdefault de respaldo (no todos los videos tienen la de alta resolución)
   const youtubeSrc = youtubeId
-    ? `https://i.ytimg.com/vi/${youtubeId}/${size === "lg" && !failed ? "maxresdefault" : "mqdefault"}.jpg`
+    ? `https://i.ytimg.com/vi/${youtubeId}/${hd && !failed ? "maxresdefault" : "hqdefault"}.jpg`
     : null;
   const imageSrc = youtubeSrc ?? (url && !failed ? url : null);
 

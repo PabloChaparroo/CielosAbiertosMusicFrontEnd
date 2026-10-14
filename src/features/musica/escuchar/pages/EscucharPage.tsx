@@ -347,7 +347,7 @@ export function EscucharPage() {
       ) : view === "cards" ? (
         // tarjetas como en Favoritos: tocar la tarjeta reproduce
         <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-5 lg:grid-cols-7 2xl:grid-cols-9">
-          {paged.pageItems.map((song) => (
+          {paged.pageItems.map((song, i) => (
             <div
               key={song.id}
               role="button"
@@ -357,24 +357,55 @@ export function EscucharPage() {
                 if (e.key === "Enter") play(song);
               }}
               aria-label={`Reproducir ${song.title}`}
-              className={`surface-card group relative cursor-pointer rounded-lg p-2 hover:-translate-y-1 hover:border-primary/40 ${
-                current?.id === song.id ? "border-primary/60" : ""
+              // entran escalonadas; la que suena con borde y brillo dorados, y al pasar el mouse
+              // un brillo dorado suave
+              style={{ animationDelay: `${Math.min(i, 9) * 30}ms` }}
+              className={`surface-card group relative animate-in cursor-pointer overflow-hidden rounded-xl p-2 transition-all fill-mode-both fade-in-0 zoom-in-95 duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_10px_30px_-12px] hover:shadow-primary/40 ${
+                current?.id === song.id
+                  ? "border-primary/70 bg-gradient-to-b from-primary/[0.12] to-transparent shadow-[0_0_24px_-6px] shadow-primary/50"
+                  : ""
               }`}
             >
-              <Cover
-                song={song}
-                size="none"
-                className="mb-2 aspect-square w-full rounded-md shadow-none"
-              />
+              <div className="relative mb-2">
+                <Cover
+                  song={song}
+                  size="none"
+                  className="aspect-square w-full rounded-lg shadow-none transition-transform duration-500 group-hover:scale-[1.03]"
+                />
+                {/* sobre la portada: ecualizador dorado si suena; si no, ▶︎ dorado al pasar el mouse */}
+                <span
+                  aria-hidden
+                  className={`absolute inset-0 flex items-center justify-center rounded-lg bg-gradient-to-t from-black/60 via-black/10 to-transparent transition-opacity ${
+                    current?.id === song.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                  }`}
+                >
+                  {current?.id === song.id ? (
+                    <span className="flex h-5 items-end gap-0.5">
+                      {[0, 150, 300].map((delay) => (
+                        <span
+                          key={delay}
+                          className={`h-5 w-1 rounded-full bg-primary shadow-[0_0_6px] shadow-primary ${isPlaying ? "eq-bar" : "scale-y-50"}`}
+                          style={{ animationDelay: `${delay}ms` }}
+                        />
+                      ))}
+                    </span>
+                  ) : (
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full gradient-gold text-primary-foreground shadow-lg shadow-primary/40">
+                      <Play className="ml-0.5 h-4 w-4 fill-current" />
+                    </span>
+                  )}
+                </span>
+              </div>
               <p
-                className={`truncate text-sm font-semibold ${current?.id === song.id ? "text-primary" : ""}`}
+                className={`truncate text-sm font-semibold ${current?.id === song.id ? "text-gradient-gold" : ""}`}
               >
                 {song.title}
               </p>
               <p className="truncate text-xs text-muted-foreground">{song.artist}</p>
-              <div className="mt-1.5 flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">
-                  {song.key} · {formatDuration(song.duration)}
+              <div className="mt-1.5 flex items-center justify-between gap-1">
+                {/* solo la duración, como en el listado (sin tono) */}
+                <span className="text-xs whitespace-nowrap text-muted-foreground tabular-nums">
+                  {formatDuration(song.duration)}
                 </span>
                 {/* el corazón no reproduce */}
                 <span className="flex items-center" onClick={(e) => e.stopPropagation()}>

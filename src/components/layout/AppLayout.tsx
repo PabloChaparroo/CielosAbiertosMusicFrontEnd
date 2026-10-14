@@ -42,8 +42,13 @@ export function AppLayout({
       />
 
       <main className="lg:pl-[272px]">
-        <header className="sticky top-0 z-30 border-b border-border/70 bg-background/80 backdrop-blur-xl">
-          <div className="flex items-center gap-3 px-4 py-4 sm:px-8">
+        <header className="sticky top-0 z-30 overflow-hidden border-b border-border/70 bg-background/80 backdrop-blur-xl">
+          {/* brillo dorado tenue arriba a la izquierda, el mismo del menú lateral */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -top-24 -left-16 h-56 w-72 rounded-full bg-primary/10 blur-3xl"
+          />
+          <div className="relative flex items-center gap-3 px-4 py-4 sm:px-8">
             <button
               onClick={() => setOpen(true)}
               aria-label="Abrir menú"

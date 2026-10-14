@@ -209,3 +209,52 @@
     clip-path: none;
   }
 }
+
+/* Portada de Inicio: halo dorado del logo que "respira" y partículas doradas que flotan.
+   Con "reducir movimiento" quedan quietos. */
+@keyframes hero-halo {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes hero-particle {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  30%,
+  70% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-40px);
+  }
+}
+
+@utility hero-halo {
+  animation: hero-halo 5s ease-in-out infinite;
+}
+
+@utility hero-particle {
+  opacity: 0;
+  box-shadow: 0 0 6px var(--primary);
+  animation: hero-particle 8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-halo,
+  .hero-particle {
+    animation: none;
+  }
+  .hero-particle {
+    opacity: 0.4;
+  }
+}

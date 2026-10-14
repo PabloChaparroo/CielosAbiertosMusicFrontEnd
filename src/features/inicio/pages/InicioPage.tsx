@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { CalendarDays, Flame, Heart, Play, Sparkles, TrendingUp } from "lucide-react";
+import { CalendarDays, ChevronRight, Flame, Heart, Play, Sparkles, TrendingUp } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Cover, FavButton, formatDuration, Skeletons, TagChip } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
@@ -7,6 +7,29 @@ import { useAuth } from "@/core/auth/useAuth";
 import { currentMonthKey } from "@/lib/month";
 import { ProximasSection } from "../components/ProximasSection";
 import { TagList } from "@/components/common/TagList";
+
+/** Partículas doradas de la portada: posición (%), tamaño (px) y ritmo fijos, así no saltan */
+const HERO_PARTICLES = [
+  { x: 8, y: 22, size: 3, delay: 0, duration: 7 },
+  { x: 18, y: 64, size: 2, delay: 1.5, duration: 9 },
+  { x: 27, y: 12, size: 2, delay: 3, duration: 8 },
+  { x: 36, y: 48, size: 3, delay: 0.8, duration: 10 },
+  { x: 62, y: 18, size: 2, delay: 2.2, duration: 8 },
+  { x: 71, y: 56, size: 3, delay: 4, duration: 9 },
+  { x: 82, y: 30, size: 2, delay: 1, duration: 7 },
+  { x: 91, y: 70, size: 3, delay: 2.8, duration: 10 },
+  { x: 50, y: 6, size: 2, delay: 3.6, duration: 9 },
+  { x: 44, y: 78, size: 2, delay: 5, duration: 8 },
+];
+
+/** "hoy", "mañana" o "en N días" hasta la fecha de la lista */
+function daysUntilLabel(date: string): string {
+  const start = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((start(new Date(date)) - start(new Date())) / 86400000);
+  if (days <= 0) return "hoy";
+  if (days === 1) return "mañana";
+  return `en ${days} días`;
+}
 
 export function InicioPage() {
   const { currentUser, songs, songsLoadState, setlists, setlistsLoadState, favorites, play } =
@@ -82,64 +105,89 @@ export function InicioPage() {
 
   return (
     <AppLayout title="Inicio" subtitle={subtitle} bleed>
+      {/* Portada: cielo oscuro con un resplandor dorado desde arriba ("cielos abiertos"),
+          partículas doradas que flotan, el logo centrado con un halo que respira, y la próxima
+          lista en una tarjeta de vidrio. Las animaciones se apagan con "reducir movimiento". */}
       <section className="relative overflow-hidden">
-        <div className="gradient-sky absolute inset-0" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
-        {/* el logo: al lado del título en celular, grande a la derecha en compu (mismo estilo que el login) */}
-        <div className="relative flex flex-col gap-8 px-4 py-16 sm:px-8 sm:py-24 lg:flex-row lg:items-center lg:justify-between">
-          <img
-            src="/icon-512.png"
-            alt="Cielos Abiertos"
-            width={512}
-            height={512}
-            className="glow hidden rounded-full lg:order-last lg:mr-[6%] lg:block lg:h-72 lg:w-72 xl:h-80 xl:w-80"
-          />
-          <div>
-            <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/40 px-3 py-1 text-xs text-foreground/90 backdrop-blur">
-              <Sparkles className="h-3.5 w-3.5 text-primary" />{" "}
-              {currentUser.roles.map((r) => r.name).join(" · ") || "Sin rol"}
-            </p>
-            <div className="flex items-center gap-4">
-              <h2 className="font-display text-5xl leading-[0.95] font-bold sm:text-7xl">
-                Cielos
-                <br />
-                <span className="text-gradient-gold">Abiertos</span>
-              </h2>
-              {/* centrado en el espacio libre a la derecha del título */}
-              <div className="flex flex-1 justify-center lg:hidden">
-                <img
-                  src="/icon-192.png"
-                  alt=""
-                  width={192}
-                  height={192}
-                  className="glow h-24 w-24 shrink-0 rounded-full sm:h-32 sm:w-32"
-                />
-              </div>
-            </div>
-            <p className="mt-3 text-xs tracking-[0.3em] text-foreground/70 uppercase sm:text-sm">
-              Ministerio de Adoración
-            </p>
-            <p className="mt-4 max-w-md text-base text-foreground/80 sm:text-lg">
-              Adorando en espíritu y en verdad. Todo el repertorio del ministerio, listo para el
-              próximo servicio.
-            </p>
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Link
-                to="/acordes"
-                className="rounded-full gradient-gold px-6 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
-              >
-                Ir a Acordes
-              </Link>
-              {canSeeSetlists ? (
-                <Link
-                  to="/setlists"
-                  className="rounded-full border border-border bg-background/50 px-6 py-3 text-sm font-semibold backdrop-blur transition-colors hover:bg-secondary"
-                >
-                  Ver listas
-                </Link>
-              ) : null}
-            </div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,color-mix(in_oklch,var(--primary)_28%,transparent),transparent_70%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_45%,oklch(0.3_0.08_285/0.35),transparent_75%)]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background" />
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          {HERO_PARTICLES.map((p, i) => (
+            <span
+              key={i}
+              className="hero-particle absolute rounded-full bg-primary"
+              style={{
+                left: `${p.x}%`,
+                top: `${p.y}%`,
+                width: p.size,
+                height: p.size,
+                animationDelay: `${p.delay}s`,
+                animationDuration: `${p.duration}s`,
+              }}
+            />
+          ))}
+        </div>
+
+        <div className="relative mx-auto flex max-w-2xl flex-col items-center px-4 pt-10 pb-14 text-center sm:px-8 sm:pt-14 sm:pb-20">
+          <p className="mb-8 inline-flex items-center gap-2 self-start rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs text-foreground/90 backdrop-blur sm:self-center">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />{" "}
+            {currentUser.roles.map((r) => r.name).join(" · ") || "Sin rol"}
+          </p>
+
+          <div className="relative">
+            <div
+              aria-hidden
+              className="hero-halo absolute -inset-8 rounded-full bg-primary/30 blur-3xl"
+            />
+            <img
+              src="/icon-512.png"
+              alt="Cielos Abiertos"
+              width={512}
+              height={512}
+              className="relative h-36 w-36 rounded-full shadow-[0_0_60px_-10px] shadow-primary/60 ring-1 ring-primary/30 sm:h-44 sm:w-44"
+            />
           </div>
+
+          <h2 className="mt-8 font-display text-5xl leading-none font-bold sm:text-6xl">
+            Cielos <span className="text-gradient-gold">Abiertos</span>
+          </h2>
+          <p className="mt-3 text-xs tracking-[0.35em] text-foreground/60 uppercase sm:text-sm">
+            Ministerio de Adoración
+          </p>
+          <p className="mt-4 font-display text-base text-foreground/75 italic sm:text-lg">
+            “Adorando en espíritu y en verdad”
+          </p>
+
+          {canSeeSetlists &&
+          upcoming &&
+          new Date(upcoming.date).getTime() >= Date.now() - 86400000 ? (
+            <Link
+              to="/setlists"
+              className="group mt-9 flex w-full max-w-md items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.05] p-4 text-left shadow-2xl backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-primary/40"
+            >
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                <CalendarDays className="h-5 w-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[11px] font-semibold tracking-widest text-primary uppercase">
+                  Próxima · {daysUntilLabel(upcoming.date)}
+                </span>
+                <span className="block truncate font-display text-lg font-semibold">
+                  {upcoming.title}
+                </span>
+                <span className="block truncate text-sm text-muted-foreground">
+                  {new Date(upcoming.date).toLocaleDateString("es-AR", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                  })}{" "}
+                  · {upcoming.items.length} canciones
+                </span>
+              </span>
+              <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+            </Link>
+          ) : null}
         </div>
       </section>
 

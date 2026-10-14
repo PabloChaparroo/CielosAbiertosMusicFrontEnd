@@ -36,6 +36,17 @@ const FILTERS: Array<{ value: QueueFilter; label: string }> = [
  * Todas / Alabanzas / Adoraciones, la lista para seguir escuchando y los controles debajo; a la derecha "Reproduciendo" con el
  * video o la portada, las características del tema y la lista de sus audios. En celular, una sola columna.
  */
+/** Partículas doradas del encabezado del reproductor: posición (%), tamaño (px) y ritmo fijos */
+const PLAYER_PARTICLES = [
+  { x: 6, y: 30, size: 2, delay: 0, duration: 7 },
+  { x: 18, y: 75, size: 3, delay: 2, duration: 9 },
+  { x: 34, y: 15, size: 2, delay: 4, duration: 8 },
+  { x: 52, y: 60, size: 3, delay: 1, duration: 10 },
+  { x: 68, y: 25, size: 2, delay: 3, duration: 8 },
+  { x: 80, y: 70, size: 3, delay: 5, duration: 9 },
+  { x: 92, y: 40, size: 2, delay: 1.5, duration: 7 },
+];
+
 export function FullPlayer({
   current,
   isPlaying,
@@ -275,7 +286,25 @@ export function FullPlayer({
           >
             {/* encabezado del tema, con los círculos decorativos del mockup */}
             <div className="relative overflow-hidden rounded-t-3xl px-5 pt-6 pb-5 md:px-8 md:pt-8">
-              <div className="pointer-events-none absolute -top-40 right-[-6rem] h-96 w-96 rounded-full border border-white/10 bg-white/[0.02]" />
+              {/* brillo dorado desde arriba y partículas que flotan, como la portada de Inicio */}
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_80%_at_15%_-20%,color-mix(in_oklch,var(--primary)_22%,transparent),transparent_70%)]" />
+              <div aria-hidden className="pointer-events-none absolute inset-0">
+                {PLAYER_PARTICLES.map((p, i) => (
+                  <span
+                    key={i}
+                    className="hero-particle absolute rounded-full bg-primary"
+                    style={{
+                      left: `${p.x}%`,
+                      top: `${p.y}%`,
+                      width: p.size,
+                      height: p.size,
+                      animationDelay: `${p.delay}s`,
+                      animationDuration: `${p.duration}s`,
+                    }}
+                  />
+                ))}
+              </div>
+              <div className="pointer-events-none absolute -top-40 right-[-6rem] h-96 w-96 rounded-full border border-primary/15 bg-primary/[0.03]" />
               <div className="pointer-events-none absolute -bottom-24 left-24 h-56 w-56 rounded-full border border-white/5" />
               <div className="relative flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
                 <div className="min-w-0">
@@ -429,7 +458,10 @@ export function FullPlayer({
             </ol>
 
             {/* controles: fijos abajo mientras se recorre la lista */}
-            <div className="sticky bottom-0 rounded-b-3xl border-t border-border/60 bg-card/95 px-4 pt-3 pb-4 backdrop-blur md:px-8">
+            <div // controles en vidrio: translúcido con desenfoque fuerte, borde claro arriba y un brillo
+              // dorado tenue desde abajo; la lista se ve pasar por detrás
+              className="sticky bottom-0 overflow-hidden rounded-b-3xl border-t border-white/10 bg-card/55 bg-[radial-gradient(ellipse_70%_100%_at_50%_130%,color-mix(in_oklch,var(--primary)_16%,transparent),transparent_70%)] px-4 pt-3 pb-4 shadow-[0_-12px_30px_-18px_rgba(0,0,0,.8)] backdrop-blur-2xl backdrop-saturate-150 md:px-8"
+            >
               <div className="flex items-center justify-between gap-2">
                 {/* en celular el volumen no está: este hueco iguala al de aleatorio para que
                     anterior / play / siguiente queden centrados */}

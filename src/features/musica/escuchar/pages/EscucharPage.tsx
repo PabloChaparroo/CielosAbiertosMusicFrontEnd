@@ -391,12 +391,9 @@ export function EscucharPage() {
                 aria-expanded={actionsOpen === song.id}
                 className="flex items-center gap-2 rounded-full py-1 pr-1 pl-2 text-muted-foreground transition-colors hover:text-primary md:hidden"
               >
-                {/* tono y duración a mano, sin abrir la canción */}
-                <span className="flex flex-col items-end gap-0.5">
-                  <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-primary/15 px-1.5 text-[11px] font-semibold text-primary">
-                    {song.key}
-                  </span>
-                  <span className="text-[11px] tabular-nums">{formatDuration(song.duration)}</span>
+                {/* duración a la vista, como en un reproductor */}
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {formatDuration(song.duration)}
                 </span>
                 <MoreHorizontal className="h-5 w-5" />
               </button>

@@ -32,7 +32,7 @@ export function AppLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <aside className="fixed top-0 left-0 hidden h-screen w-[272px] border-r border-sidebar-border lg:block">
+      <aside className="fixed top-0 left-0 hidden h-screen w-[272px] border-r border-white/10 lg:block">
         <SidebarContent onOpenPerfil={() => setShowPerfil(true)} />
       </aside>
       <MobileSidebar

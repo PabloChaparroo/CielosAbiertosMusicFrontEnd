@@ -70,7 +70,13 @@ export function SidebarContent({
     .filter((group) => group.items.length > 0);
 
   return (
-    <div className="flex h-full flex-col bg-sidebar">
+    // estilo vidrio, como el reproductor: fondo translúcido con desenfoque y un brillo dorado
+    // tenue arriba; el ítem activo y el perfil, como tarjetas de vidrio
+    <div className="relative flex h-full flex-col overflow-hidden bg-sidebar/65 backdrop-blur-2xl backdrop-saturate-150">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-24 -left-16 h-64 w-64 rounded-full bg-primary/10 blur-3xl"
+      />
       {/* el logo lleva a Inicio */}
       <Link
         to="/"
@@ -107,8 +113,8 @@ export function SidebarContent({
                       className={cn(
                         "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
                         active
-                          ? "bg-sidebar-accent text-primary"
-                          : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+                          ? "bg-white/[0.06] text-primary shadow-[inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-white/10"
+                          : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground",
                       )}
                     >
                       <item.icon
@@ -126,7 +132,10 @@ export function SidebarContent({
         ))}
       </nav>
 
-      <div data-sidebar-profile className="border-t border-sidebar-border p-4">
+      <div
+        data-sidebar-profile
+        className="m-3 rounded-2xl bg-white/[0.04] p-3 ring-1 ring-white/10"
+      >
         {/* un invitado no tiene perfil que editar */}
         <button
           onClick={isGuest ? undefined : onOpenPerfil}
@@ -178,13 +187,13 @@ export function MobileSidebar({
       <div
         onClick={onClose}
         className={cn(
-          "absolute inset-0 bg-black/70 transition-opacity duration-200",
+          "absolute inset-0 bg-black/45 backdrop-blur-sm transition-opacity duration-200",
           open ? "opacity-100" : "opacity-0",
         )}
       />
       <div
         className={cn(
-          "absolute top-0 left-0 h-full w-[280px] border-r border-sidebar-border transition-transform duration-200 ease-out",
+          "absolute top-0 left-0 h-full w-[280px] border-r border-white/10 shadow-2xl transition-transform duration-200 ease-out",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >

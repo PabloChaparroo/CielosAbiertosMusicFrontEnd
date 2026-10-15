@@ -513,51 +513,54 @@ export function AcordesPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-3 p-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
-                      Tono
-                    </span>
-                    <div className="flex h-10 items-center gap-1 rounded-full border border-border px-1">
-                      <IconBtn onClick={() => setSemitones((s) => s - 1)} label="Bajar semitono">
-                        <Minus className="h-4 w-4" />
-                      </IconBtn>
-                      <select
-                        value={targetKey}
-                        onChange={(e) => {
-                          const idxFrom = KEYS.indexOf(targetKey);
-                          const target = e.target.value;
-                          const semis = (((KEYS.indexOf(target) - idxFrom) % 12) + 12) % 12;
-                          setSemitones((s) => s + semis);
-                        }}
-                        aria-label="Tono"
-                        className="w-12 appearance-none bg-transparent text-center text-sm font-semibold text-primary outline-none"
-                      >
-                        {KEYS.map((k) => (
-                          <option key={k} value={k} className="bg-card text-foreground">
-                            {k}
-                          </option>
-                        ))}
-                      </select>
-                      <IconBtn onClick={() => setSemitones((s) => s + 1)} label="Subir semitono">
-                        <Plus className="h-4 w-4" />
-                      </IconBtn>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
-                      Letra
-                    </span>
-                    <div className="flex h-10 items-center gap-1 rounded-full border border-border px-1">
-                      <IconBtn onClick={() => changeFontSize(-2, 40)} label="Achicar letra">
-                        <Minus className="h-4 w-4" />
-                      </IconBtn>
-                      <span className="w-12 text-center text-sm text-muted-foreground">
-                        {fontSize}px
+                  {/* tono y letra siempre en la misma fila; en pantallas chicas la etiqueta va arriba */}
+                  <div className="flex items-end gap-3 sm:items-center sm:gap-4">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+                      <span className="pl-1 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase sm:pl-0">
+                        Tono
                       </span>
-                      <IconBtn onClick={() => changeFontSize(2, 40)} label="Agrandar letra">
-                        <Plus className="h-4 w-4" />
-                      </IconBtn>
+                      <div className="flex h-10 items-center gap-1 rounded-full border border-border px-1">
+                        <IconBtn onClick={() => setSemitones((s) => s - 1)} label="Bajar semitono">
+                          <Minus className="h-4 w-4" />
+                        </IconBtn>
+                        <select
+                          value={targetKey}
+                          onChange={(e) => {
+                            const idxFrom = KEYS.indexOf(targetKey);
+                            const target = e.target.value;
+                            const semis = (((KEYS.indexOf(target) - idxFrom) % 12) + 12) % 12;
+                            setSemitones((s) => s + semis);
+                          }}
+                          aria-label="Tono"
+                          className="w-10 appearance-none bg-transparent text-center text-sm font-semibold text-primary outline-none sm:w-12"
+                        >
+                          {KEYS.map((k) => (
+                            <option key={k} value={k} className="bg-card text-foreground">
+                              {k}
+                            </option>
+                          ))}
+                        </select>
+                        <IconBtn onClick={() => setSemitones((s) => s + 1)} label="Subir semitono">
+                          <Plus className="h-4 w-4" />
+                        </IconBtn>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+                      <span className="pl-1 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase sm:pl-0">
+                        Letra
+                      </span>
+                      <div className="flex h-10 items-center gap-1 rounded-full border border-border px-1">
+                        <IconBtn onClick={() => changeFontSize(-2, 40)} label="Achicar letra">
+                          <Minus className="h-4 w-4" />
+                        </IconBtn>
+                        <span className="w-11 text-center text-sm text-muted-foreground sm:w-12">
+                          {fontSize}px
+                        </span>
+                        <IconBtn onClick={() => changeFontSize(2, 40)} label="Agrandar letra">
+                          <Plus className="h-4 w-4" />
+                        </IconBtn>
+                      </div>
                     </div>
                   </div>
 
@@ -592,7 +595,7 @@ export function AcordesPage() {
                           void enterBrowserFullscreen();
                           setLive(true);
                         }}
-                        className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full gradient-gold px-4 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105 sm:flex-none"
+                        className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full whitespace-nowrap gradient-gold px-4 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105 sm:flex-none"
                       >
                         <Maximize2 className="h-4 w-4" /> En vivo
                       </button>
@@ -607,7 +610,7 @@ export function AcordesPage() {
                             fontSize: manualFontSize ?? 25,
                           })
                         }
-                        className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full border border-border px-4 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary sm:flex-none"
+                        className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full whitespace-nowrap border border-border px-4 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary sm:flex-none"
                       >
                         <FileDown className="h-4 w-4" /> PDF
                       </button>
@@ -615,7 +618,7 @@ export function AcordesPage() {
                         <button
                           type="button"
                           onClick={handleStartEditing}
-                          className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full border border-border px-4 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary sm:flex-none"
+                          className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full whitespace-nowrap border border-border px-4 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary sm:flex-none"
                         >
                           <Pencil className="h-4 w-4" /> Editar
                         </button>

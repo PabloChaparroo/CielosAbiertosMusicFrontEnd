@@ -93,10 +93,10 @@ export function LetrasPage() {
 
   return (
     <AppLayout title="Letras" subtitle="Buscá por nombre o tema">
-      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+      <div className="grid gap-6 xl:grid-cols-[280px_1fr]">
         <aside
           ref={searchPanelRef}
-          className="surface-card relative order-1 flex max-h-[55vh] flex-col overflow-hidden lg:order-1 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7.5rem)]"
+          className="surface-card relative order-1 flex max-h-[55vh] flex-col overflow-hidden xl:order-1 xl:sticky xl:top-24 xl:max-h-[calc(100vh-7.5rem)]"
         >
           {/* partículas doradas detrás del buscador y la lista */}
           <GoldParticles />
@@ -116,9 +116,9 @@ export function LetrasPage() {
             />
           </div>
           <div
-            className={`relative grid transition-[grid-template-rows,opacity] duration-200 ease-out lg:flex-1 lg:grid-rows-[1fr] lg:opacity-100 ${searchOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+            className={`relative grid transition-[grid-template-rows,opacity] duration-200 ease-out xl:flex-1 xl:grid-rows-[1fr] xl:opacity-100 ${searchOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
           >
-            <div className="min-h-0 overflow-y-auto p-2 lg:h-full">
+            <div className="min-h-0 overflow-y-auto p-2 xl:h-full">
               {!query && (
                 <p className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   {scopedSongIds ? "Orden de la lista" : "Recientes"}
@@ -191,7 +191,7 @@ export function LetrasPage() {
           </div>
         </aside>
 
-        <div className="order-2 min-w-0 lg:order-2">
+        <div className="order-2 min-w-0 xl:order-2">
           {song ? (
             <SongLyricsDetail
               song={song}

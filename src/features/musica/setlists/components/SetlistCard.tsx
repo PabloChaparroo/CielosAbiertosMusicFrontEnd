@@ -1,5 +1,6 @@
 import { BookmarkPlus, CalendarCheck, CalendarX, UserCheck } from "lucide-react";
 import { Avatar } from "@/components/common/ui-bits";
+import { matchesSearch } from "@/lib/search";
 import { useApp } from "@/hooks/useApp";
 import type { EventType, Setlist } from "@/types";
 import { ListDuration } from "./ListDuration";
@@ -19,6 +20,7 @@ export function SetlistCard({
   onToggleUpcoming,
   onSaveTemplate,
   muted,
+  highlightSong = "",
 }: {
   s: Setlist;
   onClick: () => void;
@@ -26,6 +28,8 @@ export function SetlistCard({
   /** Guarda sus canciones como lista predefinida */
   onSaveTemplate?: (() => void) | undefined;
   muted?: boolean;
+  /** búsqueda del historial: las canciones que coinciden se marcan en dorado */
+  highlightSong?: string;
 }) {
   const { users, songs, currentUser } = useApp();
   // el que entra está en el equipo de esta lista: la tarjeta se destaca en dorado
@@ -135,7 +139,16 @@ export function SetlistCard({
         </div>
       ) : null}
       <p className="mt-3 truncate text-sm text-muted-foreground">
-        {s.items.map((i) => songs.find((so) => so.id === i.songId)?.title).join(" · ")}
+        {s.items.map((i, index) => {
+          const title = songs.find((so) => so.id === i.songId)?.title ?? "";
+          const hit = highlightSong.trim() !== "" && matchesSearch(highlightSong, title);
+          return (
+            <span key={`${i.songId}-${index}`}>
+              {index > 0 ? " · " : ""}
+              <span className={hit ? "font-semibold text-primary" : undefined}>{title}</span>
+            </span>
+          );
+        })}
       </p>
     </div>
   );

@@ -15,7 +15,6 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { EmptyState, Skeletons } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import type { Setlist } from "@/types";
-import { LockedHint } from "../components/LockedHint";
 import { NewSetlistModal } from "../components/NewSetlistModal";
 import { SetlistCard } from "../components/SetlistCard";
 import { SetlistDetail } from "../components/SetlistDetail";
@@ -92,9 +91,19 @@ export function SetlistsPage() {
     new Date(setlist.createdAt ?? setlist.date).getTime();
   const sorted = [...setlists].sort((a, b) => createdTime(b) - createdTime(a));
   const upcoming = sorted.filter((s) => s.isUpcoming && !isPast(s.date));
+  // historial: busca por nombre de la lista o por canción ("¿cuándo tocamos Santo Espíritu?")
+  const songTitleOf = (id: string) => songs.find((so) => so.id === id)?.title ?? "";
+  const playsSong = (s: (typeof setlists)[number]) =>
+    query.trim() !== "" && s.items.some((it) => matchesSearch(query, songTitleOf(it.songId)));
   const past = sorted
     .filter((s) => !s.isUpcoming || isPast(s.date))
-    .filter((s) => matchesSearch(query, s.title));
+    .filter((s) => matchesSearch(query, s.title) || playsSong(s));
+  // buscando una canción: cuántas veces se tocó y cuándo fue la última (por fecha del servicio)
+  const songHits = past.filter(playsSong);
+  const lastPlayed = songHits.reduce<string | null>(
+    (latest, s) => (latest === null || s.date > latest ? s.date : latest),
+    null,
+  );
 
   const toggleUpcoming = (target: (typeof setlists)[number]) => {
     void updateSetlist({ ...target, isUpcoming: !target.isUpcoming });
@@ -156,9 +165,7 @@ export function SetlistsPage() {
           >
             <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Nueva lista</span>
           </button>
-        ) : (
-          <LockedHint>Solo líderes pueden crear listas de canciones</LockedHint>
-        )
+        ) : null
       }
     >
       <section className="mb-10">
@@ -294,11 +301,29 @@ export function SetlistsPage() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar en el historial…"
+              placeholder="Buscar lista o canción…"
               className="w-full rounded-full border border-border bg-card py-2 pr-4 pl-10 text-sm outline-none focus:border-primary/60"
             />
           </div>
         </div>
+        {songHits.length && lastPlayed ? (
+          <p className="mb-4 text-sm text-muted-foreground">
+            Se tocó en{" "}
+            <span className="font-semibold text-primary">
+              {songHits.length} {songHits.length === 1 ? "lista" : "listas"}
+            </span>
+            . La última vez:{" "}
+            <span className="font-semibold text-foreground">
+              {new Date(lastPlayed).toLocaleDateString("es-AR", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </span>
+            .
+          </p>
+        ) : null}
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
           {past.map((s) => (
             <SetlistCard
@@ -308,6 +333,7 @@ export function SetlistsPage() {
               // ya pasó la fecha: no puede volver a Próximos
               onToggleUpcoming={isPast(s.date) ? undefined : () => toggleUpcoming(s)}
               onSaveTemplate={canCreate ? () => askTemplateName(s) : undefined}
+              highlightSong={query}
               muted
             />
           ))}

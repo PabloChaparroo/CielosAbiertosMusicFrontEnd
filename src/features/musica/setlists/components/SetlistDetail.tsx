@@ -22,6 +22,7 @@ import type { Setlist, SetlistItem, SetlistSection } from "@/types";
 import { SECTIONS, itemsForType, sectionOf, usesSections } from "../lib/sections";
 import { LockedHint } from "./LockedHint";
 import { setlistToWhatsapp } from "../lib/whatsapp";
+import { teamToWhatsapp } from "../lib/team-whatsapp";
 
 export function SetlistDetail({
   setlist,
@@ -101,16 +102,26 @@ export function SetlistDetail({
 
   const openSelectedSong = (songId: string) => openSong(`/${viewMode}`, songId);
 
-  // "Copiar": el setlist como texto para pegar en WhatsApp
-  const [copied, setCopied] = useState(false);
-  const copyForWhatsapp = async () => {
+  // "Copiar lista" y "Copiar equipo": texto para pegar en WhatsApp
+  const [copied, setCopied] = useState<"lista" | "equipo" | null>(null);
+  const copy = async (what: "lista" | "equipo") => {
     try {
-      await navigator.clipboard.writeText(setlistToWhatsapp(setlist, songs));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(
+        what === "lista" ? setlistToWhatsapp(setlist, songs) : teamToWhatsapp(setlist, users),
+      );
+      setCopied(what);
+      setTimeout(() => setCopied(null), 2000);
     } catch {
-      setCopied(false);
+      setCopied(null);
     }
+  };
+
+  // notas del líder para el equipo: se guardan al salir del cuadro
+  const [notesDraft, setNotesDraft] = useState(setlist.notes ?? "");
+  const saveNotes = () => {
+    if (notesDraft.trim() === (setlist.notes ?? "").trim()) return;
+    const notes = notesDraft.trim();
+    persist({ ...setlist, ...(notes ? { notes } : { notes: "" }) });
   };
 
   return (
@@ -123,11 +134,18 @@ export function SetlistDetail({
       actions={
         <>
           <button
-            onClick={() => void copyForWhatsapp()}
+            onClick={() => void copy("lista")}
+            title="Copiar la lista de canciones para WhatsApp"
             className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold transition-colors hover:border-primary/60"
           >
-            {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
-            <span className="hidden sm:inline">{copied ? "¡Copiado!" : "Copiar"}</span>
+            {copied === "lista" ? (
+              <Check className="h-4 w-4 text-primary" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+            <span className="hidden sm:inline">
+              {copied === "lista" ? "¡Copiado!" : "Copiar lista"}
+            </span>
           </button>
           <button
             onClick={() => exportSetlistPdf(setlist, songs)}
@@ -345,6 +363,44 @@ export function SetlistDetail({
               );
             })}
           </ul>
+
+          {/* notas para el equipo y "Copiar equipo" (el mensaje que el líder pega en el grupo) */}
+          <div className="mt-5 border-t border-border/60 pt-4">
+            <label
+              htmlFor="notas-equipo"
+              className="mb-1.5 block text-xs font-semibold tracking-widest text-muted-foreground uppercase"
+            >
+              Notas para el equipo
+            </label>
+            {canEdit ? (
+              <textarea
+                id="notas-equipo"
+                value={notesDraft}
+                onChange={(e) => setNotesDraft(e.target.value)}
+                onBlur={saveNotes}
+                rows={4}
+                maxLength={4000}
+                placeholder="Ej.: • Todos debemos estudiar los temas y ensayar."
+                className="w-full resize-y rounded-xl border border-border bg-secondary px-3 py-2 text-sm outline-none focus:border-primary/60"
+              />
+            ) : setlist.notes ? (
+              <p id="notas-equipo" className="text-sm whitespace-pre-wrap text-foreground/85">
+                {setlist.notes}
+              </p>
+            ) : (
+              <p id="notas-equipo" className="text-sm text-muted-foreground">
+                Sin notas.
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={() => void copy("equipo")}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/20"
+            >
+              {copied === "equipo" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              {copied === "equipo" ? "¡Copiado!" : "Copiar equipo"}
+            </button>
+          </div>
         </aside>
       </div>
     </AppLayout>

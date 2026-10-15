@@ -31,4 +31,6 @@ export interface Setlist {
   teamIds: string[];
   /** Qué toca cada miembro del equipo en esta lista: { [userId]: instrumentos } */
   teamInstruments: Record<string, string[]>;
+  /** Notas del líder para el equipo (van al final de "Copiar equipo") */
+  notes?: string;
 }

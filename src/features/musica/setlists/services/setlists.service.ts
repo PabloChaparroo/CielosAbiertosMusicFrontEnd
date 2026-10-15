@@ -26,6 +26,8 @@ export interface RawSetlist {
   leader: RawRef;
   team: RawRef[];
   teamInstruments?: Record<string, string[]>;
+  /** puede faltar en respuestas de un backend anterior a las notas */
+  notes?: string | null;
   items: RawSetlistItem[];
 }
 
@@ -44,6 +46,7 @@ export interface UpsertSetlistInput {
   leaderId: string;
   teamIds: string[];
   teamInstruments?: Record<string, string[]>;
+  notes?: string;
   items: UpsertSetlistItemInput[];
 }
 
@@ -75,6 +78,7 @@ export function mapSetlist(raw: RawSetlist): Setlist {
     leaderId: raw.leader.id,
     teamIds: raw.team.map((u) => u.id),
     teamInstruments: raw.teamInstruments ?? {},
+    ...(raw.notes ? { notes: raw.notes } : {}),
     items,
   };
 }

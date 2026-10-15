@@ -8,10 +8,15 @@ export const EVENT_TYPES = [
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
+/** Sección del orden del servicio (Cultos y Ensayos); ver features/musica/setlists/lib/sections */
+export type SetlistSection = "alabanza" | "adoracion" | "ofrenda";
+
 export interface SetlistItem {
   songId: string;
   key: string;
   note?: string;
+  /** sin sección: Evento Especial, o listas anteriores (se agrupan por el tipo de la canción) */
+  section?: SetlistSection;
 }
 
 export interface Setlist {

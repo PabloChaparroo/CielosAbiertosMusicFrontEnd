@@ -207,6 +207,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             songId: item.songId,
             key: item.key,
             ...(item.note ? { note: item.note } : {}),
+            ...(item.section ? { section: item.section } : {}),
           })),
         })
           .then((saved) => {

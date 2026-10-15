@@ -1,5 +1,5 @@
 import { apiRequest } from "@/lib/api-client";
-import type { SetlistItem } from "@/types";
+import type { SetlistItem, SetlistSection } from "@/types";
 
 /** Lista predefinida: canciones reutilizables para armar un setlist, sin fecha ni equipo */
 export interface SetlistTemplate {
@@ -11,7 +11,7 @@ export interface SetlistTemplate {
 interface RawSetlistTemplate {
   id: string;
   title: string;
-  items: Array<{ songId: string; key: string; note?: string | null }>;
+  items: Array<{ songId: string; key: string; note?: string | null; section?: SetlistSection }>;
 }
 
 const mapTemplate = (raw: RawSetlistTemplate): SetlistTemplate => ({
@@ -21,6 +21,7 @@ const mapTemplate = (raw: RawSetlistTemplate): SetlistTemplate => ({
     songId: it.songId,
     key: it.key,
     ...(it.note ? { note: it.note } : {}),
+    ...(it.section ? { section: it.section } : {}),
   })),
 });
 

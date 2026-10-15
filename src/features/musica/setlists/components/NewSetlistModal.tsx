@@ -4,7 +4,14 @@ import { Cover } from "@/components/common/ui-bits";
 import { InstrumentPicker } from "@/components/common/InstrumentPicker";
 import { useApp } from "@/hooks/useApp";
 import { SetlistsService } from "../services/setlists.service";
-import { EVENT_TYPES, type EventType, type Setlist, type SetlistItem } from "@/types";
+import {
+  EVENT_TYPES,
+  type EventType,
+  type Setlist,
+  type SetlistItem,
+  type SetlistSection,
+} from "@/types";
+import { SECTIONS, defaultSection, itemsForType, usesSections } from "../lib/sections";
 import { matchesSearch } from "@/lib/search";
 import { hasSequence } from "@/features/canciones/lib/sequence";
 import { ListDuration } from "./ListDuration";
@@ -100,7 +107,31 @@ export function NewSetlistModal({
     () => new Map((initial?.items ?? []).map((it) => [it.songId, it.key])),
     [initial],
   );
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  // sección de cada canción (Cultos y Ensayos): la que vino de la lista predefinida o la elegida;
+  // si no hay, la de su tipo (adoraciones a Adoración, el resto a Alabanzas)
+  const [sections, setSections] = useState<Record<string, SetlistSection>>(() =>
+    Object.fromEntries(
+      (initial?.items ?? []).flatMap((it) => (it.section ? [[it.songId, it.section]] : [])),
+    ),
+  );
+  const sectionFor = (songId: string): SetlistSection =>
+    sections[songId] ?? defaultSection(songs.find((s) => s.id === songId));
+  const sectioned = usesSections(type);
+  // se arrastra por id: con secciones, soltar sobre otra canción también la pasa a su sección
+  const [dragId, setDragId] = useState<string | null>(null);
+  const dropOn = (targetId: string | null, section?: SetlistSection) => {
+    if (dragId === null || dragId === targetId) return;
+    const moving = dragId;
+    setPicked((current) => {
+      const next = current.filter((id) => id !== moving);
+      const at = targetId === null ? next.length : next.indexOf(targetId);
+      next.splice(at === -1 ? next.length : at, 0, moving);
+      return next;
+    });
+    const to = section ?? (targetId ? sectionFor(targetId) : undefined);
+    if (sectioned && to) setSections((prev) => ({ ...prev, [moving]: to }));
+    setDragId(null);
+  };
   const [team, setTeam] = useState<string[]>([currentUser.id]);
   // qué toca cada miembro en esta lista; si toca un solo instrumento, se marca solo
   const onlyInstrument = (userId: string): Record<string, string[]> => {
@@ -187,10 +218,16 @@ export function NewSetlistModal({
         leaderId: currentUser.id,
         teamIds: team,
         teamInstruments,
-        items: picked.map((id) => ({
-          songId: id,
-          key: initialKeys.get(id) ?? songs.find((s) => s.id === id)?.key ?? "C",
-        })),
+        // con secciones: ordenadas por sección y cada una con la suya; Evento Especial, en orden
+        items: itemsForType(
+          picked.map((id) => ({
+            songId: id,
+            key: initialKeys.get(id) ?? songs.find((s) => s.id === id)?.key ?? "C",
+            section: sectionFor(id),
+          })),
+          type,
+          songs,
+        ),
       });
       onSave(created);
       onClose();
@@ -400,50 +437,104 @@ export function NewSetlistModal({
                 Agregá canciones para armar el orden del servicio.
               </p>
             ) : (
-              <div className="divide-y divide-border overflow-hidden rounded-xl border border-border">
-                {pickedSongs.map((song, index) => (
-                  <div
-                    key={song.id}
-                    draggable
-                    onDragStart={() => setDragIndex(index)}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={() => {
-                      if (dragIndex === null || dragIndex === index) return;
-                      setPicked((current) => {
-                        const next = [...current];
-                        const [moved] = next.splice(dragIndex, 1);
-                        if (moved) next.splice(index, 0, moved);
-                        return next;
-                      });
-                      setDragIndex(null);
-                    }}
-                    onDragEnd={() => setDragIndex(null)}
-                    className={`flex items-center gap-2 bg-card px-3 py-2 ${
-                      dragIndex === index ? "opacity-50" : ""
-                    }`}
-                  >
-                    <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground" />
-                    <span className="w-5 text-xs text-muted-foreground">{index + 1}</span>
-                    <Cover song={song} size="sm" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{song.title}</p>
-                      <p className="truncate text-xs text-muted-foreground">{song.artist}</p>
-                      {repeatedWarning(song.id) ? (
-                        <p className="truncate text-[11px] text-amber-400">
-                          ⚠ {repeatedWarning(song.id)}
+              <div className="space-y-3">
+                {(sectioned
+                  ? SECTIONS.map((section) => ({
+                      id: section.id as SetlistSection | null,
+                      label: section.label as string | null,
+                      songs: pickedSongs.filter((song) => sectionFor(song.id) === section.id),
+                    }))
+                  : [{ id: null, label: null, songs: pickedSongs }]
+                ).map((group, g, groups) => {
+                  // numeración corrida entre secciones
+                  const offset = groups.slice(0, g).reduce((n, x) => n + x.songs.length, 0);
+                  return (
+                    <div key={group.id ?? "todas"}>
+                      {group.label ? (
+                        <p
+                          // soltar sobre el título pasa la canción al final de esa sección
+                          onDragOver={(event) => event.preventDefault()}
+                          onDrop={() => dropOn(null, group.id ?? undefined)}
+                          className="mb-1.5 text-sm font-semibold text-primary"
+                        >
+                          {group.label}
                         </p>
                       ) : null}
+                      {group.songs.length === 0 ? (
+                        <p
+                          onDragOver={(event) => event.preventDefault()}
+                          onDrop={() => dropOn(null, group.id ?? undefined)}
+                          className="rounded-xl border border-dashed border-border px-3 py-2.5 text-xs text-muted-foreground"
+                        >
+                          Sin canciones. Pasá una desde otra sección.
+                        </p>
+                      ) : (
+                        <div className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+                          {group.songs.map((song, index) => (
+                            <div
+                              key={song.id}
+                              draggable
+                              onDragStart={() => setDragId(song.id)}
+                              onDragOver={(event) => event.preventDefault()}
+                              onDrop={() => dropOn(song.id)}
+                              onDragEnd={() => setDragId(null)}
+                              className={`flex items-center gap-2 bg-card px-3 py-2 ${
+                                dragId === song.id ? "opacity-50" : ""
+                              }`}
+                            >
+                              <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground" />
+                              <span className="w-5 text-xs text-muted-foreground">
+                                {offset + index + 1}
+                              </span>
+                              <Cover song={song} size="sm" />
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium">{song.title}</p>
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {song.artist}
+                                </p>
+                                {repeatedWarning(song.id) ? (
+                                  <p className="truncate text-[11px] text-amber-400">
+                                    ⚠ {repeatedWarning(song.id)}
+                                  </p>
+                                ) : null}
+                              </div>
+                              {sectioned ? (
+                                // pasar a otra sección (más fácil que arrastrar en el celular)
+                                <select
+                                  value={sectionFor(song.id)}
+                                  onChange={(event) =>
+                                    setSections((prev) => ({
+                                      ...prev,
+                                      [song.id]: event.target.value as SetlistSection,
+                                    }))
+                                  }
+                                  aria-label={`Sección de ${song.title}`}
+                                  className="shrink-0 rounded-lg border border-border bg-secondary px-1.5 py-1 text-xs outline-none focus:border-primary/60"
+                                >
+                                  {SECTIONS.map((option) => (
+                                    <option key={option.id} value={option.id}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : null}
+                              <button
+                                type="button"
+                                aria-label={`Quitar ${song.title}`}
+                                onClick={() =>
+                                  setPicked((current) => current.filter((id) => id !== song.id))
+                                }
+                                className="shrink-0 rounded-full p-1.5 text-muted-foreground hover:text-destructive"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <button
-                      type="button"
-                      aria-label={`Quitar ${song.title}`}
-                      onClick={() => setPicked((current) => current.filter((id) => id !== song.id))}
-                      className="rounded-full p-1.5 text-muted-foreground hover:text-destructive"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

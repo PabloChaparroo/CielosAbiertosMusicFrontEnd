@@ -18,7 +18,8 @@ import { useApp } from "@/hooks/useApp";
 import { roleNames } from "@/lib/user-roles";
 import { KEYS } from "@/lib/chords";
 import { exportSetlistPdf } from "@/lib/pdf";
-import type { Setlist, SetlistItem } from "@/types";
+import type { Setlist, SetlistItem, SetlistSection } from "@/types";
+import { SECTIONS, itemsForType, sectionOf, usesSections } from "../lib/sections";
 import { LockedHint } from "./LockedHint";
 import { setlistToWhatsapp } from "../lib/whatsapp";
 
@@ -54,13 +55,46 @@ export function SetlistDetail({
     });
   };
 
+  // Cultos y Ensayos: el orden va dividido en Alabanzas / Adoración / Ofrenda
+  const sectioned = usesSections(setlist.type);
+  const songOf = (item: SetlistItem) => songs.find((s) => s.id === item.songId);
+  // guarda siempre ordenado por sección, con la sección de cada canción
+  const save = (items: SetlistItem[]) =>
+    persist({ ...setlist, items: itemsForType(items, setlist.type, songs) });
+
+  // mover: con secciones, soltar sobre otra canción también la pasa a su sección
   const move = (from: number, to: number) => {
-    const items = [...setlist.items];
+    const items = setlist.items.map((item) => ({ ...item }));
     const [it] = items.splice(from, 1);
-    if (!it) return;
+    const target = setlist.items[to];
+    if (!it || !target) return;
+    if (sectioned) it.section = sectionOf(target, songOf(target));
     items.splice(to, 0, it);
-    persist({ ...setlist, items });
+    save(items);
   };
+
+  const changeSection = (index: number, section: SetlistSection) =>
+    save(setlist.items.map((item, idx) => (idx === index ? { ...item, section } : item)));
+
+  // orden en pantalla: con secciones, agrupado (las listas anteriores pueden venir mezcladas);
+  // `i` sigue siendo el índice real en setlist.items
+  const sectionRank = (item: SetlistItem) =>
+    SECTIONS.findIndex((x) => x.id === sectionOf(item, songOf(item)));
+  const shown = setlist.items
+    .map((item, i) => ({ item, i }))
+    .sort((a, b) => (sectioned ? sectionRank(a.item) - sectionRank(b.item) : 0));
+  // posición (en pantalla) de la primera canción de cada sección, para poner el título arriba
+  const sectionStarts = new Map<number, string>();
+  if (sectioned) {
+    let previous: SetlistSection | null = null;
+    shown.forEach(({ item }, pos) => {
+      const section = sectionOf(item, songOf(item));
+      if (section !== previous) {
+        sectionStarts.set(pos, SECTIONS.find((x) => x.id === section)?.label ?? "");
+        previous = section;
+      }
+    });
+  }
 
   const openSong = (path: "/acordes" | "/letras", songId: string) =>
     navigate({ to: path, search: { songId, songIds: setlistSongIds } });
@@ -148,10 +182,19 @@ export function SetlistDetail({
               ))}
             </div>
           </div>
-          {setlist.items.map((item, i) => {
+          {shown.map(({ item, i }, pos) => {
             const song = songs.find((s) => s.id === item.songId);
             if (!song) return null;
-            return (
+            const sectionTitle = sectionStarts.get(pos);
+            return [
+              sectionTitle ? (
+                <p
+                  key={`titulo-${i}`}
+                  className="bg-white/[0.02] px-3 pt-3 pb-2 text-sm font-semibold text-primary"
+                >
+                  {sectionTitle}
+                </p>
+              ) : null,
               <div
                 key={item.songId + i}
                 draggable={canEdit}
@@ -168,7 +211,7 @@ export function SetlistDetail({
                 {canEdit ? (
                   <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground" />
                 ) : (
-                  <span className="w-4 text-center text-sm text-muted-foreground">{i + 1}</span>
+                  <span className="w-4 text-center text-sm text-muted-foreground">{pos + 1}</span>
                 )}
                 <button
                   type="button"
@@ -189,10 +232,11 @@ export function SetlistDetail({
                   disabled={!canEdit}
                   value={item.key}
                   onChange={(e) => {
-                    const items: SetlistItem[] = setlist.items.map((x, idx) =>
-                      idx === i ? { ...x, key: e.target.value } : x,
+                    save(
+                      setlist.items.map((x, idx) =>
+                        idx === i ? { ...x, key: e.target.value } : x,
+                      ),
                     );
-                    persist({ ...setlist, items });
                   }}
                   aria-label={`Tono de ${song.title}`}
                   className="shrink-0 rounded-lg border border-border bg-secondary px-2 py-1 text-xs disabled:opacity-60"
@@ -201,19 +245,31 @@ export function SetlistDetail({
                     <option key={k}>{k}</option>
                   ))}
                 </select>
+                {sectioned && canEdit ? (
+                  <select
+                    value={sectionOf(item, song)}
+                    onChange={(e) => changeSection(i, e.target.value as SetlistSection)}
+                    aria-label={`Sección de ${song.title}`}
+                    className="shrink-0 rounded-lg border border-border bg-secondary px-1.5 py-1 text-xs"
+                  >
+                    {SECTIONS.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
                 {canEdit ? (
                   <button
                     aria-label="Quitar canción"
-                    onClick={() =>
-                      persist({ ...setlist, items: setlist.items.filter((_, idx) => idx !== i) })
-                    }
+                    onClick={() => save(setlist.items.filter((_, idx) => idx !== i))}
                     className="shrink-0 rounded-full p-2 text-muted-foreground hover:text-destructive"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 ) : null}
-              </div>
-            );
+              </div>,
+            ];
           })}
           {canEdit ? (
             <p className="p-3 text-xs text-muted-foreground">

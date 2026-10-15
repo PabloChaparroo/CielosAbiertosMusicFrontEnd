@@ -52,10 +52,17 @@ const groups = [
 export function SidebarContent({
   onNavigate,
   onOpenPerfil,
+  collapsible = false,
 }: {
   onNavigate?: () => void;
   onOpenPerfil: () => void;
+  /** menú fijo (tablet y compu): angosto con solo íconos, se abre al pasar el mouse; los textos
+   *  se ocultan mientras está angosto (ver AppLayout) */
+  collapsible?: boolean;
 }) {
+  // clases de los textos que se ocultan con el menú angosto
+  const label = (base: string) =>
+    `${base}${collapsible ? " lg:opacity-0 lg:transition-opacity lg:duration-200 lg:group-hover/side:opacity-100 lg:group-focus-within/side:opacity-100" : ""}`;
   const { currentUser } = useApp();
   const { logout, hasAnyPermission, isGuest } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -72,7 +79,9 @@ export function SidebarContent({
   return (
     // estilo vidrio, como el reproductor: fondo translúcido con desenfoque y un brillo dorado
     // tenue arriba; el ítem activo y el perfil, como tarjetas de vidrio
-    <div className="relative flex h-full flex-col overflow-hidden bg-sidebar/65 backdrop-blur-2xl backdrop-saturate-150">
+    <div
+      className={`relative flex h-full flex-col overflow-hidden bg-sidebar/65 backdrop-blur-2xl backdrop-saturate-150 ${collapsible ? "lg:w-[272px]" : ""}`}
+    >
       <div
         aria-hidden
         className="pointer-events-none absolute -top-24 -left-16 h-64 w-64 rounded-full bg-primary/10 blur-3xl"
@@ -90,7 +99,7 @@ export function SidebarContent({
           height={40}
           className="h-10 w-10 shrink-0 rounded-full"
         />
-        <div className="leading-tight">
+        <div className={label("leading-tight whitespace-nowrap")}>
           <p className="font-display text-lg font-semibold">Cielos Abiertos</p>
           <p className="text-[11px] tracking-widest text-muted-foreground uppercase">Adoración</p>
         </div>
@@ -99,7 +108,11 @@ export function SidebarContent({
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 pb-6">
         {visibleGroups.map((group) => (
           <div key={group.label}>
-            <p className="px-3 pb-2 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
+            <p
+              className={label(
+                "px-3 pb-2 text-[11px] font-semibold tracking-widest whitespace-nowrap text-muted-foreground uppercase",
+              )}
+            >
               {group.label}
             </p>
             <ul className="space-y-1">
@@ -119,10 +132,10 @@ export function SidebarContent({
                     >
                       <item.icon
                         className={cn(
-                          "h-[18px] w-[18px] transition-transform group-hover:scale-110",
+                          "h-[18px] w-[18px] shrink-0 transition-transform group-hover:scale-110",
                         )}
                       />
-                      {item.label}
+                      <span className={label("whitespace-nowrap")}>{item.label}</span>
                     </Link>
                   </li>
                 );
@@ -146,16 +159,21 @@ export function SidebarContent({
             user={currentUser}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-background"
           />
-          <div className="min-w-0 flex-1">
+          <div className={label("min-w-0 flex-1")}>
             <p className="truncate text-sm font-semibold">{currentUser.name}</p>
           </div>
-          <RoleBadge roles={currentUser.roles} />
+          <span className={label("shrink-0")}>
+            <RoleBadge roles={currentUser.roles} />
+          </span>
         </button>
         <button
           onClick={() => void logout()}
           className="mt-3 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
         >
-          <LogOut className="h-3.5 w-3.5" /> {isGuest ? "Salir (iniciar sesión)" : "Cerrar sesión"}
+          <LogOut className="h-3.5 w-3.5 shrink-0" />{" "}
+          <span className={label("whitespace-nowrap")}>
+            {isGuest ? "Salir (iniciar sesión)" : "Cerrar sesión"}
+          </span>
         </button>
       </div>
     </div>

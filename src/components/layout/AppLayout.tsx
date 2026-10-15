@@ -32,8 +32,10 @@ export function AppLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <aside className="fixed top-0 left-0 hidden h-screen w-[272px] border-r border-white/10 lg:block">
-        <SidebarContent onOpenPerfil={() => setShowPerfil(true)} />
+      {/* tablet acostada y compu: menú angosto con solo íconos; al pasar el mouse (o al tocarlo)
+          se abre entero por encima del contenido, sin empujarlo */}
+      <aside className="group/side fixed top-0 left-0 z-40 hidden h-screen w-[76px] overflow-hidden border-r border-white/10 shadow-2xl transition-[width] duration-200 ease-out hover:w-[272px] focus-within:w-[272px] lg:block">
+        <SidebarContent collapsible onOpenPerfil={() => setShowPerfil(true)} />
       </aside>
       <MobileSidebar
         open={open}
@@ -41,7 +43,7 @@ export function AppLayout({
         onOpenPerfil={() => setShowPerfil(true)}
       />
 
-      <main className="lg:pl-[272px]">
+      <main className="lg:pl-[76px]">
         <header className="sticky top-0 z-30 overflow-hidden border-b border-border/70 bg-background/80 backdrop-blur-xl">
           {/* brillo dorado tenue arriba a la izquierda, el mismo del menú lateral */}
           <div

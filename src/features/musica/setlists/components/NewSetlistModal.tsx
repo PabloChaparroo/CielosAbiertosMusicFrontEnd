@@ -190,7 +190,8 @@ export function NewSetlistModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="flex max-h-[92vh] w-full max-w-xl flex-col rounded-t-3xl border border-border bg-card p-6 sm:rounded-2xl">
+      {/* celular: ocupa toda la pantalla, de arriba a abajo (antes era una hoja hasta el 92 %) */}
+      <div className="flex h-dvh w-full max-w-xl flex-col border-border bg-card p-6 pt-[max(1.5rem,env(safe-area-inset-top))] sm:h-auto sm:max-h-[92vh] sm:rounded-2xl sm:border">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-xl font-semibold">Nueva lista de canciones</h2>
           <button

@@ -6,10 +6,8 @@ import {
   Copy,
   FileDown,
   GripVertical,
-  Music2,
   Pencil,
   Trash2,
-  Type,
 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -122,8 +120,9 @@ export function SetlistDetail({
         </div>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
-        <div className="surface-card divide-y divide-border/60">
+      {/* minmax(0,1fr): sin eso, una canción con nombre largo ensanchaba la columna y la página en celular */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="surface-card min-w-0 divide-y divide-border/60">
           <div className="flex items-center justify-between gap-3 border-b border-border/60 p-3">
             <span className="text-sm font-medium">Abrir canciones como</span>
             <div className="flex rounded-lg border border-border p-1">
@@ -186,26 +185,6 @@ export function SetlistDetail({
                     </span>
                   </span>
                 </button>
-                <div className="flex shrink-0 items-center gap-1">
-                  <button
-                    type="button"
-                    aria-label={`Abrir acordes de ${song.title}`}
-                    title="Abrir acordes"
-                    onClick={() => openSong("/acordes", song.id)}
-                    className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
-                  >
-                    <Music2 className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`Abrir letra de ${song.title}`}
-                    title="Abrir letra"
-                    onClick={() => openSong("/letras", song.id)}
-                    className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
-                  >
-                    <Type className="h-4 w-4" />
-                  </button>
-                </div>
                 <select
                   disabled={!canEdit}
                   value={item.key}
@@ -215,7 +194,8 @@ export function SetlistDetail({
                     );
                     persist({ ...setlist, items });
                   }}
-                  className="rounded-lg border border-border bg-secondary px-2 py-1 text-xs disabled:opacity-60"
+                  aria-label={`Tono de ${song.title}`}
+                  className="shrink-0 rounded-lg border border-border bg-secondary px-2 py-1 text-xs disabled:opacity-60"
                 >
                   {KEYS.map((k) => (
                     <option key={k}>{k}</option>
@@ -227,7 +207,7 @@ export function SetlistDetail({
                     onClick={() =>
                       persist({ ...setlist, items: setlist.items.filter((_, idx) => idx !== i) })
                     }
-                    className="rounded-full p-2 text-muted-foreground hover:text-destructive"
+                    className="shrink-0 rounded-full p-2 text-muted-foreground hover:text-destructive"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>

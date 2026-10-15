@@ -2,14 +2,12 @@ import { useMemo, useRef, useState } from "react";
 import { GripVertical, ListMusic, Search, X } from "lucide-react";
 import { Cover } from "@/components/common/ui-bits";
 import { InstrumentPicker } from "@/components/common/InstrumentPicker";
-import { INSTRUMENTS } from "@/lib/instruments";
 import { useApp } from "@/hooks/useApp";
 import { SetlistsService } from "../services/setlists.service";
 import { EVENT_TYPES, type EventType, type Setlist, type SetlistItem } from "@/types";
 import { matchesSearch } from "@/lib/search";
 import { hasSequence } from "@/features/canciones/lib/sequence";
 import { ListDuration } from "./ListDuration";
-import { visibleTeam } from "@/features/equipo/lib/visible-team";
 
 const inputCls =
   "w-full rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary/60";
@@ -56,7 +54,7 @@ export function NewSetlistModal({
   /** Lista predefinida de la que se parte: trae el título y las canciones (con su tono) */
   initial?: { title: string; items: SetlistItem[] } | undefined;
 }) {
-  const { songs, users, currentUser, setlists, can } = useApp();
+  const { songs, users, currentUser, setlists } = useApp();
   // "Menos tocadas": ordena por cuántas veces se tocó cada canción en los setlists de los
   // últimos 5 meses (de menos a más)
   const [leastPlayed, setLeastPlayed] = useState(false);
@@ -153,10 +151,17 @@ export function NewSetlistModal({
     return found.slice(0, 40);
   }, [songs, query, leastPlayed, playCounts]);
 
-  // equipo para elegir: activos, y sin los admins si quien arma la lista no es admin
+  // equipo para elegir (pedido de Pablo): solo líderes y músicos activos; los admins nunca, aunque
+  // quien arma la lista sea admin
   const activeUsers = useMemo(
-    () => visibleTeam(users, can("manageRoles")).filter((u) => !u.fechaHoraBaja),
-    [users, can],
+    () =>
+      users.filter(
+        (u) =>
+          !u.fechaHoraBaja &&
+          !u.isAdmin &&
+          u.roles.some((r) => /^(l[ií]der|m[uú]sico)$/i.test(r.name.trim())),
+      ),
+    [users],
   );
   const pickedSongs = picked
     .map((id) => songs.find((song) => song.id === id))
@@ -449,12 +454,21 @@ export function NewSetlistModal({
                   return (
                     <div key={id} className="rounded-xl border border-border/60 p-2.5">
                       <p className="mb-1.5 text-xs font-medium">{u.name} toca:</p>
-                      <InstrumentPicker
-                        size="sm"
-                        options={u.instruments?.length ? u.instruments : INSTRUMENTS}
-                        value={teamInstruments[id] ?? []}
-                        onChange={(next) => setTeamInstruments((prev) => ({ ...prev, [id]: next }))}
-                      />
+                      {/* solo los instrumentos que tiene cargados en su perfil */}
+                      {u.instruments?.length ? (
+                        <InstrumentPicker
+                          size="sm"
+                          options={u.instruments}
+                          value={teamInstruments[id] ?? []}
+                          onChange={(next) =>
+                            setTeamInstruments((prev) => ({ ...prev, [id]: next }))
+                          }
+                        />
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          No tiene instrumentos cargados. Se cargan desde Equipo.
+                        </p>
+                      )}
                     </div>
                   );
                 })}

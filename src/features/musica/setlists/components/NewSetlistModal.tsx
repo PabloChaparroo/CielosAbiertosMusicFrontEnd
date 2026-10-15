@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { GripVertical, ListMusic, Search, X } from "lucide-react";
 import { Cover } from "@/components/common/ui-bits";
 import { InstrumentPicker } from "@/components/common/InstrumentPicker";
@@ -87,6 +87,7 @@ export function NewSetlistModal({
   };
   const [type, setType] = useState<EventType>("Culto Domingo a la mañana");
   const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLDivElement | null>(null);
   const [picked, setPicked] = useState<string[]>(() =>
     (initial?.items ?? []).map((it) => it.songId).filter((id) => songs.some((s) => s.id === id)),
   );
@@ -261,42 +262,24 @@ export function NewSetlistModal({
                 </select>
               );
             })()}
-            <div className="relative">
+            {/* al tocar el buscador en celular se abre el teclado: el buscador sube al tope del
+                modal para que se vean los resultados justo abajo */}
+            <div ref={searchRef} className="relative scroll-mt-1">
               <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 className={inputCls + " pl-10"}
                 placeholder="Buscar canciones para agregar…"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                onFocus={() => {
+                  // después de que el teclado achica la pantalla
+                  window.setTimeout(
+                    () => searchRef.current?.scrollIntoView({ block: "start", behavior: "smooth" }),
+                    300,
+                  );
+                }}
               />
             </div>
-            <button
-              type="button"
-              onClick={() => setLeastPlayed((v) => !v)}
-              aria-pressed={leastPlayed}
-              className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
-                leastPlayed
-                  ? "border-primary/50 bg-primary/15 text-primary"
-                  : "border-border bg-card text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Menos tocadas (últimos 5 meses)
-            </button>
-            {suggestions.length ? (
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Sugeridas para rotar:</span>
-                {suggestions.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => setPicked((p) => [...p, s.id])}
-                    className="rounded-full border border-dashed border-primary/40 px-2.5 py-0.5 text-xs text-primary transition-colors hover:bg-primary/10"
-                  >
-                    + {s.title}
-                  </button>
-                ))}
-              </div>
-            ) : null}
           </div>
 
           <div className="max-h-64 overflow-y-auto rounded-xl border border-border">
@@ -337,6 +320,38 @@ export function NewSetlistModal({
                 </button>
               );
             })}
+          </div>
+
+          {/* "Menos tocadas" y las sugeridas, debajo de los resultados: los resultados van justo
+              abajo del buscador */}
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={() => setLeastPlayed((v) => !v)}
+              aria-pressed={leastPlayed}
+              className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+                leastPlayed
+                  ? "border-primary/50 bg-primary/15 text-primary"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Menos tocadas (últimos 5 meses)
+            </button>
+            {suggestions.length ? (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">Sugeridas para rotar:</span>
+                {suggestions.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setPicked((p) => [...p, s.id])}
+                    className="rounded-full border border-dashed border-primary/40 px-2.5 py-0.5 text-xs text-primary transition-colors hover:bg-primary/10"
+                  >
+                    + {s.title}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           <div className="space-y-2">

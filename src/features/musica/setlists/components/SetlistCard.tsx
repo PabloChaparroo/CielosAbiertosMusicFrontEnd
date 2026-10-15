@@ -28,7 +28,6 @@ export function SetlistCard({
   muted?: boolean;
 }) {
   const { users, songs, currentUser } = useApp();
-  const leader = users.find((u) => u.id === s.leaderId);
   // el que entra está en el equipo de esta lista: la tarjeta se destaca en dorado
   const assigned = s.teamIds.includes(currentUser.id);
   const myInstruments = s.teamInstruments[currentUser.id] ?? [];
@@ -118,23 +117,23 @@ export function SetlistCard({
           songs={s.items.flatMap((it) => songs.find((so) => so.id === it.songId) ?? [])}
         />
       </div>
-      <div className="mt-4 flex min-w-0 items-center -space-x-2">
-        {s.teamIds.map((id) => {
-          const u = users.find((x) => x.id === id);
-          if (!u) return null;
-          return (
-            <Avatar
-              key={id}
-              user={u}
-              title={u.name}
-              className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-card text-[11px] font-bold text-background"
-            />
-          );
-        })}
-        <span className="min-w-0 truncate pl-4 text-xs text-muted-foreground">
-          Lidera {leader?.name}
-        </span>
-      </div>
+      {/* fotos del equipo; sin equipo no se muestra la fila (ya no va "Lidera …": pedido de Pablo) */}
+      {s.teamIds.length ? (
+        <div className="mt-4 flex min-w-0 items-center -space-x-2">
+          {s.teamIds.map((id) => {
+            const u = users.find((x) => x.id === id);
+            if (!u) return null;
+            return (
+              <Avatar
+                key={id}
+                user={u}
+                title={u.name}
+                className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-card text-[11px] font-bold text-background"
+              />
+            );
+          })}
+        </div>
+      ) : null}
       <p className="mt-3 truncate text-sm text-muted-foreground">
         {s.items.map((i) => songs.find((so) => so.id === i.songId)?.title).join(" · ")}
       </p>

@@ -1,3 +1,4 @@
+import { HelpBubble } from "@/components/common/HelpBubble";
 import { useEffect, useState } from "react";
 import {
   BookmarkPlus,
@@ -178,12 +179,15 @@ export function SetlistsPage() {
       </section>
 
       <section className="mb-10">
-        <h2 className="mb-1 font-display text-xl font-semibold">Listas predefinidas</h2>
-        <p className="mb-4 text-sm text-muted-foreground">
-          Listas para reutilizar: elegí una y ponele fecha (y equipo, si querés). Para crear una,
-          tocá <BookmarkPlus className="inline h-4 w-4 align-text-bottom" /> en una lista de
-          canciones.
-        </p>
+        {/* la explicación va en una burbuja con "?", así no ocupa lugar fijo */}
+        <div className="mb-4 flex items-center gap-1">
+          <h2 className="font-display text-xl font-semibold">Listas predefinidas</h2>
+          <HelpBubble label="Listas predefinidas">
+            Listas para reutilizar: elegí una y ponele fecha (y equipo, si querés). Para crear una,
+            tocá <BookmarkPlus className="inline h-4 w-4 align-text-bottom text-primary" /> en una
+            lista de canciones.
+          </HelpBubble>
+        </div>
         {templates.length === 0 ? (
           <EmptyState
             icon={<ListMusic className="h-6 w-6" />}

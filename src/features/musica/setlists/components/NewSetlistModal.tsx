@@ -85,6 +85,12 @@ export function NewSetlistModal({
   };
   const [type, setType] = useState<EventType>("Culto Domingo a la mañana");
   const [query, setQuery] = useState("");
+  // filtro por tipo (Alabanza / Adoración) al lado del buscador; "" = todos
+  const [tipo, setTipo] = useState("");
+  const tipos = useMemo(
+    () => [...new Set(songs.map((s) => s.tipo).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [songs],
+  );
   const searchRef = useRef<HTMLDivElement | null>(null);
   const [picked, setPicked] = useState<string[]>(() =>
     (initial?.items ?? []).map((it) => it.songId).filter((id) => songs.some((s) => s.id === id)),
@@ -145,11 +151,11 @@ export function NewSetlistModal({
 
   const results = useMemo(() => {
     // al buscar entran todas, con o sin secuencia: a veces hay que tocar una que todavía no tiene audio
-    const found = songs.filter((s) => matchesSearch(query, s.title));
+    const found = songs.filter((s) => (!tipo || s.tipo === tipo) && matchesSearch(query, s.title));
     if (leastPlayed)
       found.sort((a, b) => (playCounts.get(a.id) ?? 0) - (playCounts.get(b.id) ?? 0));
     return found.slice(0, 40);
-  }, [songs, query, leastPlayed, playCounts]);
+  }, [songs, query, tipo, leastPlayed, playCounts]);
 
   // equipo para elegir (pedido de Pablo): solo líderes y músicos activos; los admins nunca, aunque
   // quien arma la lista sea admin
@@ -269,21 +275,41 @@ export function NewSetlistModal({
             })()}
             {/* al tocar el buscador en celular se abre el teclado: el buscador sube al tope del
                 modal para que se vean los resultados justo abajo */}
-            <div ref={searchRef} className="relative scroll-mt-1">
-              <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                className={inputCls + " pl-10"}
-                placeholder="Buscar canciones para agregar…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onFocus={() => {
-                  // después de que el teclado achica la pantalla
-                  window.setTimeout(
-                    () => searchRef.current?.scrollIntoView({ block: "start", behavior: "smooth" }),
-                    300,
-                  );
-                }}
-              />
+            <div ref={searchRef} className="flex scroll-mt-1 items-center gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  className={inputCls + " pl-10"}
+                  placeholder="Buscar canciones para agregar…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onFocus={() => {
+                    // después de que el teclado achica la pantalla
+                    window.setTimeout(
+                      () =>
+                        searchRef.current?.scrollIntoView({ block: "start", behavior: "smooth" }),
+                      300,
+                    );
+                  }}
+                />
+              </div>
+              {tipos.length ? (
+                <select
+                  value={tipo}
+                  onChange={(e) => setTipo(e.target.value)}
+                  aria-label="Filtrar por tipo"
+                  className={`shrink-0 self-stretch rounded-xl border bg-secondary px-3 text-sm outline-none transition-colors focus:border-primary/60 ${
+                    tipo ? "border-primary/50 text-primary" : "border-border text-muted-foreground"
+                  }`}
+                >
+                  <option value="">Todas</option>
+                  {tipos.map((t) => (
+                    <option key={t} value={t}>
+                      {t === "Alabanza" ? "Alabanzas" : t === "Adoración" ? "Adoraciones" : t}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
             </div>
           </div>
 

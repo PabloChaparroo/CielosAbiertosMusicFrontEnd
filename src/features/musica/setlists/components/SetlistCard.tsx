@@ -40,34 +40,15 @@ export function SetlistCard({
       // min-w-0: si no, la línea larga de canciones (truncate) estira la tarjeta y la página en celular
       className={`surface-card w-full min-w-0 p-5 text-left hover:-translate-y-1 hover:border-primary/40 ${muted ? "opacity-80" : ""}`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <span
-            className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${eventColor[s.type]}`}
-          >
-            {s.type}
-          </span>
-          <h3 className="mt-2 font-display text-lg font-semibold break-words">{s.title}</h3>
-          <p className="text-sm text-muted-foreground">
-            {new Date(s.date).toLocaleString("es-AR", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </p>
-          {/* cuánto dura tocar toda la lista (suma de las secuencias) */}
-          <ListDuration
-            songs={s.items.flatMap((it) => songs.find((so) => so.id === it.songId) ?? [])}
-            className="mt-1"
-          />
-        </div>
-        <div className="flex shrink-0 items-start gap-3 text-right text-xs text-muted-foreground">
-          <div>
-            <p className="font-semibold text-foreground">{s.items.length}</p>
-            canciones
-          </div>
+      {/* arriba: tipo de evento y botones; abajo, todo a lo ancho (en celulares chicos la columna
+          de "N canciones" y los botones dejaban el título y la fecha en una franja angosta) */}
+      <div className="flex items-center justify-between gap-2">
+        <span
+          className={`min-w-0 truncate rounded-full border px-2.5 py-0.5 text-[11px] font-medium whitespace-nowrap ${eventColor[s.type]}`}
+        >
+          {s.type}
+        </span>
+        <div className="-my-1 -mr-2 flex shrink-0 items-center">
           {onSaveTemplate ? (
             <button
               type="button"
@@ -101,6 +82,26 @@ export function SetlistCard({
             </button>
           ) : null}
         </div>
+      </div>
+      <h3 className="mt-2 font-display text-lg font-semibold break-words">{s.title}</h3>
+      <p className="text-sm text-muted-foreground first-letter:uppercase">
+        {new Date(s.date).toLocaleString("es-AR", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          hour: "2-digit",
+          minute: "2-digit",
+        })}
+      </p>
+      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="text-xs text-muted-foreground">
+          <span className="font-semibold text-foreground">{s.items.length}</span>{" "}
+          {s.items.length === 1 ? "canción" : "canciones"}
+        </span>
+        {/* cuánto dura tocar toda la lista (suma de las secuencias) */}
+        <ListDuration
+          songs={s.items.flatMap((it) => songs.find((so) => so.id === it.songId) ?? [])}
+        />
       </div>
       <div className="mt-4 flex min-w-0 items-center -space-x-2">
         {s.teamIds.map((id) => {

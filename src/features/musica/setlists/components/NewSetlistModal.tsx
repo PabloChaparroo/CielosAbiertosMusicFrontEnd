@@ -47,6 +47,11 @@ function titleForDate(value: string): string {
   return `${DAY_NAMES[new Date(y, mo - 1, d).getDay()]} ${value.slice(8, 10)}/${value.slice(5, 7)}`;
 }
 
+/** true si el título es solo una fecha como las de titleForDate ("Domingo 04/10") */
+function isDateTitle(value: string): boolean {
+  return new RegExp(`^(${DAY_NAMES.join("|")}) \\d{2}/\\d{2}$`).test(value.trim());
+}
+
 const DATE_SHORTCUTS = [
   { label: "Domingos", day: "Domingo", weekday: 0 },
   { label: "Miércoles", day: "Miércoles", weekday: 3 },
@@ -80,12 +85,15 @@ export function NewSetlistModal({
   }, [setlists]);
   const [date, setDateValue] = useState(() => nextWeekday(0, 0, "10:30"));
   // el título arranca con la fecha ("Domingo 04/10") y la sigue al cambiarla, hasta que el usuario
-  // escribe uno propio (o viene de una lista predefinida); si lo borra entero, vuelve a seguirla
+  // escribe uno propio; si lo borra entero, vuelve a seguirla. Un título que ya es una fecha (ej.
+  // una predefinida llamada "Domingo 04/10") también la sigue: si no quedaba con la fecha vieja
   const [title, setTitleValue] = useState(() => initial?.title ?? titleForDate(date));
-  const [titleEdited, setTitleEdited] = useState(Boolean(initial?.title));
+  const [titleEdited, setTitleEdited] = useState(
+    Boolean(initial?.title) && !isDateTitle(initial?.title ?? ""),
+  );
   const setTitle = (value: string) => {
     setTitleValue(value);
-    setTitleEdited(value.trim() !== "");
+    setTitleEdited(value.trim() !== "" && !isDateTitle(value));
   };
   const setDate = (value: string) => {
     setDateValue(value);

@@ -46,6 +46,8 @@ export function SetlistsPage() {
   // lista predefinida de la que se arma el setlist nuevo (null = desde cero)
   const [fromTemplate, setFromTemplate] = useState<SetlistTemplate | null>(null);
   const [templates, setTemplates] = useState<SetlistTemplate[]>([]);
+  // armar listas y ver/usar las predefinidas: líderes y admins
+  const canCreate = can("createSetlist");
   // lista predefinida abierta (se ven sus canciones, por sección)
   const [openTemplate, setOpenTemplate] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -55,10 +57,11 @@ export function SetlistsPage() {
   const [savingTemplate, setSavingTemplate] = useState(false);
 
   useEffect(() => {
+    if (!canCreate) return;
     SetlistTemplatesService.listAll()
       .then(setTemplates)
       .catch(() => setTemplates([]));
-  }, []);
+  }, [canCreate]);
   useEffect(() => {
     if (!notice) return;
     const id = setTimeout(() => setNotice(null), 2500);
@@ -97,7 +100,6 @@ export function SetlistsPage() {
     void updateSetlist({ ...target, isUpcoming: !target.isUpcoming });
   };
 
-  const canCreate = can("createSetlist");
   // guardar como predefinida: primero se elige el nombre (viene uno automático, "Lista N")
   const askTemplateName = (target: (typeof setlists)[number]) => {
     setTemplateName(nextTemplateName(templates.map((t) => t.title)));
@@ -182,104 +184,107 @@ export function SetlistsPage() {
         )}
       </section>
 
-      <section className="mb-10">
-        {/* la explicación va en una burbuja con "?", así no ocupa lugar fijo */}
-        <div className="mb-4 flex items-center gap-1">
-          <h2 className="font-display text-xl font-semibold">Listas predefinidas</h2>
-          <HelpBubble label="Listas predefinidas">
-            Listas para reutilizar: elegí una y ponele fecha (y equipo, si querés). Para crear una,
-            tocá <BookmarkPlus className="inline h-4 w-4 align-text-bottom text-primary" /> en una
-            lista de canciones.
-          </HelpBubble>
-        </div>
-        {templates.length === 0 ? (
-          <EmptyState
-            icon={<ListMusic className="h-6 w-6" />}
-            title="Todavía no hay listas predefinidas"
-            description="Guardá una lista de Próximos o del Historial para reutilizarla."
-          />
-        ) : (
-          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
-            {templates.map((t) => (
-              <div key={t.id} className="surface-card min-w-0 p-5">
-                <div className="flex items-start justify-between gap-3">
-                  {/* tocar el nombre abre la lista para verla (también quien no puede armar listas) */}
-                  <button
-                    type="button"
-                    onClick={() => setOpenTemplate((open) => (open === t.id ? null : t.id))}
-                    aria-expanded={openTemplate === t.id}
-                    className="min-w-0 flex-1 text-left"
-                  >
-                    <h3 className="flex items-center gap-1.5 font-display text-lg font-semibold">
-                      <span className="truncate">{t.title}</span>
-                      <ChevronDown
-                        className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
-                          openTemplate === t.id ? "rotate-180 text-primary" : ""
-                        }`}
-                      />
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      {t.items.length} {t.items.length === 1 ? "canción" : "canciones"}
-                    </p>
-                  </button>
-                  {canCreate ? (
-                    <div className="flex shrink-0 items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFromTemplate(t);
-                          setModal(true);
-                        }}
-                        className="flex items-center gap-1.5 rounded-full gradient-gold px-3 py-1.5 text-xs font-semibold text-primary-foreground"
-                      >
-                        <CalendarPlus className="h-3.5 w-3.5" /> Ponerle fecha
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void removeTemplate(t)}
-                        aria-label={`Eliminar ${t.title}`}
-                        className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-                {openTemplate === t.id ? (
-                  // abierta: las canciones por sección, con su tono
-                  <div className="mt-4 animate-in space-y-3 fade-in-0 slide-in-from-top-1 duration-200">
-                    {groupBySection(t.items, songs).map((group) => (
-                      <div key={group.id}>
-                        <p className="mb-1 text-sm font-semibold text-primary">{group.label}</p>
-                        <ul className="space-y-1">
-                          {group.items.map((item) => (
-                            <li
-                              key={item.songId}
-                              className="flex items-center justify-between gap-3 text-sm"
-                            >
-                              <span className="min-w-0 truncate">· {songTitle(item.songId)}</span>
-                              <span className="shrink-0 text-xs text-muted-foreground">
-                                {item.key}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-3 truncate text-sm text-muted-foreground">
-                    {t.items
-                      .map((i) => songTitle(i.songId))
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
-                )}
-              </div>
-            ))}
+      {/* las predefinidas solo las ven líderes y admins (los que pueden armar listas) */}
+      {canCreate ? (
+        <section className="mb-10">
+          {/* la explicación va en una burbuja con "?", así no ocupa lugar fijo */}
+          <div className="mb-4 flex items-center gap-1">
+            <h2 className="font-display text-xl font-semibold">Listas predefinidas</h2>
+            <HelpBubble label="Listas predefinidas">
+              Listas para reutilizar: elegí una y ponele fecha (y equipo, si querés). Para crear
+              una, tocá <BookmarkPlus className="inline h-4 w-4 align-text-bottom text-primary" />{" "}
+              en una lista de canciones.
+            </HelpBubble>
           </div>
-        )}
-      </section>
+          {templates.length === 0 ? (
+            <EmptyState
+              icon={<ListMusic className="h-6 w-6" />}
+              title="Todavía no hay listas predefinidas"
+              description="Guardá una lista de Próximos o del Historial para reutilizarla."
+            />
+          ) : (
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
+              {templates.map((t) => (
+                <div key={t.id} className="surface-card min-w-0 p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    {/* tocar el nombre abre la lista para verla (también quien no puede armar listas) */}
+                    <button
+                      type="button"
+                      onClick={() => setOpenTemplate((open) => (open === t.id ? null : t.id))}
+                      aria-expanded={openTemplate === t.id}
+                      className="min-w-0 flex-1 text-left"
+                    >
+                      <h3 className="flex items-center gap-1.5 font-display text-lg font-semibold">
+                        <span className="truncate">{t.title}</span>
+                        <ChevronDown
+                          className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+                            openTemplate === t.id ? "rotate-180 text-primary" : ""
+                          }`}
+                        />
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        {t.items.length} {t.items.length === 1 ? "canción" : "canciones"}
+                      </p>
+                    </button>
+                    {canCreate ? (
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFromTemplate(t);
+                            setModal(true);
+                          }}
+                          className="flex items-center gap-1.5 rounded-full gradient-gold px-3 py-1.5 text-xs font-semibold text-primary-foreground"
+                        >
+                          <CalendarPlus className="h-3.5 w-3.5" /> Ponerle fecha
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void removeTemplate(t)}
+                          aria-label={`Eliminar ${t.title}`}
+                          className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                  {openTemplate === t.id ? (
+                    // abierta: las canciones por sección, con su tono
+                    <div className="mt-4 animate-in space-y-3 fade-in-0 slide-in-from-top-1 duration-200">
+                      {groupBySection(t.items, songs).map((group) => (
+                        <div key={group.id}>
+                          <p className="mb-1 text-sm font-semibold text-primary">{group.label}</p>
+                          <ul className="space-y-1">
+                            {group.items.map((item) => (
+                              <li
+                                key={item.songId}
+                                className="flex items-center justify-between gap-3 text-sm"
+                              >
+                                <span className="min-w-0 truncate">· {songTitle(item.songId)}</span>
+                                <span className="shrink-0 text-xs text-muted-foreground">
+                                  {item.key}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-3 truncate text-sm text-muted-foreground">
+                      {t.items
+                        .map((i) => songTitle(i.songId))
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : null}
 
       <section>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

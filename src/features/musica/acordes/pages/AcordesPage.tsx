@@ -350,7 +350,12 @@ export function AcordesPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => setSearchOpen(true)}
-              placeholder="Saltar a canción…"
+              // desde una lista son pocas canciones: tocar el buscador solo abre la lista, sin
+              // escribir (así el celular no abre el teclado)
+              readOnly={Boolean(scopedSongIds)}
+              inputMode={scopedSongIds ? "none" : undefined}
+              onClick={() => setSearchOpen(true)}
+              placeholder={scopedSongIds ? "Canciones de la lista" : "Saltar a canción…"}
               className="w-full rounded-full border border-border bg-secondary py-2 pr-3 pl-10 text-sm outline-none focus:border-primary/60"
             />
           </div>

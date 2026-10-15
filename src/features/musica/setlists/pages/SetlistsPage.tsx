@@ -1,10 +1,12 @@
 import { HelpBubble } from "@/components/common/HelpBubble";
+import { groupBySection } from "../lib/sections";
 import { useEffect, useState } from "react";
 import {
   BookmarkPlus,
   CalendarDays,
   CalendarPlus,
   ListMusic,
+  ChevronDown,
   Plus,
   Search,
   Trash2,
@@ -44,6 +46,8 @@ export function SetlistsPage() {
   // lista predefinida de la que se arma el setlist nuevo (null = desde cero)
   const [fromTemplate, setFromTemplate] = useState<SetlistTemplate | null>(null);
   const [templates, setTemplates] = useState<SetlistTemplate[]>([]);
+  // lista predefinida abierta (se ven sus canciones, por sección)
+  const [openTemplate, setOpenTemplate] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   // guardar como predefinida: la lista a guardar y el nombre elegido
   const [naming, setNaming] = useState<Setlist | null>(null);
@@ -197,12 +201,27 @@ export function SetlistsPage() {
         ) : (
           <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
             {templates.map((t) => (
-              <div key={t.id} className="surface-card p-5">
+              <div key={t.id} className="surface-card min-w-0 p-5">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="truncate font-display text-lg font-semibold">{t.title}</h3>
-                    <p className="text-xs text-muted-foreground">{t.items.length} canciones</p>
-                  </div>
+                  {/* tocar el nombre abre la lista para verla (también quien no puede armar listas) */}
+                  <button
+                    type="button"
+                    onClick={() => setOpenTemplate((open) => (open === t.id ? null : t.id))}
+                    aria-expanded={openTemplate === t.id}
+                    className="min-w-0 flex-1 text-left"
+                  >
+                    <h3 className="flex items-center gap-1.5 font-display text-lg font-semibold">
+                      <span className="truncate">{t.title}</span>
+                      <ChevronDown
+                        className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+                          openTemplate === t.id ? "rotate-180 text-primary" : ""
+                        }`}
+                      />
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      {t.items.length} {t.items.length === 1 ? "canción" : "canciones"}
+                    </p>
+                  </button>
                   {canCreate ? (
                     <div className="flex shrink-0 items-center gap-1">
                       <button
@@ -226,12 +245,36 @@ export function SetlistsPage() {
                     </div>
                   ) : null}
                 </div>
-                <p className="mt-3 truncate text-sm text-muted-foreground">
-                  {t.items
-                    .map((i) => songTitle(i.songId))
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
+                {openTemplate === t.id ? (
+                  // abierta: las canciones por sección, con su tono
+                  <div className="mt-4 animate-in space-y-3 fade-in-0 slide-in-from-top-1 duration-200">
+                    {groupBySection(t.items, songs).map((group) => (
+                      <div key={group.id}>
+                        <p className="mb-1 text-sm font-semibold text-primary">{group.label}</p>
+                        <ul className="space-y-1">
+                          {group.items.map((item) => (
+                            <li
+                              key={item.songId}
+                              className="flex items-center justify-between gap-3 text-sm"
+                            >
+                              <span className="min-w-0 truncate">· {songTitle(item.songId)}</span>
+                              <span className="shrink-0 text-xs text-muted-foreground">
+                                {item.key}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 truncate text-sm text-muted-foreground">
+                    {t.items
+                      .map((i) => songTitle(i.songId))
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                )}
               </div>
             ))}
           </div>

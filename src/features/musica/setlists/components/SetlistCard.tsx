@@ -1,4 +1,4 @@
-import { BookmarkPlus, CalendarCheck, CalendarX } from "lucide-react";
+import { BookmarkPlus, CalendarCheck, CalendarX, UserCheck } from "lucide-react";
 import { Avatar } from "@/components/common/ui-bits";
 import { useApp } from "@/hooks/useApp";
 import type { EventType, Setlist } from "@/types";
@@ -27,8 +27,11 @@ export function SetlistCard({
   onSaveTemplate?: (() => void) | undefined;
   muted?: boolean;
 }) {
-  const { users, songs } = useApp();
+  const { users, songs, currentUser } = useApp();
   const leader = users.find((u) => u.id === s.leaderId);
+  // el que entra está en el equipo de esta lista: la tarjeta se destaca en dorado
+  const assigned = s.teamIds.includes(currentUser.id);
+  const myInstruments = s.teamInstruments[currentUser.id] ?? [];
   return (
     <div
       onClick={onClick}
@@ -38,7 +41,11 @@ export function SetlistCard({
         if (event.key === "Enter" || event.key === " ") onClick();
       }}
       // min-w-0: si no, la línea larga de canciones (truncate) estira la tarjeta y la página en celular
-      className={`surface-card w-full min-w-0 p-5 text-left hover:-translate-y-1 hover:border-primary/40 ${muted ? "opacity-80" : ""}`}
+      className={`surface-card relative w-full min-w-0 p-5 text-left hover:-translate-y-1 hover:border-primary/40 ${
+        assigned
+          ? "border-primary/60 bg-gradient-to-br from-primary/[0.10] to-transparent shadow-[0_0_24px_-8px] shadow-primary/40"
+          : ""
+      } ${muted && !assigned ? "opacity-80" : ""}`}
     >
       {/* arriba: tipo de evento y botones; abajo, todo a lo ancho (en celulares chicos la columna
           de "N canciones" y los botones dejaban el título y la fecha en una franja angosta) */}
@@ -83,6 +90,14 @@ export function SetlistCard({
           ) : null}
         </div>
       </div>
+      {assigned ? (
+        <p className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full bg-primary/15 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+          <UserCheck className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">
+            Estás asignado{myInstruments.length ? ` · ${myInstruments.join(", ")}` : ""}
+          </span>
+        </p>
+      ) : null}
       <h3 className="mt-2 font-display text-lg font-semibold break-words">{s.title}</h3>
       <p className="text-sm text-muted-foreground first-letter:uppercase">
         {new Date(s.date).toLocaleString("es-AR", {

@@ -16,7 +16,6 @@ import { InstrumentPicker } from "@/components/common/InstrumentPicker";
 import { INSTRUMENTS } from "@/lib/instruments";
 import { useApp } from "@/hooks/useApp";
 import { roleNames } from "@/lib/user-roles";
-import { KEYS } from "@/lib/chords";
 import { exportSetlistPdf } from "@/lib/pdf";
 import type { Setlist, SetlistItem, SetlistSection } from "@/types";
 import { SECTIONS, itemsForType, sectionOf, usesSections } from "../lib/sections";
@@ -246,23 +245,6 @@ export function SetlistDetail({
                     </span>
                   </span>
                 </button>
-                <select
-                  disabled={!canEdit}
-                  value={item.key}
-                  onChange={(e) => {
-                    save(
-                      setlist.items.map((x, idx) =>
-                        idx === i ? { ...x, key: e.target.value } : x,
-                      ),
-                    );
-                  }}
-                  aria-label={`Tono de ${song.title}`}
-                  className="shrink-0 rounded-lg border border-border bg-secondary px-2 py-1 text-xs disabled:opacity-60"
-                >
-                  {KEYS.map((k) => (
-                    <option key={k}>{k}</option>
-                  ))}
-                </select>
                 {sectioned && canEdit ? (
                   <select
                     value={sectionOf(item, song)}

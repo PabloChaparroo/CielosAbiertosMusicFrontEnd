@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { GripVertical, ListMusic, Search, X } from "lucide-react";
 import { Cover } from "@/components/common/ui-bits";
+import { INSTRUMENTS } from "@/lib/instruments";
 import { InstrumentPicker } from "@/components/common/InstrumentPicker";
 import { useApp } from "@/hooks/useApp";
 import { SetlistsService } from "../services/setlists.service";
@@ -132,14 +133,15 @@ export function NewSetlistModal({
     if (sectioned && to) setSections((prev) => ({ ...prev, [moving]: to }));
     setDragId(null);
   };
-  const [team, setTeam] = useState<string[]>([currentUser.id]);
+  // quien arma la lista entra al equipo, salvo que sea admin (los admins no se asignan)
+  const [team, setTeam] = useState<string[]>(() => (currentUser.isAdmin ? [] : [currentUser.id]));
   // qué toca cada miembro en esta lista; si toca un solo instrumento, se marca solo
   const onlyInstrument = (userId: string): Record<string, string[]> => {
     const list = users.find((u) => u.id === userId)?.instruments ?? [];
     return list.length === 1 ? { [userId]: list } : {};
   };
   const [teamInstruments, setTeamInstruments] = useState<Record<string, string[]>>(() =>
-    onlyInstrument(currentUser.id),
+    currentUser.isAdmin ? {} : onlyInstrument(currentUser.id),
   );
   const toggleMember = (userId: string) => {
     const on = team.includes(userId);
@@ -149,6 +151,22 @@ export function NewSetlistModal({
       const { [userId]: _removed, ...rest } = prev;
       return rest;
     });
+  };
+  // elegir por instrumento (pedido de Pablo): tocar un nombre debajo de "Voces" lo suma al equipo
+  // tocando voz; si se le sacan todos los instrumentos, sale del equipo
+  const toggleInstrument = (userId: string, instrument: string) => {
+    const current = teamInstruments[userId] ?? [];
+    const next = current.includes(instrument)
+      ? current.filter((i) => i !== instrument)
+      : [...current, instrument];
+    setTeamInstruments((prev) => ({ ...prev, [userId]: next }));
+    setTeam((prev) =>
+      next.length
+        ? prev.includes(userId)
+          ? prev
+          : [...prev, userId]
+        : prev.filter((id) => id !== userId),
+    );
   };
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -200,6 +218,13 @@ export function NewSetlistModal({
       ),
     [users],
   );
+  // grupos por instrumento (en el orden de siempre), solo los que alguien del equipo toca
+  const instrumentGroups = INSTRUMENTS.map((instrument) => ({
+    instrument,
+    label: instrument === "Voz" ? "Voces" : instrument,
+    members: activeUsers.filter((u) => u.instruments?.includes(instrument)),
+  })).filter((group) => group.members.length > 0);
+  const withoutInstruments = activeUsers.filter((u) => !u.instruments?.length);
   const pickedSongs = picked
     .map((id) => songs.find((song) => song.id === id))
     .filter((song): song is (typeof songs)[number] => Boolean(song));
@@ -543,54 +568,65 @@ export function NewSetlistModal({
             <p className="mb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
               Equipo asignado
             </p>
-            <div className="flex flex-wrap gap-2">
-              {activeUsers.map((u) => {
-                const on = team.includes(u.id);
-                return (
-                  <button
-                    key={u.id}
-                    type="button"
-                    onClick={() => toggleMember(u.id)}
-                    className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
-                      on
-                        ? "border-primary/50 bg-primary/15 text-primary"
-                        : "border-border text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {u.name}
-                  </button>
-                );
-              })}
+            {/* por instrumento: debajo de cada uno, quienes lo tocan; tocar un nombre lo asigna
+                a ese instrumento en esta lista */}
+            <div className="space-y-3">
+              {instrumentGroups.map((group) => (
+                <div key={group.instrument}>
+                  <p className="mb-1.5 text-sm font-semibold text-primary">{group.label}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {group.members.map((u) => {
+                      const on = (teamInstruments[u.id] ?? []).includes(group.instrument);
+                      return (
+                        <button
+                          key={u.id}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => toggleInstrument(u.id, group.instrument)}
+                          className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                            on
+                              ? "border-primary/50 bg-primary/15 text-primary"
+                              : "border-border text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {u.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              {withoutInstruments.length ? (
+                <div>
+                  <p className="mb-1.5 text-sm font-semibold text-muted-foreground">
+                    Sin instrumentos cargados
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {withoutInstruments.map((u) => {
+                      const on = team.includes(u.id);
+                      return (
+                        <button
+                          key={u.id}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => toggleMember(u.id)}
+                          className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                            on
+                              ? "border-primary/50 bg-primary/15 text-primary"
+                              : "border-border text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {u.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">
+                    Los instrumentos se cargan desde Equipo.
+                  </p>
+                </div>
+              ) : null}
             </div>
-            {/* qué toca cada uno en esta lista (de sus instrumentos; si no tiene cargados, todos) */}
-            {team.length ? (
-              <div className="mt-3 space-y-2">
-                {team.map((id) => {
-                  const u = users.find((x) => x.id === id);
-                  if (!u) return null;
-                  return (
-                    <div key={id} className="rounded-xl border border-border/60 p-2.5">
-                      <p className="mb-1.5 text-xs font-medium">{u.name} toca:</p>
-                      {/* solo los instrumentos que tiene cargados en su perfil */}
-                      {u.instruments?.length ? (
-                        <InstrumentPicker
-                          size="sm"
-                          options={u.instruments}
-                          value={teamInstruments[id] ?? []}
-                          onChange={(next) =>
-                            setTeamInstruments((prev) => ({ ...prev, [id]: next }))
-                          }
-                        />
-                      ) : (
-                        <p className="text-xs text-muted-foreground">
-                          No tiene instrumentos cargados. Se cargan desde Equipo.
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : null}
           </div>
 
           {error ? (

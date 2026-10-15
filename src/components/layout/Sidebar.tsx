@@ -56,13 +56,13 @@ export function SidebarContent({
 }: {
   onNavigate?: () => void;
   onOpenPerfil: () => void;
-  /** menú fijo (tablet y compu): angosto con solo íconos, se abre al pasar el mouse; los textos
-   *  se ocultan mientras está angosto (ver AppLayout) */
+  /** menú fijo: en tablet acostada (lg) angosto con solo íconos, se abre al pasar el mouse; los
+   *  textos se ocultan mientras está angosto. En compu (xl) siempre abierto (ver AppLayout) */
   collapsible?: boolean;
 }) {
   // clases de los textos que se ocultan con el menú angosto
   const label = (base: string) =>
-    `${base}${collapsible ? " lg:opacity-0 lg:transition-opacity lg:duration-200 lg:group-hover/side:opacity-100 lg:group-focus-within/side:opacity-100" : ""}`;
+    `${base}${collapsible ? " lg:opacity-0 lg:transition-opacity lg:duration-200 lg:group-hover/side:opacity-100 lg:group-focus-within/side:opacity-100 xl:opacity-100" : ""}`;
   const { currentUser } = useApp();
   const { logout, hasAnyPermission, isGuest } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });

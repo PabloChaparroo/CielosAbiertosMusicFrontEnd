@@ -123,7 +123,7 @@ export function InicioPage() {
     <AppLayout title="Inicio" subtitle={subtitle} bleed>
       {/* partículas doradas que suben desde abajo de la pantalla, por detrás de todo el contenido
           (la portada y las tarjetas van en "relative", así se dibujan encima) */}
-      <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden lg:left-[76px]">
+      <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden lg:left-[76px] xl:left-[272px]">
         {RISING_PARTICLES.map((p, i) => (
           <span
             key={i}

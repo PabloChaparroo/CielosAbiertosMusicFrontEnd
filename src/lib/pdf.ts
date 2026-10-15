@@ -1,6 +1,7 @@
 import { jsPDF } from "jspdf";
 import { displayLyricsLines, parseChordPro, type ParsedLine } from "./chords";
 import type { Setlist, Song } from "@/types";
+import { groupBySection, usesSections } from "@/features/musica/setlists/lib/sections";
 
 const CHURCH = "Cielos Abiertos";
 
@@ -230,18 +231,37 @@ export function exportSetlistPdf(setlist: Setlist, songs: Song[]) {
   header(doc, setlist.title, `${setlist.type} · ${date}`);
   let y = 62;
   doc.setFontSize(11);
-  setlist.items.forEach((item, i) => {
-    const song = songs.find((s) => s.id === item.songId);
-    if (!song) return;
-    y = ensure(doc, y);
-    doc.setFont("helvetica", "bold");
-    doc.text(`${i + 1}. ${song.title}`, 14, y);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(110, 110, 110);
-    doc.text(`${song.artist} · Tono ${item.key} · ${song.bpm} BPM`, 20, y + 5);
-    if (item.note) doc.text(`Nota: ${item.note}`, 20, y + 10);
-    doc.setTextColor(20, 20, 20);
-    y += item.note ? 18 : 13;
+  // Cultos y Ensayos: con títulos de sección (Alabanzas / Adoración / Ofrenda); numeración corrida
+  const groups = usesSections(setlist.type)
+    ? groupBySection(setlist.items, songs)
+    : [{ label: null as string | null, items: setlist.items }];
+  let i = 0;
+  groups.forEach((group) => {
+    if (group.label) {
+      y = ensure(doc, y);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.setTextColor(180, 130, 20);
+      doc.text(group.label, 14, y);
+      doc.setTextColor(20, 20, 20);
+      doc.setFontSize(11);
+      y += 8;
+    }
+    group.items.forEach((item) => {
+      const song = songs.find((s) => s.id === item.songId);
+      if (!song) return;
+      i += 1;
+      y = ensure(doc, y);
+      doc.setFont("helvetica", "bold");
+      doc.text(`${i}. ${song.title}`, 14, y);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(110, 110, 110);
+      doc.text(`${song.artist} · Tono ${item.key} · ${song.bpm} BPM`, 20, y + 5);
+      if (item.note) doc.text(`Nota: ${item.note}`, 20, y + 10);
+      doc.setTextColor(20, 20, 20);
+      y += item.note ? 18 : 13;
+    });
+    y += 3;
   });
   doc.save(`${setlist.title}.pdf`);
 }

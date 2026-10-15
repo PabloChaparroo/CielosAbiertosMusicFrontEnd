@@ -6,10 +6,8 @@ import {
   Copy,
   FileDown,
   GripVertical,
-  Music2,
   Pencil,
   Trash2,
-  Type,
 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -18,11 +16,12 @@ import { InstrumentPicker } from "@/components/common/InstrumentPicker";
 import { INSTRUMENTS } from "@/lib/instruments";
 import { useApp } from "@/hooks/useApp";
 import { roleNames } from "@/lib/user-roles";
-import { KEYS } from "@/lib/chords";
 import { exportSetlistPdf } from "@/lib/pdf";
-import type { Setlist, SetlistItem } from "@/types";
+import type { Setlist, SetlistItem, SetlistSection } from "@/types";
+import { SECTIONS, itemsForType, sectionOf, usesSections } from "../lib/sections";
 import { LockedHint } from "./LockedHint";
 import { setlistToWhatsapp } from "../lib/whatsapp";
+import { teamToWhatsapp } from "../lib/team-whatsapp";
 
 export function SetlistDetail({
   setlist,
@@ -56,29 +55,72 @@ export function SetlistDetail({
     });
   };
 
+  // Cultos y Ensayos: el orden va dividido en Alabanzas / Adoración / Ofrenda
+  const sectioned = usesSections(setlist.type);
+  const songOf = (item: SetlistItem) => songs.find((s) => s.id === item.songId);
+  // guarda siempre ordenado por sección, con la sección de cada canción
+  const save = (items: SetlistItem[]) =>
+    persist({ ...setlist, items: itemsForType(items, setlist.type, songs) });
+
+  // mover: con secciones, soltar sobre otra canción también la pasa a su sección
   const move = (from: number, to: number) => {
-    const items = [...setlist.items];
+    const items = setlist.items.map((item) => ({ ...item }));
     const [it] = items.splice(from, 1);
-    if (!it) return;
+    const target = setlist.items[to];
+    if (!it || !target) return;
+    if (sectioned) it.section = sectionOf(target, songOf(target));
     items.splice(to, 0, it);
-    persist({ ...setlist, items });
+    save(items);
   };
+
+  const changeSection = (index: number, section: SetlistSection) =>
+    save(setlist.items.map((item, idx) => (idx === index ? { ...item, section } : item)));
+
+  // orden en pantalla: con secciones, agrupado (las listas anteriores pueden venir mezcladas);
+  // `i` sigue siendo el índice real en setlist.items
+  const sectionRank = (item: SetlistItem) =>
+    SECTIONS.findIndex((x) => x.id === sectionOf(item, songOf(item)));
+  const shown = setlist.items
+    .map((item, i) => ({ item, i }))
+    .sort((a, b) => (sectioned ? sectionRank(a.item) - sectionRank(b.item) : 0));
+  // posición (en pantalla) de la primera canción de cada sección, para poner el título arriba
+  const sectionStarts = new Map<number, string>();
+  if (sectioned) {
+    let previous: SetlistSection | null = null;
+    shown.forEach(({ item }, pos) => {
+      const section = sectionOf(item, songOf(item));
+      if (section !== previous) {
+        sectionStarts.set(pos, SECTIONS.find((x) => x.id === section)?.label ?? "");
+        previous = section;
+      }
+    });
+  }
 
   const openSong = (path: "/acordes" | "/letras", songId: string) =>
     navigate({ to: path, search: { songId, songIds: setlistSongIds } });
 
   const openSelectedSong = (songId: string) => openSong(`/${viewMode}`, songId);
 
-  // "Copiar": el setlist como texto para pegar en WhatsApp
-  const [copied, setCopied] = useState(false);
-  const copyForWhatsapp = async () => {
+  // "Copiar lista" y "Copiar equipo": texto para pegar en WhatsApp
+  const [copied, setCopied] = useState<"lista" | "equipo" | null>(null);
+  const copy = async (what: "lista" | "equipo") => {
     try {
-      await navigator.clipboard.writeText(setlistToWhatsapp(setlist, songs));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(
+        what === "lista" ? setlistToWhatsapp(setlist, songs) : teamToWhatsapp(setlist, users),
+      );
+      setCopied(what);
+      setTimeout(() => setCopied(null), 2000);
     } catch {
-      setCopied(false);
+      setCopied(null);
     }
+  };
+
+  // notas del líder para el equipo: se guardan al salir del cuadro
+  const [notesDraft, setNotesDraft] = useState(setlist.notes ?? "");
+  const saveNotes = () => {
+    if (notesDraft.trim() === (setlist.notes ?? "").trim()) return;
+    const notes = notesDraft.trim();
+    persist({ ...setlist, ...(notes ? { notes } : { notes: "" }) });
   };
 
   return (
@@ -91,11 +133,18 @@ export function SetlistDetail({
       actions={
         <>
           <button
-            onClick={() => void copyForWhatsapp()}
+            onClick={() => void copy("lista")}
+            title="Copiar la lista de canciones para WhatsApp"
             className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold transition-colors hover:border-primary/60"
           >
-            {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
-            <span className="hidden sm:inline">{copied ? "¡Copiado!" : "Copiar"}</span>
+            {copied === "lista" ? (
+              <Check className="h-4 w-4 text-primary" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+            <span className="hidden sm:inline">
+              {copied === "lista" ? "¡Copiado!" : "Copiar lista"}
+            </span>
           </button>
           <button
             onClick={() => exportSetlistPdf(setlist, songs)}
@@ -122,8 +171,9 @@ export function SetlistDetail({
         </div>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
-        <div className="surface-card divide-y divide-border/60">
+      {/* minmax(0,1fr): sin eso, una canción con nombre largo ensanchaba la columna y la página en celular */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="surface-card min-w-0 divide-y divide-border/60">
           <div className="flex items-center justify-between gap-3 border-b border-border/60 p-3">
             <span className="text-sm font-medium">Abrir canciones como</span>
             <div className="flex rounded-lg border border-border p-1">
@@ -149,10 +199,19 @@ export function SetlistDetail({
               ))}
             </div>
           </div>
-          {setlist.items.map((item, i) => {
+          {shown.map(({ item, i }, pos) => {
             const song = songs.find((s) => s.id === item.songId);
             if (!song) return null;
-            return (
+            const sectionTitle = sectionStarts.get(pos);
+            return [
+              sectionTitle ? (
+                <p
+                  key={`titulo-${i}`}
+                  className="bg-white/[0.02] px-3 pt-3 pb-2 text-sm font-semibold text-primary"
+                >
+                  {sectionTitle}
+                </p>
+              ) : null,
               <div
                 key={item.songId + i}
                 draggable={canEdit}
@@ -169,7 +228,7 @@ export function SetlistDetail({
                 {canEdit ? (
                   <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground" />
                 ) : (
-                  <span className="w-4 text-center text-sm text-muted-foreground">{i + 1}</span>
+                  <span className="w-4 text-center text-sm text-muted-foreground">{pos + 1}</span>
                 )}
                 <button
                   type="button"
@@ -186,54 +245,31 @@ export function SetlistDetail({
                     </span>
                   </span>
                 </button>
-                <div className="flex shrink-0 items-center gap-1">
-                  <button
-                    type="button"
-                    aria-label={`Abrir acordes de ${song.title}`}
-                    title="Abrir acordes"
-                    onClick={() => openSong("/acordes", song.id)}
-                    className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
+                {sectioned && canEdit ? (
+                  <select
+                    value={sectionOf(item, song)}
+                    onChange={(e) => changeSection(i, e.target.value as SetlistSection)}
+                    aria-label={`Sección de ${song.title}`}
+                    className="shrink-0 rounded-lg border border-border bg-secondary px-1.5 py-1 text-xs"
                   >
-                    <Music2 className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`Abrir letra de ${song.title}`}
-                    title="Abrir letra"
-                    onClick={() => openSong("/letras", song.id)}
-                    className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
-                  >
-                    <Type className="h-4 w-4" />
-                  </button>
-                </div>
-                <select
-                  disabled={!canEdit}
-                  value={item.key}
-                  onChange={(e) => {
-                    const items: SetlistItem[] = setlist.items.map((x, idx) =>
-                      idx === i ? { ...x, key: e.target.value } : x,
-                    );
-                    persist({ ...setlist, items });
-                  }}
-                  className="rounded-lg border border-border bg-secondary px-2 py-1 text-xs disabled:opacity-60"
-                >
-                  {KEYS.map((k) => (
-                    <option key={k}>{k}</option>
-                  ))}
-                </select>
+                    {SECTIONS.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
                 {canEdit ? (
                   <button
                     aria-label="Quitar canción"
-                    onClick={() =>
-                      persist({ ...setlist, items: setlist.items.filter((_, idx) => idx !== i) })
-                    }
-                    className="rounded-full p-2 text-muted-foreground hover:text-destructive"
+                    onClick={() => save(setlist.items.filter((_, idx) => idx !== i))}
+                    className="shrink-0 rounded-full p-2 text-muted-foreground hover:text-destructive"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 ) : null}
-              </div>
-            );
+              </div>,
+            ];
           })}
           {canEdit ? (
             <p className="p-3 text-xs text-muted-foreground">
@@ -309,6 +345,44 @@ export function SetlistDetail({
               );
             })}
           </ul>
+
+          {/* notas para el equipo y "Copiar equipo" (el mensaje que el líder pega en el grupo) */}
+          <div className="mt-5 border-t border-border/60 pt-4">
+            <label
+              htmlFor="notas-equipo"
+              className="mb-1.5 block text-xs font-semibold tracking-widest text-muted-foreground uppercase"
+            >
+              Notas para el equipo
+            </label>
+            {canEdit ? (
+              <textarea
+                id="notas-equipo"
+                value={notesDraft}
+                onChange={(e) => setNotesDraft(e.target.value)}
+                onBlur={saveNotes}
+                rows={4}
+                maxLength={4000}
+                placeholder="Ej.: • Todos debemos estudiar los temas y ensayar."
+                className="w-full resize-y rounded-xl border border-border bg-secondary px-3 py-2 text-sm outline-none focus:border-primary/60"
+              />
+            ) : setlist.notes ? (
+              <p id="notas-equipo" className="text-sm whitespace-pre-wrap text-foreground/85">
+                {setlist.notes}
+              </p>
+            ) : (
+              <p id="notas-equipo" className="text-sm text-muted-foreground">
+                Sin notas.
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={() => void copy("equipo")}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/20"
+            >
+              {copied === "equipo" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              {copied === "equipo" ? "¡Copiado!" : "Copiar equipo"}
+            </button>
+          </div>
         </aside>
       </div>
     </AppLayout>

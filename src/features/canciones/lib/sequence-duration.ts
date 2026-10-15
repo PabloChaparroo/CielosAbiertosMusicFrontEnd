@@ -5,11 +5,10 @@ import type { Song } from "@/types";
 import { readAudioDuration } from "./audio-duration";
 
 /**
- * Duración real de una canción = la de su secuencia (pedido de Pablo: muchas se acortan respecto
- * del original, así que la duración del video de YouTube no sirve). Secuencia = el audio
- * principal o, si no hay, la primera pista. Se lee de los metadatos del archivo (sin bajarlo
- * entero) y se recuerda por key: el archivo de una key no cambia, así que no hace falta leerlo
- * de nuevo (en memoria y en este navegador).
+ * Duración real de una canción: la de su secuencia (muchas se acortan respecto del original) y,
+ * solo si no tiene audio, la del video de YouTube (ver `sequenceDuration`). La de un audio se
+ * lee de los metadatos del archivo (sin bajarlo entero) y se recuerda por key: el archivo de una
+ * key no cambia, así que no hace falta leerlo de nuevo (en memoria y en este navegador).
  */
 const CACHE_PREFIX = "duracion-audio:";
 const memory = new Map<string, number | null>();
@@ -56,25 +55,44 @@ export function durationOfAudio(key: string): Promise<number | null> {
   return promise;
 }
 
-/** Duración de la secuencia de la canción (audio principal, si no la primera pista), o null */
+/**
+ * Duración de la canción para la lista (criterio de Pablo): primero la del primer track subido
+ * (el de menor `order`); si no tiene tracks, la del audio principal; si tampoco, la del video de
+ * YouTube (`song.duration`). null si no hay ninguna.
+ */
 export async function sequenceDuration(song: Song): Promise<number | null> {
-  if (song.audioKey) return durationOfAudio(song.audioKey);
-  if (song.trackCount === 0) return null;
-  const tracks = await AudioTracksService.listBySong(song.id).catch(() => []);
-  const first = [...tracks].sort((a, b) => a.order - b.order)[0];
-  return first ? durationOfAudio(first.audioKey) : null;
+  if (song.trackCount > 0) {
+    const tracks = await AudioTracksService.listBySong(song.id).catch(() => []);
+    const first = [...tracks].sort((a, b) => a.order - b.order)[0];
+    const seconds = first ? await durationOfAudio(first.audioKey) : null;
+    if (seconds !== null) return seconds;
+  }
+  if (song.audioKey) {
+    const seconds = await durationOfAudio(song.audioKey);
+    if (seconds !== null) return seconds;
+  }
+  return youtubeDuration(song);
+}
+
+/** Duración del video de YouTube de la canción, si tiene video y la duración está cargada */
+export function youtubeDuration(song: Pick<Song, "duration" | "youtubeVideoId">): number | null {
+  return song.youtubeVideoId && song.duration > 0 ? song.duration : null;
 }
 
 /**
  * Duración total aproximada de una lista de canciones: la suma de sus secuencias.
- * `missing` = canciones de las que no se pudo saber (sin audio, o no se pudo leer).
+ * `missing` = canciones de las que no se pudo saber (sin audio ni video, o no se pudo leer).
  */
 export function useListDuration(songs: Song[]): {
   seconds: number;
   missing: number;
   loading: boolean;
 } {
-  const ids = songs.map((s) => `${s.id}:${s.audioKey ?? ""}:${s.trackCount}`).join(",");
+  const ids = songs
+    .map(
+      (s) => `${s.id}:${s.audioKey ?? ""}:${s.trackCount}:${s.youtubeVideoId ?? ""}:${s.duration}`,
+    )
+    .join(",");
   const [state, setState] = useState({ seconds: 0, missing: 0, loading: songs.length > 0 });
   useEffect(() => {
     let cancelled = false;

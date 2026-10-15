@@ -125,7 +125,7 @@ export function InicioPage() {
           (la portada y las tarjetas van en "relative", así se dibujan encima) */}
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 overflow-hidden lg:left-[272px]"
+        className="pointer-events-none fixed inset-0 overflow-hidden xl:left-[272px]"
       >
         {RISING_PARTICLES.map((p, i) => (
           <span

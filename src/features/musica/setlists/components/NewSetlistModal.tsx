@@ -1,15 +1,21 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { GripVertical, ListMusic, Search, X } from "lucide-react";
 import { Cover } from "@/components/common/ui-bits";
-import { InstrumentPicker } from "@/components/common/InstrumentPicker";
 import { INSTRUMENTS } from "@/lib/instruments";
+import { InstrumentPicker } from "@/components/common/InstrumentPicker";
 import { useApp } from "@/hooks/useApp";
 import { SetlistsService } from "../services/setlists.service";
-import { EVENT_TYPES, type EventType, type Setlist, type SetlistItem } from "@/types";
+import {
+  EVENT_TYPES,
+  type EventType,
+  type Setlist,
+  type SetlistItem,
+  type SetlistSection,
+} from "@/types";
+import { SECTIONS, defaultSection, itemsForType, usesSections } from "../lib/sections";
 import { matchesSearch } from "@/lib/search";
 import { hasSequence } from "@/features/canciones/lib/sequence";
 import { ListDuration } from "./ListDuration";
-import { visibleTeam } from "@/features/equipo/lib/visible-team";
 
 const inputCls =
   "w-full rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary/60";
@@ -41,6 +47,11 @@ function titleForDate(value: string): string {
   return `${DAY_NAMES[new Date(y, mo - 1, d).getDay()]} ${value.slice(8, 10)}/${value.slice(5, 7)}`;
 }
 
+/** true si el título es solo una fecha como las de titleForDate ("Domingo 04/10") */
+function isDateTitle(value: string): boolean {
+  return new RegExp(`^(${DAY_NAMES.join("|")}) \\d{2}/\\d{2}$`).test(value.trim());
+}
+
 const DATE_SHORTCUTS = [
   { label: "Domingos", day: "Domingo", weekday: 0 },
   { label: "Miércoles", day: "Miércoles", weekday: 3 },
@@ -56,7 +67,7 @@ export function NewSetlistModal({
   /** Lista predefinida de la que se parte: trae el título y las canciones (con su tono) */
   initial?: { title: string; items: SetlistItem[] } | undefined;
 }) {
-  const { songs, users, currentUser, setlists, can } = useApp();
+  const { songs, users, currentUser, setlists } = useApp();
   // "Menos tocadas": ordena por cuántas veces se tocó cada canción en los setlists de los
   // últimos 5 meses (de menos a más)
   const [leastPlayed, setLeastPlayed] = useState(false);
@@ -74,12 +85,15 @@ export function NewSetlistModal({
   }, [setlists]);
   const [date, setDateValue] = useState(() => nextWeekday(0, 0, "10:30"));
   // el título arranca con la fecha ("Domingo 04/10") y la sigue al cambiarla, hasta que el usuario
-  // escribe uno propio (o viene de una lista predefinida); si lo borra entero, vuelve a seguirla
+  // escribe uno propio; si lo borra entero, vuelve a seguirla. Un título que ya es una fecha (ej.
+  // una predefinida llamada "Domingo 04/10") también la sigue: si no quedaba con la fecha vieja
   const [title, setTitleValue] = useState(() => initial?.title ?? titleForDate(date));
-  const [titleEdited, setTitleEdited] = useState(Boolean(initial?.title));
+  const [titleEdited, setTitleEdited] = useState(
+    Boolean(initial?.title) && !isDateTitle(initial?.title ?? ""),
+  );
   const setTitle = (value: string) => {
     setTitleValue(value);
-    setTitleEdited(value.trim() !== "");
+    setTitleEdited(value.trim() !== "" && !isDateTitle(value));
   };
   const setDate = (value: string) => {
     setDateValue(value);
@@ -87,6 +101,13 @@ export function NewSetlistModal({
   };
   const [type, setType] = useState<EventType>("Culto Domingo a la mañana");
   const [query, setQuery] = useState("");
+  // filtro por tipo (Alabanza / Adoración) al lado del buscador; "" = todos
+  const [tipo, setTipo] = useState("");
+  const tipos = useMemo(
+    () => [...new Set(songs.map((s) => s.tipo).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [songs],
+  );
+  const searchRef = useRef<HTMLDivElement | null>(null);
   const [picked, setPicked] = useState<string[]>(() =>
     (initial?.items ?? []).map((it) => it.songId).filter((id) => songs.some((s) => s.id === id)),
   );
@@ -95,15 +116,40 @@ export function NewSetlistModal({
     () => new Map((initial?.items ?? []).map((it) => [it.songId, it.key])),
     [initial],
   );
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [team, setTeam] = useState<string[]>([currentUser.id]);
+  // sección de cada canción (Cultos y Ensayos): la que vino de la lista predefinida o la elegida;
+  // si no hay, la de su tipo (adoraciones a Adoración, el resto a Alabanzas)
+  const [sections, setSections] = useState<Record<string, SetlistSection>>(() =>
+    Object.fromEntries(
+      (initial?.items ?? []).flatMap((it) => (it.section ? [[it.songId, it.section]] : [])),
+    ),
+  );
+  const sectionFor = (songId: string): SetlistSection =>
+    sections[songId] ?? defaultSection(songs.find((s) => s.id === songId));
+  const sectioned = usesSections(type);
+  // se arrastra por id: con secciones, soltar sobre otra canción también la pasa a su sección
+  const [dragId, setDragId] = useState<string | null>(null);
+  const dropOn = (targetId: string | null, section?: SetlistSection) => {
+    if (dragId === null || dragId === targetId) return;
+    const moving = dragId;
+    setPicked((current) => {
+      const next = current.filter((id) => id !== moving);
+      const at = targetId === null ? next.length : next.indexOf(targetId);
+      next.splice(at === -1 ? next.length : at, 0, moving);
+      return next;
+    });
+    const to = section ?? (targetId ? sectionFor(targetId) : undefined);
+    if (sectioned && to) setSections((prev) => ({ ...prev, [moving]: to }));
+    setDragId(null);
+  };
+  // quien arma la lista entra al equipo, salvo que sea admin (los admins no se asignan)
+  const [team, setTeam] = useState<string[]>(() => (currentUser.isAdmin ? [] : [currentUser.id]));
   // qué toca cada miembro en esta lista; si toca un solo instrumento, se marca solo
   const onlyInstrument = (userId: string): Record<string, string[]> => {
     const list = users.find((u) => u.id === userId)?.instruments ?? [];
     return list.length === 1 ? { [userId]: list } : {};
   };
   const [teamInstruments, setTeamInstruments] = useState<Record<string, string[]>>(() =>
-    onlyInstrument(currentUser.id),
+    currentUser.isAdmin ? {} : onlyInstrument(currentUser.id),
   );
   const toggleMember = (userId: string) => {
     const on = team.includes(userId);
@@ -113,6 +159,22 @@ export function NewSetlistModal({
       const { [userId]: _removed, ...rest } = prev;
       return rest;
     });
+  };
+  // elegir por instrumento (pedido de Pablo): tocar un nombre debajo de "Voces" lo suma al equipo
+  // tocando voz; si se le sacan todos los instrumentos, sale del equipo
+  const toggleInstrument = (userId: string, instrument: string) => {
+    const current = teamInstruments[userId] ?? [];
+    const next = current.includes(instrument)
+      ? current.filter((i) => i !== instrument)
+      : [...current, instrument];
+    setTeamInstruments((prev) => ({ ...prev, [userId]: next }));
+    setTeam((prev) =>
+      next.length
+        ? prev.includes(userId)
+          ? prev
+          : [...prev, userId]
+        : prev.filter((id) => id !== userId),
+    );
   };
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -146,17 +208,31 @@ export function NewSetlistModal({
 
   const results = useMemo(() => {
     // al buscar entran todas, con o sin secuencia: a veces hay que tocar una que todavía no tiene audio
-    const found = songs.filter((s) => matchesSearch(query, s.title));
+    const found = songs.filter((s) => (!tipo || s.tipo === tipo) && matchesSearch(query, s.title));
     if (leastPlayed)
       found.sort((a, b) => (playCounts.get(a.id) ?? 0) - (playCounts.get(b.id) ?? 0));
     return found.slice(0, 40);
-  }, [songs, query, leastPlayed, playCounts]);
+  }, [songs, query, tipo, leastPlayed, playCounts]);
 
-  // equipo para elegir: activos, y sin los admins si quien arma la lista no es admin
+  // equipo para elegir (pedido de Pablo): solo líderes y músicos activos; los admins nunca, aunque
+  // quien arma la lista sea admin
   const activeUsers = useMemo(
-    () => visibleTeam(users, can("manageRoles")).filter((u) => !u.fechaHoraBaja),
-    [users, can],
+    () =>
+      users.filter(
+        (u) =>
+          !u.fechaHoraBaja &&
+          !u.isAdmin &&
+          u.roles.some((r) => /^(l[ií]der|m[uú]sico)$/i.test(r.name.trim())),
+      ),
+    [users],
   );
+  // grupos por instrumento (en el orden de siempre), solo los que alguien del equipo toca
+  const instrumentGroups = INSTRUMENTS.map((instrument) => ({
+    instrument,
+    label: instrument === "Voz" ? "Voces" : instrument,
+    members: activeUsers.filter((u) => u.instruments?.includes(instrument)),
+  })).filter((group) => group.members.length > 0);
+  const withoutInstruments = activeUsers.filter((u) => !u.instruments?.length);
   const pickedSongs = picked
     .map((id) => songs.find((song) => song.id === id))
     .filter((song): song is (typeof songs)[number] => Boolean(song));
@@ -175,10 +251,16 @@ export function NewSetlistModal({
         leaderId: currentUser.id,
         teamIds: team,
         teamInstruments,
-        items: picked.map((id) => ({
-          songId: id,
-          key: initialKeys.get(id) ?? songs.find((s) => s.id === id)?.key ?? "C",
-        })),
+        // con secciones: ordenadas por sección y cada una con la suya; Evento Especial, en orden
+        items: itemsForType(
+          picked.map((id) => ({
+            songId: id,
+            key: initialKeys.get(id) ?? songs.find((s) => s.id === id)?.key ?? "C",
+            section: sectionFor(id),
+          })),
+          type,
+          songs,
+        ),
       });
       onSave(created);
       onClose();
@@ -190,7 +272,8 @@ export function NewSetlistModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="flex max-h-[92vh] w-full max-w-xl flex-col rounded-t-3xl border border-border bg-card p-6 sm:rounded-2xl">
+      {/* celular: ocupa toda la pantalla, de arriba a abajo (antes era una hoja hasta el 92 %) */}
+      <div className="flex h-dvh w-full max-w-xl flex-col border-border bg-card p-6 pt-[max(1.5rem,env(safe-area-inset-top))] sm:h-auto sm:max-h-[92vh] sm:rounded-2xl sm:border">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-xl font-semibold">Nueva lista de canciones</h2>
           <button
@@ -260,42 +343,44 @@ export function NewSetlistModal({
                 </select>
               );
             })()}
-            <div className="relative">
-              <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                className={inputCls + " pl-10"}
-                placeholder="Buscar canciones para agregar…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => setLeastPlayed((v) => !v)}
-              aria-pressed={leastPlayed}
-              className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
-                leastPlayed
-                  ? "border-primary/50 bg-primary/15 text-primary"
-                  : "border-border bg-card text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Menos tocadas (últimos 5 meses)
-            </button>
-            {suggestions.length ? (
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Sugeridas para rotar:</span>
-                {suggestions.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => setPicked((p) => [...p, s.id])}
-                    className="rounded-full border border-dashed border-primary/40 px-2.5 py-0.5 text-xs text-primary transition-colors hover:bg-primary/10"
-                  >
-                    + {s.title}
-                  </button>
-                ))}
+            {/* al tocar el buscador en celular se abre el teclado: el buscador sube al tope del
+                modal para que se vean los resultados justo abajo */}
+            <div ref={searchRef} className="flex scroll-mt-1 items-center gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  className={inputCls + " pl-10"}
+                  placeholder="Buscar canciones para agregar…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onFocus={() => {
+                    // después de que el teclado achica la pantalla
+                    window.setTimeout(
+                      () =>
+                        searchRef.current?.scrollIntoView({ block: "start", behavior: "smooth" }),
+                      300,
+                    );
+                  }}
+                />
               </div>
-            ) : null}
+              {tipos.length ? (
+                <select
+                  value={tipo}
+                  onChange={(e) => setTipo(e.target.value)}
+                  aria-label="Filtrar por tipo"
+                  className={`shrink-0 self-stretch rounded-xl border bg-secondary px-3 text-sm outline-none transition-colors focus:border-primary/60 ${
+                    tipo ? "border-primary/50 text-primary" : "border-border text-muted-foreground"
+                  }`}
+                >
+                  <option value="">Todas</option>
+                  {tipos.map((t) => (
+                    <option key={t} value={t}>
+                      {t === "Alabanza" ? "Alabanzas" : t === "Adoración" ? "Adoraciones" : t}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+            </div>
           </div>
 
           <div className="max-h-64 overflow-y-auto rounded-xl border border-border">
@@ -338,6 +423,38 @@ export function NewSetlistModal({
             })}
           </div>
 
+          {/* "Menos tocadas" y las sugeridas, debajo de los resultados: los resultados van justo
+              abajo del buscador */}
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={() => setLeastPlayed((v) => !v)}
+              aria-pressed={leastPlayed}
+              className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+                leastPlayed
+                  ? "border-primary/50 bg-primary/15 text-primary"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Menos tocadas (últimos 5 meses)
+            </button>
+            {suggestions.length ? (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">Sugeridas para rotar:</span>
+                {suggestions.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setPicked((p) => [...p, s.id])}
+                    className="rounded-full border border-dashed border-primary/40 px-2.5 py-0.5 text-xs text-primary transition-colors hover:bg-primary/10"
+                  >
+                    + {s.title}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
@@ -353,50 +470,104 @@ export function NewSetlistModal({
                 Agregá canciones para armar el orden del servicio.
               </p>
             ) : (
-              <div className="divide-y divide-border overflow-hidden rounded-xl border border-border">
-                {pickedSongs.map((song, index) => (
-                  <div
-                    key={song.id}
-                    draggable
-                    onDragStart={() => setDragIndex(index)}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={() => {
-                      if (dragIndex === null || dragIndex === index) return;
-                      setPicked((current) => {
-                        const next = [...current];
-                        const [moved] = next.splice(dragIndex, 1);
-                        if (moved) next.splice(index, 0, moved);
-                        return next;
-                      });
-                      setDragIndex(null);
-                    }}
-                    onDragEnd={() => setDragIndex(null)}
-                    className={`flex items-center gap-2 bg-card px-3 py-2 ${
-                      dragIndex === index ? "opacity-50" : ""
-                    }`}
-                  >
-                    <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground" />
-                    <span className="w-5 text-xs text-muted-foreground">{index + 1}</span>
-                    <Cover song={song} size="sm" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{song.title}</p>
-                      <p className="truncate text-xs text-muted-foreground">{song.artist}</p>
-                      {repeatedWarning(song.id) ? (
-                        <p className="truncate text-[11px] text-amber-400">
-                          ⚠ {repeatedWarning(song.id)}
+              <div className="space-y-3">
+                {(sectioned
+                  ? SECTIONS.map((section) => ({
+                      id: section.id as SetlistSection | null,
+                      label: section.label as string | null,
+                      songs: pickedSongs.filter((song) => sectionFor(song.id) === section.id),
+                    }))
+                  : [{ id: null, label: null, songs: pickedSongs }]
+                ).map((group, g, groups) => {
+                  // numeración corrida entre secciones
+                  const offset = groups.slice(0, g).reduce((n, x) => n + x.songs.length, 0);
+                  return (
+                    <div key={group.id ?? "todas"}>
+                      {group.label ? (
+                        <p
+                          // soltar sobre el título pasa la canción al final de esa sección
+                          onDragOver={(event) => event.preventDefault()}
+                          onDrop={() => dropOn(null, group.id ?? undefined)}
+                          className="mb-1.5 text-sm font-semibold text-primary"
+                        >
+                          {group.label}
                         </p>
                       ) : null}
+                      {group.songs.length === 0 ? (
+                        <p
+                          onDragOver={(event) => event.preventDefault()}
+                          onDrop={() => dropOn(null, group.id ?? undefined)}
+                          className="rounded-xl border border-dashed border-border px-3 py-2.5 text-xs text-muted-foreground"
+                        >
+                          Sin canciones. Pasá una desde otra sección.
+                        </p>
+                      ) : (
+                        <div className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+                          {group.songs.map((song, index) => (
+                            <div
+                              key={song.id}
+                              draggable
+                              onDragStart={() => setDragId(song.id)}
+                              onDragOver={(event) => event.preventDefault()}
+                              onDrop={() => dropOn(song.id)}
+                              onDragEnd={() => setDragId(null)}
+                              className={`flex items-center gap-2 bg-card px-3 py-2 ${
+                                dragId === song.id ? "opacity-50" : ""
+                              }`}
+                            >
+                              <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground" />
+                              <span className="w-5 text-xs text-muted-foreground">
+                                {offset + index + 1}
+                              </span>
+                              <Cover song={song} size="sm" />
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium">{song.title}</p>
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {song.artist}
+                                </p>
+                                {repeatedWarning(song.id) ? (
+                                  <p className="truncate text-[11px] text-amber-400">
+                                    ⚠ {repeatedWarning(song.id)}
+                                  </p>
+                                ) : null}
+                              </div>
+                              {sectioned ? (
+                                // pasar a otra sección (más fácil que arrastrar en el celular)
+                                <select
+                                  value={sectionFor(song.id)}
+                                  onChange={(event) =>
+                                    setSections((prev) => ({
+                                      ...prev,
+                                      [song.id]: event.target.value as SetlistSection,
+                                    }))
+                                  }
+                                  aria-label={`Sección de ${song.title}`}
+                                  className="shrink-0 rounded-lg border border-border bg-secondary px-1.5 py-1 text-xs outline-none focus:border-primary/60"
+                                >
+                                  {SECTIONS.map((option) => (
+                                    <option key={option.id} value={option.id}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : null}
+                              <button
+                                type="button"
+                                aria-label={`Quitar ${song.title}`}
+                                onClick={() =>
+                                  setPicked((current) => current.filter((id) => id !== song.id))
+                                }
+                                className="shrink-0 rounded-full p-1.5 text-muted-foreground hover:text-destructive"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <button
-                      type="button"
-                      aria-label={`Quitar ${song.title}`}
-                      onClick={() => setPicked((current) => current.filter((id) => id !== song.id))}
-                      className="rounded-full p-1.5 text-muted-foreground hover:text-destructive"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -405,45 +576,65 @@ export function NewSetlistModal({
             <p className="mb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
               Equipo asignado
             </p>
-            <div className="flex flex-wrap gap-2">
-              {activeUsers.map((u) => {
-                const on = team.includes(u.id);
-                return (
-                  <button
-                    key={u.id}
-                    type="button"
-                    onClick={() => toggleMember(u.id)}
-                    className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
-                      on
-                        ? "border-primary/50 bg-primary/15 text-primary"
-                        : "border-border text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {u.name}
-                  </button>
-                );
-              })}
+            {/* por instrumento: debajo de cada uno, quienes lo tocan; tocar un nombre lo asigna
+                a ese instrumento en esta lista */}
+            <div className="space-y-3">
+              {instrumentGroups.map((group) => (
+                <div key={group.instrument}>
+                  <p className="mb-1.5 text-sm font-semibold text-primary">{group.label}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {group.members.map((u) => {
+                      const on = (teamInstruments[u.id] ?? []).includes(group.instrument);
+                      return (
+                        <button
+                          key={u.id}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => toggleInstrument(u.id, group.instrument)}
+                          className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                            on
+                              ? "border-primary/50 bg-primary/15 text-primary"
+                              : "border-border text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {u.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              {withoutInstruments.length ? (
+                <div>
+                  <p className="mb-1.5 text-sm font-semibold text-muted-foreground">
+                    Sin instrumentos cargados
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {withoutInstruments.map((u) => {
+                      const on = team.includes(u.id);
+                      return (
+                        <button
+                          key={u.id}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => toggleMember(u.id)}
+                          className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                            on
+                              ? "border-primary/50 bg-primary/15 text-primary"
+                              : "border-border text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {u.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">
+                    Los instrumentos se cargan desde Equipo.
+                  </p>
+                </div>
+              ) : null}
             </div>
-            {/* qué toca cada uno en esta lista (de sus instrumentos; si no tiene cargados, todos) */}
-            {team.length ? (
-              <div className="mt-3 space-y-2">
-                {team.map((id) => {
-                  const u = users.find((x) => x.id === id);
-                  if (!u) return null;
-                  return (
-                    <div key={id} className="rounded-xl border border-border/60 p-2.5">
-                      <p className="mb-1.5 text-xs font-medium">{u.name} toca:</p>
-                      <InstrumentPicker
-                        size="sm"
-                        options={u.instruments?.length ? u.instruments : INSTRUMENTS}
-                        value={teamInstruments[id] ?? []}
-                        onChange={(next) => setTeamInstruments((prev) => ({ ...prev, [id]: next }))}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            ) : null}
           </div>
 
           {error ? (

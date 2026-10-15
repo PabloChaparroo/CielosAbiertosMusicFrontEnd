@@ -32,7 +32,8 @@ export function AppLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <aside className="fixed top-0 left-0 hidden h-screen w-[272px] border-r border-white/10 lg:block">
+      {/* menú fijo solo en compu (xl, 1280 px): en celular y tablet se abre con ☰ (pedido de Pablo) */}
+      <aside className="fixed top-0 left-0 hidden h-screen w-[272px] border-r border-white/10 xl:block">
         <SidebarContent onOpenPerfil={() => setShowPerfil(true)} />
       </aside>
       <MobileSidebar
@@ -41,7 +42,7 @@ export function AppLayout({
         onOpenPerfil={() => setShowPerfil(true)}
       />
 
-      <main className="lg:pl-[272px]">
+      <main className="xl:pl-[272px]">
         <header className="sticky top-0 z-30 overflow-hidden border-b border-border/70 bg-background/80 backdrop-blur-xl">
           {/* brillo dorado tenue arriba a la izquierda, el mismo del menú lateral */}
           <div
@@ -54,7 +55,7 @@ export function AppLayout({
             <button
               onClick={() => setOpen(true)}
               aria-label="Abrir menú"
-              className="rounded-xl p-2 text-muted-foreground hover:bg-secondary lg:hidden"
+              className="rounded-xl p-2 text-muted-foreground hover:bg-secondary xl:hidden"
             >
               <Menu className="h-5 w-5" />
             </button>

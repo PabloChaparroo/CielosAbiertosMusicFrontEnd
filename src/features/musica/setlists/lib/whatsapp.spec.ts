@@ -58,4 +58,41 @@ describe("setlistToWhatsapp", () => {
       "*DOMINGO 4/10*\n*Alabanzas*\n• Glorioso",
     );
   });
+
+  it("con secciones guardadas: cada canción en la suya (la ofrenda puede ser cualquiera)", () => {
+    const list = setlist([
+      ["a", "D"],
+      ["c", "C"],
+      ["b", "D"],
+    ]);
+    list.items = [
+      { songId: "a", key: "D", section: "alabanza" },
+      { songId: "b", key: "D", section: "adoracion" },
+      { songId: "c", key: "C", section: "ofrenda" },
+    ];
+    expect(setlistToWhatsapp(list, songs)).toBe(
+      [
+        "*DOMINGO 4/10*",
+        "*Alabanzas*",
+        "• Glorioso",
+        "*Adoración*",
+        "• Este es mi deseo",
+        "*Ofrenda*",
+        "• Alaba (C)",
+      ].join("\n"),
+    );
+  });
+
+  it("Evento Especial: una detrás de otra, sin títulos de sección", () => {
+    const list = {
+      ...setlist([
+        ["b", "D"],
+        ["a", "D"],
+      ]),
+      type: "Evento Especial" as const,
+    };
+    expect(setlistToWhatsapp(list, songs)).toBe(
+      ["*DOMINGO 4/10*", "• Este es mi deseo", "• Glorioso"].join("\n"),
+    );
+  });
 });

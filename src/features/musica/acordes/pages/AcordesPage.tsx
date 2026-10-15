@@ -337,10 +337,12 @@ export function AcordesPage() {
 
   return (
     <AppLayout title="Acordes" subtitle="Transposición, zoom y modo en vivo">
-      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+      {/* la lista de canciones fija al costado solo desde xl: en tablet se pliega como en celular,
+          así la hoja tiene todo el ancho */}
+      <div className="grid gap-6 xl:grid-cols-[280px_1fr]">
         <aside
           ref={searchPanelRef}
-          className="surface-card relative order-1 flex max-h-[55vh] flex-col overflow-hidden lg:order-1 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7.5rem)]"
+          className="surface-card relative order-1 flex max-h-[55vh] flex-col overflow-hidden xl:order-1 xl:sticky xl:top-24 xl:max-h-[calc(100vh-7.5rem)]"
         >
           {/* partículas doradas detrás del buscador y la lista */}
           <GoldParticles />
@@ -350,14 +352,19 @@ export function AcordesPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => setSearchOpen(true)}
-              placeholder="Saltar a canción…"
+              // desde una lista son pocas canciones: tocar el buscador solo abre la lista, sin
+              // escribir (así el celular no abre el teclado)
+              readOnly={Boolean(scopedSongIds)}
+              inputMode={scopedSongIds ? "none" : undefined}
+              onClick={() => setSearchOpen(true)}
+              placeholder={scopedSongIds ? "Canciones de la lista" : "Saltar a canción…"}
               className="w-full rounded-full border border-border bg-secondary py-2 pr-3 pl-10 text-sm outline-none focus:border-primary/60"
             />
           </div>
           <div
-            className={`relative grid transition-[grid-template-rows,opacity] duration-200 ease-out lg:flex-1 lg:grid-rows-[1fr] lg:opacity-100 ${searchOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+            className={`relative grid transition-[grid-template-rows,opacity] duration-200 ease-out xl:flex-1 xl:grid-rows-[1fr] xl:opacity-100 ${searchOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
           >
-            <div className="min-h-0 overflow-y-auto p-2 lg:h-full">
+            <div className="min-h-0 overflow-y-auto p-2 xl:h-full">
               {!query && (
                 <p className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   {scopedSongIds ? "Orden de la lista" : "Recientes"}
@@ -433,7 +440,7 @@ export function AcordesPage() {
         </aside>
 
         {/* min-w-0: sin esto, una hoja más ancha que la pantalla estiraba la columna y cortaba la tarjeta de arriba */}
-        <div className="order-2 min-w-0 space-y-5 lg:order-2">
+        <div className="order-2 min-w-0 space-y-5 xl:order-2">
           {showFavorites ? (
             <div className="surface-card p-4 sm:p-6">
               <div className="mb-3 flex items-center gap-2">
@@ -475,7 +482,7 @@ export function AcordesPage() {
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     <FavButton songId={song.id} />
-                    {/* en celular la lista (con su botón de reproducir) queda plegada: se reproduce desde acá */}
+                    {/* en celular y tablet la lista (con su botón de reproducir) queda plegada: se reproduce desde acá */}
                     {song.trackCount > 0 ? (
                       <button
                         type="button"
@@ -488,7 +495,7 @@ export function AcordesPage() {
                         }}
                         aria-label="Pistas relacionadas"
                         title="Pistas relacionadas"
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-primary lg:hidden"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-primary xl:hidden"
                       >
                         <ListMusic className="h-4 w-4" />
                       </button>
@@ -501,7 +508,7 @@ export function AcordesPage() {
                           ? `Pausar ${song.title}`
                           : `Reproducir ${song.title}`
                       }
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full gradient-gold text-primary-foreground lg:hidden"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full gradient-gold text-primary-foreground xl:hidden"
                     >
                       {current?.id === song.id && isPlaying ? (
                         <Pause className="h-4 w-4" />
@@ -513,51 +520,54 @@ export function AcordesPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-3 p-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
-                      Tono
-                    </span>
-                    <div className="flex h-10 items-center gap-1 rounded-full border border-border px-1">
-                      <IconBtn onClick={() => setSemitones((s) => s - 1)} label="Bajar semitono">
-                        <Minus className="h-4 w-4" />
-                      </IconBtn>
-                      <select
-                        value={targetKey}
-                        onChange={(e) => {
-                          const idxFrom = KEYS.indexOf(targetKey);
-                          const target = e.target.value;
-                          const semis = (((KEYS.indexOf(target) - idxFrom) % 12) + 12) % 12;
-                          setSemitones((s) => s + semis);
-                        }}
-                        aria-label="Tono"
-                        className="w-12 appearance-none bg-transparent text-center text-sm font-semibold text-primary outline-none"
-                      >
-                        {KEYS.map((k) => (
-                          <option key={k} value={k} className="bg-card text-foreground">
-                            {k}
-                          </option>
-                        ))}
-                      </select>
-                      <IconBtn onClick={() => setSemitones((s) => s + 1)} label="Subir semitono">
-                        <Plus className="h-4 w-4" />
-                      </IconBtn>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
-                      Letra
-                    </span>
-                    <div className="flex h-10 items-center gap-1 rounded-full border border-border px-1">
-                      <IconBtn onClick={() => changeFontSize(-2, 40)} label="Achicar letra">
-                        <Minus className="h-4 w-4" />
-                      </IconBtn>
-                      <span className="w-12 text-center text-sm text-muted-foreground">
-                        {fontSize}px
+                  {/* tono y letra siempre en la misma fila; en pantallas chicas la etiqueta va arriba */}
+                  <div className="flex items-end gap-3 sm:items-center sm:gap-4">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+                      <span className="pl-1 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase sm:pl-0">
+                        Tono
                       </span>
-                      <IconBtn onClick={() => changeFontSize(2, 40)} label="Agrandar letra">
-                        <Plus className="h-4 w-4" />
-                      </IconBtn>
+                      <div className="flex h-10 items-center gap-1 rounded-full border border-border px-1">
+                        <IconBtn onClick={() => setSemitones((s) => s - 1)} label="Bajar semitono">
+                          <Minus className="h-4 w-4" />
+                        </IconBtn>
+                        <select
+                          value={targetKey}
+                          onChange={(e) => {
+                            const idxFrom = KEYS.indexOf(targetKey);
+                            const target = e.target.value;
+                            const semis = (((KEYS.indexOf(target) - idxFrom) % 12) + 12) % 12;
+                            setSemitones((s) => s + semis);
+                          }}
+                          aria-label="Tono"
+                          className="w-10 appearance-none bg-transparent text-center text-sm font-semibold text-primary outline-none sm:w-12"
+                        >
+                          {KEYS.map((k) => (
+                            <option key={k} value={k} className="bg-card text-foreground">
+                              {k}
+                            </option>
+                          ))}
+                        </select>
+                        <IconBtn onClick={() => setSemitones((s) => s + 1)} label="Subir semitono">
+                          <Plus className="h-4 w-4" />
+                        </IconBtn>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+                      <span className="pl-1 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase sm:pl-0">
+                        Letra
+                      </span>
+                      <div className="flex h-10 items-center gap-1 rounded-full border border-border px-1">
+                        <IconBtn onClick={() => changeFontSize(-2, 40)} label="Achicar letra">
+                          <Minus className="h-4 w-4" />
+                        </IconBtn>
+                        <span className="w-11 text-center text-sm text-muted-foreground sm:w-12">
+                          {fontSize}px
+                        </span>
+                        <IconBtn onClick={() => changeFontSize(2, 40)} label="Agrandar letra">
+                          <Plus className="h-4 w-4" />
+                        </IconBtn>
+                      </div>
                     </div>
                   </div>
 
@@ -592,7 +602,7 @@ export function AcordesPage() {
                           void enterBrowserFullscreen();
                           setLive(true);
                         }}
-                        className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full gradient-gold px-4 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105 sm:flex-none"
+                        className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full whitespace-nowrap gradient-gold px-4 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105 sm:flex-none"
                       >
                         <Maximize2 className="h-4 w-4" /> En vivo
                       </button>
@@ -607,7 +617,7 @@ export function AcordesPage() {
                             fontSize: manualFontSize ?? 25,
                           })
                         }
-                        className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full border border-border px-4 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary sm:flex-none"
+                        className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full whitespace-nowrap border border-border px-4 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary sm:flex-none"
                       >
                         <FileDown className="h-4 w-4" /> PDF
                       </button>
@@ -615,7 +625,7 @@ export function AcordesPage() {
                         <button
                           type="button"
                           onClick={handleStartEditing}
-                          className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full border border-border px-4 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary sm:flex-none"
+                          className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full whitespace-nowrap border border-border px-4 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary sm:flex-none"
                         >
                           <Pencil className="h-4 w-4" /> Editar
                         </button>

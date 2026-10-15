@@ -180,7 +180,7 @@ export function MobileSidebar({
   return (
     <div
       className={cn(
-        "fixed inset-0 z-50 lg:hidden",
+        "fixed inset-0 z-50 xl:hidden",
         open ? "pointer-events-auto" : "pointer-events-none",
       )}
     >

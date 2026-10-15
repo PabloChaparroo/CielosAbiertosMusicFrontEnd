@@ -405,7 +405,7 @@ export function MiniPlayer() {
   return (
     // estilo vidrio: flota separado de los bordes, translúcido y con desenfoque; en celular, una
     // píldora (portada, título, favorito, abrir y play); desde sm, barra con todos los controles
-    <div className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 rounded-full border border-white/10 bg-card/55 shadow-[0_12px_40px_-12px_rgba(0,0,0,.8)] ring-1 ring-black/20 backdrop-blur-2xl backdrop-saturate-150 sm:inset-x-4 sm:rounded-3xl lg:left-[288px]">
+    <div className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 rounded-full border border-white/10 bg-card/55 shadow-[0_12px_40px_-12px_rgba(0,0,0,.8)] ring-1 ring-black/20 backdrop-blur-2xl backdrop-saturate-150 sm:inset-x-4 sm:rounded-3xl xl:left-[288px]">
       <audio
         ref={localRef}
         src={resolved?.url}

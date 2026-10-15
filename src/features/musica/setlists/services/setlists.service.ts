@@ -1,5 +1,5 @@
 import { apiRequest } from "@/lib/api-client";
-import type { EventType, Setlist, SetlistItem } from "@/types";
+import type { EventType, Setlist, SetlistItem, SetlistSection } from "@/types";
 
 export interface RawRef {
   id: string;
@@ -8,6 +8,8 @@ export interface RawRef {
 export interface RawSetlistItem {
   key: string;
   note: string | null;
+  /** puede faltar en respuestas de un backend anterior a las secciones */
+  section?: SetlistSection | null;
   position: number;
   /** null si la canción fue dada de baja (la relación no trae canciones dadas de baja) */
   song: RawRef | null;
@@ -24,6 +26,8 @@ export interface RawSetlist {
   leader: RawRef;
   team: RawRef[];
   teamInstruments?: Record<string, string[]>;
+  /** puede faltar en respuestas de un backend anterior a las notas */
+  notes?: string | null;
   items: RawSetlistItem[];
 }
 
@@ -31,6 +35,7 @@ export interface UpsertSetlistItemInput {
   songId: string;
   key: string;
   note?: string;
+  section?: SetlistSection;
 }
 
 export interface UpsertSetlistInput {
@@ -41,6 +46,7 @@ export interface UpsertSetlistInput {
   leaderId: string;
   teamIds: string[];
   teamInstruments?: Record<string, string[]>;
+  notes?: string;
   items: UpsertSetlistItemInput[];
 }
 
@@ -59,6 +65,7 @@ export function mapSetlist(raw: RawSetlist): Setlist {
       songId: item.song.id,
       key: item.key,
       ...(item.note ? { note: item.note } : {}),
+      ...(item.section ? { section: item.section } : {}),
     }));
 
   return {
@@ -71,6 +78,7 @@ export function mapSetlist(raw: RawSetlist): Setlist {
     leaderId: raw.leader.id,
     teamIds: raw.team.map((u) => u.id),
     teamInstruments: raw.teamInstruments ?? {},
+    ...(raw.notes ? { notes: raw.notes } : {}),
     items,
   };
 }

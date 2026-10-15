@@ -203,10 +203,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           leaderId: s.leaderId,
           teamIds: s.teamIds,
           teamInstruments: s.teamInstruments,
+          notes: s.notes ?? "",
           items: s.items.map((item) => ({
             songId: item.songId,
             key: item.key,
             ...(item.note ? { note: item.note } : {}),
+            ...(item.section ? { section: item.section } : {}),
           })),
         })
           .then((saved) => {

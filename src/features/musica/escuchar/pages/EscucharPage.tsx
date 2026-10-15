@@ -212,7 +212,7 @@ export function EscucharPage() {
         ) : null
       }
     >
-      {/* buscador + vista arriba; abajo, el botón "Filtros" (abre un panel) y los filtros activos
+      {/* buscador, vista y "Filtros" (abre un panel) en una fila; abajo, los filtros activos
           como pastillas doradas que se quitan con ✕ */}
       <div className="mb-6 space-y-3">
         <div className="flex items-center gap-2">
@@ -227,36 +227,41 @@ export function EscucharPage() {
             />
           </div>
           {renderViewToggle("flex")}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+          {/* filtros a la derecha, en la misma fila que el buscador */}
           <button
             type="button"
             onClick={() => setFiltersOpen(true)}
-            className={`flex h-9 items-center gap-2 rounded-full border px-4 text-sm font-medium backdrop-blur-xl transition-colors ${
+            aria-label="Filtros"
+            className={`flex h-10 shrink-0 items-center gap-2 rounded-full border px-3 sm:px-4 text-sm font-medium backdrop-blur-xl transition-colors ${
               activeFilters.length
                 ? "border-primary/40 bg-primary/10 text-primary"
                 : "border-white/10 bg-white/[0.04] text-muted-foreground hover:text-foreground"
             }`}
           >
-            <SlidersHorizontal className="h-4 w-4" /> Filtros
+            <SlidersHorizontal className="h-4 w-4" />
+            <span className="hidden sm:inline">Filtros</span>
             {activeFilters.length ? (
               <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground">
                 {activeFilters.length}
               </span>
             ) : null}
           </button>
-          {activeFilters.map((filter) => (
-            <button
-              key={filter.label}
-              type="button"
-              onClick={filter.clear}
-              aria-label={`Quitar filtro ${filter.label}`}
-              className="flex h-9 animate-in items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 pr-2.5 pl-3.5 text-sm text-primary fade-in-0 zoom-in-95 duration-200 hover:bg-primary/20"
-            >
-              {filter.label} <X className="h-3.5 w-3.5" />
-            </button>
-          ))}
         </div>
+        {activeFilters.length ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {activeFilters.map((filter) => (
+              <button
+                key={filter.label}
+                type="button"
+                onClick={filter.clear}
+                aria-label={`Quitar filtro ${filter.label}`}
+                className="flex h-9 animate-in items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 pr-2.5 pl-3.5 text-sm text-primary fade-in-0 zoom-in-95 duration-200 hover:bg-primary/20"
+              >
+                {filter.label} <X className="h-3.5 w-3.5" />
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {filtersOpen ? (

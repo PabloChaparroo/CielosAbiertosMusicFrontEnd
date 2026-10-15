@@ -3,8 +3,9 @@ import { formatListDuration, useListDuration } from "@/features/canciones/lib/se
 import type { Song } from "@/types";
 
 /**
- * "≈ 24 min": cuánto dura tocar la lista entera, sumando la secuencia de cada canción (no la
- * duración de YouTube). Si de alguna canción no se pudo saber, lo aclara.
+ * "≈ 24 min": cuánto dura tocar la lista entera. De cada canción, la duración del primer track; si
+ * no tiene, la del audio principal; si tampoco, la del video de YouTube (ver `sequenceDuration`).
+ * Si de alguna canción no se pudo saber, lo aclara.
  */
 export function ListDuration({ songs, className = "" }: { songs: Song[]; className?: string }) {
   const { seconds, missing, loading } = useListDuration(songs);
@@ -16,8 +17,8 @@ export function ListDuration({ songs, className = "" }: { songs: Song[]; classNa
       className={`inline-flex items-center gap-1.5 text-xs whitespace-nowrap text-muted-foreground ${className}`}
       title={
         missing
-          ? `Suma de las secuencias. ${missing} ${missing === 1 ? "canción no tiene" : "canciones no tienen"} audio para medir.`
-          : "Suma de la duración de la secuencia de cada canción"
+          ? `Suma de las duraciones. ${missing} ${missing === 1 ? "canción no tiene" : "canciones no tienen"} audio ni video para medir.`
+          : "Suma de las duraciones: el primer track de cada canción o, si no tiene, el video de YouTube"
       }
     >
       <Clock className="h-3.5 w-3.5 text-primary" />

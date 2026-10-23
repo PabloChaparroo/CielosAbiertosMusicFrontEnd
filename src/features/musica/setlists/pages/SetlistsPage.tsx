@@ -24,21 +24,11 @@ import {
 } from "../services/setlist-templates.service";
 import { matchesSearch } from "@/lib/search";
 import { nextTemplateName } from "../lib/template-name";
-
-/** "AAAA-MM-DD" en hora local */
-const localDay = (d: Date) => {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
-
-/**
- * Un setlist pasa al historial el día DESPUÉS de su fecha: el del domingo sigue en Próximos todo
- * el domingo y pasa el lunes.
- */
-const isPast = (iso: string) => localDay(new Date(iso)) < localDay(new Date());
+import { isPlayed } from "../lib/setlist-status";
 
 export function SetlistsPage() {
-  const { setlists, setlistsLoadState, can, addSetlist, updateSetlist, songs } = useApp();
+  const { setlists, setlistsLoadState, can, addSetlist, updateSetlist, removeSetlist, songs } =
+    useApp();
   const [selected, setSelected] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [modal, setModal] = useState(false);
@@ -90,13 +80,14 @@ export function SetlistsPage() {
   const createdTime = (setlist: (typeof setlists)[number]) =>
     new Date(setlist.createdAt ?? setlist.date).getTime();
   const sorted = [...setlists].sort((a, b) => createdTime(b) - createdTime(a));
-  const upcoming = sorted.filter((s) => s.isUpcoming && !isPast(s.date));
+  // pasan solas al historial cuando pasa su fecha (ya no se mandan a mano)
+  const upcoming = sorted.filter((s) => !isPlayed(s.date));
   // historial: busca por nombre de la lista o por canción ("¿cuándo tocamos Santo Espíritu?")
   const songTitleOf = (id: string) => songs.find((so) => so.id === id)?.title ?? "";
   const playsSong = (s: (typeof setlists)[number]) =>
     query.trim() !== "" && s.items.some((it) => matchesSearch(query, songTitleOf(it.songId)));
   const past = sorted
-    .filter((s) => !s.isUpcoming || isPast(s.date))
+    .filter((s) => isPlayed(s.date))
     .filter((s) => matchesSearch(query, s.title) || playsSong(s));
   // buscando una canción: cuántas veces se tocó y cuándo fue la última (por fecha del servicio)
   const songHits = past.filter(playsSong);
@@ -104,10 +95,6 @@ export function SetlistsPage() {
     (latest, s) => (latest === null || s.date > latest ? s.date : latest),
     null,
   );
-
-  const toggleUpcoming = (target: (typeof setlists)[number]) => {
-    void updateSetlist({ ...target, isUpcoming: !target.isUpcoming });
-  };
 
   // guardar como predefinida: primero se elige el nombre (viene uno automático, "Lista N")
   const askTemplateName = (target: (typeof setlists)[number]) => {
@@ -148,7 +135,14 @@ export function SetlistsPage() {
         setlist={setlist}
         onBack={() => setSelected(null)}
         onChange={updateSetlist}
-        canEdit={can("editSetlist")}
+        // una lista que ya se tocó no se modifica ni se elimina; antes de su fecha sí
+        canEdit={can("editSetlist") && !isPlayed(setlist.date)}
+        canDelete={can("deleteSetlist") && !isPlayed(setlist.date)}
+        locked={isPlayed(setlist.date) && (can("editSetlist") || can("deleteSetlist"))}
+        onDelete={async () => {
+          await removeSetlist(setlist.id);
+          setSelected(null);
+        }}
       />
     );
   }
@@ -183,7 +177,6 @@ export function SetlistsPage() {
                 key={s.id}
                 s={s}
                 onClick={() => setSelected(s.id)}
-                onToggleUpcoming={() => toggleUpcoming(s)}
                 onSaveTemplate={canCreate ? () => askTemplateName(s) : undefined}
               />
             ))}
@@ -330,8 +323,6 @@ export function SetlistsPage() {
               key={s.id}
               s={s}
               onClick={() => setSelected(s.id)}
-              // ya pasó la fecha: no puede volver a Próximos
-              onToggleUpcoming={isPast(s.date) ? undefined : () => toggleUpcoming(s)}
               onSaveTemplate={canCreate ? () => askTemplateName(s) : undefined}
               highlightSong={query}
               muted

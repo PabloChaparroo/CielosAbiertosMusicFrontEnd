@@ -27,6 +27,8 @@ export interface RawSong {
   audioKey: string | null;
   audioName?: string | null;
   proximaDesde?: string | null;
+  /** Ausente en respuestas de un backend anterior a la migración AddSongEnganchado */
+  enganchado?: boolean | null;
   esProxima?: boolean;
   chordpro: string;
   lyricsImageKey: string | null;
@@ -66,6 +68,8 @@ export interface CreateSongInput {
   audioName?: string;
   /** Marca o desmarca "próxima a sacar" */
   proximaASacar?: boolean;
+  /** Enganchado: true/false lo decide; null lo deja sin evaluar (se mide por la duración) */
+  enganchado?: boolean | null;
   lyricsImageKey?: string;
   /** null quita la portada */
   coverKey?: string | null;
@@ -114,6 +118,7 @@ export function mapSong(raw: RawSong): Song {
     audioKey: raw.audioKey,
     audioName: raw.audioName ?? null,
     proximaDesde: raw.proximaDesde ?? null,
+    enganchado: raw.enganchado ?? null,
     esProxima: raw.esProxima ?? false,
     chordpro: raw.chordpro,
     lyricsImageKey: raw.lyricsImageKey,

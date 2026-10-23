@@ -35,6 +35,7 @@ function song(title: string, tags: Tag[], playsByMonth: Record<string, number>):
     audioKey: null,
     audioName: null,
     proximaDesde: null,
+    enganchado: null,
     esProxima: false,
     chordpro: "",
     lyricsImageKey: null,

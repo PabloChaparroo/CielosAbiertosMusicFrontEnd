@@ -1,10 +1,13 @@
 import { useMemo, useRef, useState } from "react";
-import { GripVertical, ListMusic, Search, X } from "lucide-react";
+import { ChevronDown, Dices, GripVertical, ListMusic, Search, Sparkles, X } from "lucide-react";
 import { Cover } from "@/components/common/ui-bits";
 import { INSTRUMENTS } from "@/lib/instruments";
 import { InstrumentPicker } from "@/components/common/InstrumentPicker";
 import { useApp } from "@/hooks/useApp";
 import { SetlistsService } from "../services/setlists.service";
+import { SongsService } from "@/features/canciones/services/songs.service";
+import { resolveMedley } from "@/features/canciones/lib/medley";
+import { generateList, lastPlayedBySong, pickReplacement } from "../lib/generator";
 import {
   EVENT_TYPES,
   type EventType,
@@ -56,7 +59,7 @@ export function NewSetlistModal({
   /** Lista predefinida de la que se parte: trae el título y las canciones (con su tono) */
   initial?: { title: string; items: SetlistItem[] } | undefined;
 }) {
-  const { songs, users, currentUser, setlists } = useApp();
+  const { songs, users, currentUser, setlists, can, updateSong } = useApp();
   // "Menos tocadas": ordena por cuántas veces se tocó cada canción en los setlists de los
   // últimos 5 meses (de menos a más)
   const [leastPlayed, setLeastPlayed] = useState(false);
@@ -114,6 +117,87 @@ export function NewSetlistModal({
   );
   const sectionFor = (songId: string): SetlistSection =>
     sections[songId] ?? defaultSection(songs.find((s) => s.id === songId));
+  // ---- sugerir una lista (generador): 3 alabanzas, 2 adoraciones y 1 ofrenda ----
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [suggestTag, setSuggestTag] = useState("");
+  const [suggesting, setSuggesting] = useState(false);
+  const [rerolling, setRerolling] = useState<string | null>(null);
+  const [suggestNote, setSuggestNote] = useState<string | null>(null);
+  const allTags = useMemo(
+    () => [...new Set(songs.flatMap((song) => song.tags))].sort((a, b) => a.localeCompare(b)),
+    [songs],
+  );
+  const medleyCache = useRef(new Map<string, boolean>());
+  // enganchado: lo decidido en la canción o, si no, medido por la duración (y guardado, así no se
+  // vuelve a leer el audio; solo si quien arma la lista puede editar canciones)
+  const isMedley = async (generatorSong: { id: string }) => {
+    const cached = medleyCache.current.get(generatorSong.id);
+    if (cached !== undefined) return cached;
+    const full = songs.find((song) => song.id === generatorSong.id);
+    const result = full ? await resolveMedley(full) : false;
+    medleyCache.current.set(generatorSong.id, result ?? false);
+    if (full && result !== null && full.enganchado === null && can("editSongs")) {
+      void SongsService.updateSong(full.id, { enganchado: result })
+        .then(updateSong)
+        .catch(() => undefined);
+    }
+    return result ?? false;
+  };
+  const generatorOptions = () => ({
+    songs: songs.filter(hasSequence),
+    lastPlayed: lastPlayedBySong(setlists),
+    tag: suggestTag || null,
+    isMedley,
+  });
+  const suggest = async () => {
+    if (
+      picked.length > 0 &&
+      !window.confirm("Esto reemplaza las canciones que ya elegiste. ¿Seguir?")
+    )
+      return;
+    setSuggesting(true);
+    setSuggestNote(null);
+    try {
+      const list = await generateList(generatorOptions());
+      setPicked(list.items.map((item) => item.songId));
+      setSections(Object.fromEntries(list.items.map((item) => [item.songId, item.section])));
+      const titleOf = (id: string) => songs.find((song) => song.id === id)?.title ?? "";
+      const notes: string[] = [];
+      if (list.medleyIds.length)
+        notes.push(
+          `Incluye un enganchado (${list.medleyIds.map(titleOf).join(", ")}): cuenta como 2 alabanzas.`,
+        );
+      if (list.relaxedTag)
+        notes.push(`No alcanzaron canciones con el tema "${suggestTag}": se completó con otras.`);
+      const { alabanza, adoracion, ofrenda } = list.missing;
+      if (alabanza || adoracion || ofrenda)
+        notes.push("No hay canciones con secuencia suficientes para completar la lista.");
+      setSuggestNote(notes.length ? notes.join(" ") : null);
+    } finally {
+      setSuggesting(false);
+    }
+  };
+  // 🎲: cambia una canción por otra del mismo tipo (que no esté en la lista ni sea enganchado)
+  const reroll = async (songId: string) => {
+    setRerolling(songId);
+    setSuggestNote(null);
+    try {
+      const section = sectionFor(songId);
+      const artists = picked.map((id) => songs.find((song) => song.id === id)?.artist ?? "");
+      const next = await pickReplacement(generatorOptions(), section, new Set(picked), artists);
+      if (!next) {
+        setSuggestNote("No hay otra canción con secuencia para cambiar.");
+        return;
+      }
+      setPicked((current) => current.map((id) => (id === songId ? next.id : id)));
+      setSections((prev) => {
+        const { [songId]: _old, ...rest } = prev;
+        return { ...rest, [next.id]: section };
+      });
+    } finally {
+      setRerolling(null);
+    }
+  };
   const sectioned = usesSections(type);
   // se arrastra por id: con secciones, soltar sobre otra canción también la pasa a su sección
   const [dragId, setDragId] = useState<string | null>(null);
@@ -325,6 +409,60 @@ export function NewSetlistModal({
             })()}
             {/* al tocar el buscador en celular se abre el teclado: el buscador sube al tope del
                 modal para que se vean los resultados justo abajo */}
+            {/* generador: arma 3 alabanzas, 2 adoraciones y 1 ofrenda con canciones con secuencia que
+                hace tiempo que no se tocan, opcionalmente de un tema */}
+            <div className="rounded-2xl border border-primary/30 bg-primary/[0.06]">
+              <button
+                type="button"
+                onClick={() => setSuggestOpen((open) => !open)}
+                aria-expanded={suggestOpen}
+                className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-primary"
+              >
+                <Sparkles className="h-4 w-4" /> Sugerir una lista
+                <ChevronDown
+                  className={`ml-auto h-4 w-4 transition-transform ${suggestOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              {suggestOpen ? (
+                <div className="space-y-3 border-t border-primary/20 px-4 py-3">
+                  <p className="text-xs text-muted-foreground">
+                    3 alabanzas, 2 adoraciones y 1 ofrenda, con canciones con secuencia que hace
+                    tiempo que no se tocan. Cada vez sale una distinta.
+                  </p>
+                  <select
+                    value={suggestTag}
+                    onChange={(e) => setSuggestTag(e.target.value)}
+                    aria-label="Tema de la lista sugerida"
+                    className={inputCls}
+                  >
+                    <option value="">Al azar (cualquier tema)</option>
+                    {allTags.map((tag) => (
+                      <option key={tag} value={tag}>
+                        {tag}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => void suggest()}
+                    disabled={suggesting}
+                    className="flex w-full items-center justify-center gap-2 rounded-full gradient-gold px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.02] disabled:opacity-60"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    {suggesting
+                      ? "Armando la lista…"
+                      : picked.length
+                        ? "Generar de nuevo"
+                        : "Generar lista"}
+                  </button>
+                </div>
+              ) : null}
+              {suggestNote ? (
+                <p className="border-t border-primary/20 px-4 py-2.5 text-xs text-amber-400">
+                  {suggestNote}
+                </p>
+              ) : null}
+            </div>
             <div ref={searchRef} className="flex scroll-mt-1 items-center gap-2">
               <div className="relative min-w-0 flex-1">
                 <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -531,6 +669,18 @@ export function NewSetlistModal({
                                   ))}
                                 </select>
                               ) : null}
+                              <button
+                                type="button"
+                                aria-label={`Cambiar ${song.title} por otra`}
+                                title="Cambiar por otra"
+                                disabled={rerolling !== null || suggesting}
+                                onClick={() => void reroll(song.id)}
+                                className="shrink-0 rounded-full p-1.5 text-muted-foreground hover:text-primary disabled:opacity-40"
+                              >
+                                <Dices
+                                  className={`h-4 w-4 ${rerolling === song.id ? "animate-spin" : ""}`}
+                                />
+                              </button>
                               <button
                                 type="button"
                                 aria-label={`Quitar ${song.title}`}

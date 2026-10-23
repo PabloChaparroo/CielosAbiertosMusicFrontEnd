@@ -32,6 +32,8 @@ export interface Song {
   audioName: string | null;
   /** Desde cuándo está marcada como "próxima a sacar" (ISO); null = no marcada */
   proximaDesde: string | null;
+  /** Enganchado (un audio con varios temas): true/false = decidido; null = sin evaluar (se mide por la duración) */
+  enganchado: boolean | null;
   /** Marcada y todavía no tocada: sale destacada en Inicio (lo calcula la API) */
   esProxima: boolean;
   /** ChordPro-style body: chords inside [] before the syllable */

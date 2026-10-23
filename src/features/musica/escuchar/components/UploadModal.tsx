@@ -70,6 +70,10 @@ export function UploadModal({
   // nombre propio del audio principal (ej. "Audio Quién podrá"); vacío = el título de la canción
   const [audioName, setAudioName] = useState(song?.audioName ?? "");
   const [proxima, setProxima] = useState(song?.esProxima ?? false);
+  // enganchado: "" = automático (se mide por la duración), "si" / "no" = decidido a mano
+  const [enganchado, setEnganchado] = useState<"" | "si" | "no">(
+    song?.enganchado == null ? "" : song.enganchado ? "si" : "no",
+  );
   const [title, setTitle] = useState(song?.title ?? "");
   const [artist, setArtist] = useState(song?.artist ?? "");
   const [key, setKey] = useState(song?.key ?? "G");
@@ -217,6 +221,10 @@ export function UploadModal({
         ...(audioKey ? { audioKey, audioName: audioName.trim() } : {}),
         // solo si cambió: volver a guardar no tiene que renovar la fecha de la marca
         ...(proxima !== (song?.esProxima ?? false) ? { proximaASacar: proxima } : {}),
+        // solo si cambió; "" lo vuelve a automático (null)
+        ...(enganchado !== (song?.enganchado == null ? "" : song.enganchado ? "si" : "no")
+          ? { enganchado: enganchado === "" ? null : enganchado === "si" }
+          : {}),
       };
 
       const saved = isEdit
@@ -410,6 +418,19 @@ export function UploadModal({
               />
             </span>
           </button>
+
+          <Field label="Enganchado (varios temas en un audio)">
+            <select
+              className={inputCls}
+              value={enganchado}
+              onChange={(e) => setEnganchado(e.target.value as "" | "si" | "no")}
+              disabled={saving}
+            >
+              <option value="">Automático (alabanza de más de 10 min)</option>
+              <option value="si">Sí, es un enganchado</option>
+              <option value="no">No, es un solo tema</option>
+            </select>
+          </Field>
 
           <Field label="Compás">
             <select className={inputCls} value={compas} onChange={(e) => setCompas(e.target.value)}>

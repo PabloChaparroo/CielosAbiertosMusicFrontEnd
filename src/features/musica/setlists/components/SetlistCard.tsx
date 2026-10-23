@@ -1,6 +1,7 @@
 import { BookmarkPlus, UserCheck } from "lucide-react";
 import { Avatar } from "@/components/common/ui-bits";
 import { matchesSearch } from "@/lib/search";
+import { teamMemberOf } from "../lib/team-members";
 import { useApp } from "@/hooks/useApp";
 import type { EventType, Setlist } from "@/types";
 import { ListDuration } from "./ListDuration";
@@ -105,7 +106,7 @@ export function SetlistCard({
       {s.teamIds.length ? (
         <div className="mt-4 flex min-w-0 items-center -space-x-2">
           {s.teamIds.map((id) => {
-            const u = users.find((x) => x.id === id);
+            const u = teamMemberOf(id, s, users);
             if (!u) return null;
             return (
               <Avatar

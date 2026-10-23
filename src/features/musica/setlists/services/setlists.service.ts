@@ -1,5 +1,5 @@
 import { apiRequest } from "@/lib/api-client";
-import type { EventType, Setlist, SetlistItem, SetlistSection } from "@/types";
+import type { EventType, Setlist, SetlistItem, SetlistSection, TeamMember } from "@/types";
 
 export interface RawRef {
   id: string;
@@ -24,7 +24,8 @@ export interface RawSetlist {
   fechaHoraAlta?: string;
   type: EventType;
   leader: RawRef;
-  team: RawRef[];
+  /** Con nombre, foto e instrumentos desde que el backend los recorta (ver public-team) */
+  team: Array<RawRef & Partial<Omit<TeamMember, "id">>>;
   teamInstruments?: Record<string, string[]>;
   /** puede faltar en respuestas de un backend anterior a las notas */
   notes?: string | null;
@@ -77,6 +78,20 @@ export function mapSetlist(raw: RawSetlist): Setlist {
     type: raw.type,
     leaderId: raw.leader.id,
     teamIds: raw.team.map((u) => u.id),
+    team: raw.team.flatMap((u) =>
+      u.name
+        ? [
+            {
+              id: u.id,
+              name: u.name,
+              avatarColor: u.avatarColor ?? "",
+              initials: u.initials ?? "",
+              avatarKey: u.avatarKey ?? null,
+              ...(u.instruments ? { instruments: u.instruments } : {}),
+            },
+          ]
+        : [],
+    ),
     teamInstruments: raw.teamInstruments ?? {},
     ...(raw.notes ? { notes: raw.notes } : {}),
     items,

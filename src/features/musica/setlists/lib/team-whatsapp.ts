@@ -26,7 +26,10 @@ const SEPARATE = new Set<string>(["Voz", "Sonido", "Multimedia"]);
  * su mensaje). Van los nombres de pila. Las notas, tal cual las escribió.
  */
 export function teamToWhatsapp(setlist: Setlist, users: Pick<User, "id" | "name">[]): string {
-  const firstName = (id: string) => users.find((u) => u.id === id)?.name.split(" ")[0] ?? "";
+  const firstName = (id: string) =>
+    (users.find((u) => u.id === id) ?? setlist.team?.find((m) => m.id === id))?.name.split(
+      " ",
+    )[0] ?? "";
   const playing = (instrument: string) =>
     setlist.teamIds
       .filter((id) => (setlist.teamInstruments[id] ?? []).includes(instrument))

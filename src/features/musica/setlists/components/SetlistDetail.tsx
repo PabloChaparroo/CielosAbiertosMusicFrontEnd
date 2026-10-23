@@ -25,6 +25,7 @@ import { LockedHint } from "./LockedHint";
 import { setlistToWhatsapp } from "../lib/whatsapp";
 import { teamToWhatsapp } from "../lib/team-whatsapp";
 import { isAssignable } from "../lib/assignable";
+import { teamMemberOf } from "../lib/team-members";
 import { isDateTitle, titleForDate } from "../lib/date-title";
 import { isPlayed, localDay, toLocalInput } from "../lib/setlist-status";
 
@@ -373,7 +374,7 @@ export function SetlistDetail({
           <h3 className="mb-3 font-display text-lg font-semibold">Equipo asignado</h3>
           <ul className="space-y-3">
             {setlist.teamIds.map((id) => {
-              const u = users.find((x) => x.id === id);
+              const u = teamMemberOf(id, setlist, users);
               if (!u) return null;
               return (
                 <li key={id} className="flex items-start gap-3">
@@ -390,7 +391,11 @@ export function SetlistDetail({
                       </p>
                     ) : (
                       <p className="truncate text-xs text-muted-foreground">
-                        {u.fechaHoraBaja ? "Dado de baja" : roleNames(u.roles)}
+                        {"fechaHoraBaja" in u && u.fechaHoraBaja
+                          ? "Dado de baja"
+                          : "roles" in u
+                            ? roleNames(u.roles)
+                            : ""}
                       </p>
                     )}
                     {editingInstrumentsOf === id ? (

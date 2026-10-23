@@ -88,7 +88,7 @@ export function NewSetlistModal({
     setDateValue(value);
     if (!titleEdited) setTitleValue(titleForDate(value));
   };
-  const [type, setType] = useState<EventType>("Culto Domingo a la mañana");
+  const [type, setType] = useState<EventType>("Culto Domingo a la tarde");
   const [query, setQuery] = useState("");
   // filtro por tipo (Alabanza / Adoración) al lado del buscador; "" = todos
   const [tipo, setTipo] = useState("");

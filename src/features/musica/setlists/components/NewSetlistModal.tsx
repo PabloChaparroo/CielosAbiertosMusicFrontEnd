@@ -13,6 +13,8 @@ import {
   type SetlistSection,
 } from "@/types";
 import { SECTIONS, defaultSection, itemsForType, usesSections } from "../lib/sections";
+import { isDateTitle, titleForDate } from "../lib/date-title";
+import { isAssignable } from "../lib/assignable";
 import { matchesSearch } from "@/lib/search";
 import { hasSequence } from "@/features/canciones/lib/sequence";
 import { ListDuration } from "./ListDuration";
@@ -39,19 +41,6 @@ function nextWeekday(weekday: number, weeksLater: number, time: string): string 
 }
 
 /** Desplegable de fechas: los próximos 4 de cada uno (el primero es el de esta semana, o hoy) */
-/** Título por defecto a partir de la fecha del input ("AAAA-MM-DDTHH:mm"): "Domingo 04/10" */
-const DAY_NAMES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-function titleForDate(value: string): string {
-  const [y, mo, d] = value.slice(0, 10).split("-").map(Number);
-  if (!y || !mo || !d) return "";
-  return `${DAY_NAMES[new Date(y, mo - 1, d).getDay()]} ${value.slice(8, 10)}/${value.slice(5, 7)}`;
-}
-
-/** true si el título es solo una fecha como las de titleForDate ("Domingo 04/10") */
-function isDateTitle(value: string): boolean {
-  return new RegExp(`^(${DAY_NAMES.join("|")}) \\d{2}/\\d{2}$`).test(value.trim());
-}
-
 const DATE_SHORTCUTS = [
   { label: "Domingos", day: "Domingo", weekday: 0 },
   { label: "Miércoles", day: "Miércoles", weekday: 3 },
@@ -216,16 +205,7 @@ export function NewSetlistModal({
 
   // equipo para elegir (pedido de Pablo): solo líderes y músicos activos; los admins nunca, aunque
   // quien arma la lista sea admin
-  const activeUsers = useMemo(
-    () =>
-      users.filter(
-        (u) =>
-          !u.fechaHoraBaja &&
-          !u.isAdmin &&
-          u.roles.some((r) => /^(l[ií]der|m[uú]sico)$/i.test(r.name.trim())),
-      ),
-    [users],
-  );
+  const activeUsers = useMemo(() => users.filter(isAssignable), [users]);
   // grupos por instrumento (en el orden de siempre), solo los que alguien del equipo toca
   const instrumentGroups = INSTRUMENTS.map((instrument) => ({
     instrument,

@@ -1,4 +1,4 @@
-import { BookmarkPlus, CalendarCheck, CalendarX, UserCheck } from "lucide-react";
+import { BookmarkPlus, UserCheck } from "lucide-react";
 import { Avatar } from "@/components/common/ui-bits";
 import { matchesSearch } from "@/lib/search";
 import { useApp } from "@/hooks/useApp";
@@ -17,14 +17,12 @@ const eventColor: Record<EventType, string> = {
 export function SetlistCard({
   s,
   onClick,
-  onToggleUpcoming,
   onSaveTemplate,
   muted,
   highlightSong = "",
 }: {
   s: Setlist;
   onClick: () => void;
-  onToggleUpcoming?: (() => void) | undefined;
   /** Guarda sus canciones como lista predefinida */
   onSaveTemplate?: (() => void) | undefined;
   muted?: boolean;
@@ -71,24 +69,6 @@ export function SetlistCard({
               className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
             >
               <BookmarkPlus className="h-4 w-4" />
-            </button>
-          ) : null}
-          {onToggleUpcoming ? (
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onToggleUpcoming();
-              }}
-              title={s.isUpcoming ? "Sacar de próximas" : "Poner en próximas"}
-              aria-label={s.isUpcoming ? "Sacar de próximas" : "Poner en próximas"}
-              className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
-            >
-              {s.isUpcoming ? (
-                <CalendarX className="h-4 w-4" />
-              ) : (
-                <CalendarCheck className="h-4 w-4" />
-              )}
             </button>
           ) : null}
         </div>

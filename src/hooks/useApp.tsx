@@ -40,6 +40,8 @@ interface AppState {
    * un cambio "solo local" sin intentar persistirse.
    */
   updateSetlist: (s: Setlist) => Promise<void>;
+  /** Elimina una lista que todavía no se tocó (en el backend y en el estado) */
+  removeSetlist: (id: string) => Promise<void>;
   favorites: string[];
   toggleFavorite: (id: string) => void;
   annotations: Annotation[];
@@ -189,6 +191,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setlists,
       setlistsLoadState,
       addSetlist: (s) => setSetlists((prev) => [s, ...prev]),
+      removeSetlist: async (id) => {
+        await SetlistsService.deleteSetlist(id);
+        setSetlists((prev) => prev.filter((x) => x.id !== id));
+      },
       updateSetlist: (s) => {
         const previous = setlists;
         // Optimista: se ve el cambio de inmediato (drag & drop se siente

@@ -108,4 +108,9 @@ export const SetlistsService = {
     });
     return mapSetlist(updated);
   },
+
+  /** Elimina la lista (baja lógica en el backend). Solo para listas que todavía no se tocaron. */
+  async deleteSetlist(id: string): Promise<void> {
+    await apiRequest<void>(`/setlists/${id}`, { method: "DELETE" });
+  },
 };

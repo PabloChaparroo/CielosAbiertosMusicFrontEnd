@@ -6,8 +6,10 @@ import {
   Copy,
   FileDown,
   GripVertical,
+  Lock,
   Pencil,
   Trash2,
+  X,
 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -22,17 +24,28 @@ import { SECTIONS, itemsForType, sectionOf, usesSections } from "../lib/sections
 import { LockedHint } from "./LockedHint";
 import { setlistToWhatsapp } from "../lib/whatsapp";
 import { teamToWhatsapp } from "../lib/team-whatsapp";
+import { isAssignable } from "../lib/assignable";
+import { isDateTitle, titleForDate } from "../lib/date-title";
+import { isPlayed, localDay, toLocalInput } from "../lib/setlist-status";
 
 export function SetlistDetail({
   setlist,
   onBack,
   onChange,
   canEdit,
+  canDelete,
+  locked,
+  onDelete,
 }: {
   setlist: Setlist;
   onBack: () => void;
   onChange: (s: Setlist) => Promise<void>;
   canEdit: boolean;
+  /** eliminar la lista (solo antes de su fecha) */
+  canDelete: boolean;
+  /** la lista ya se tocó: no se modifica ni se elimina (se avisa) */
+  locked: boolean;
+  onDelete: () => Promise<void>;
 }) {
   const { songs, users } = useApp();
   const navigate = useNavigate();
@@ -42,6 +55,7 @@ export function SetlistDetail({
   // miembro del equipo al que se le está cambiando qué toca en esta lista
   const [editingInstrumentsOf, setEditingInstrumentsOf] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Cada cambio (mover, cambiar tonalidad, sacar una canción) persiste ya
   // mismo contra el backend real. Si el guardado falla, useApp.updateSetlist
@@ -101,6 +115,55 @@ export function SetlistDetail({
 
   const openSelectedSong = (songId: string) => openSong(`/${viewMode}`, songId);
 
+  // cambiar la fecha (solo de hoy en adelante); si el título era la fecha, la sigue
+  const changeDate = (value: string) => {
+    if (!value) return;
+    const next = new Date(value);
+    if (Number.isNaN(next.getTime()) || isPlayed(next.toISOString())) {
+      setSaveError("Elegí una fecha de hoy en adelante.");
+      return;
+    }
+    persist({
+      ...setlist,
+      date: next.toISOString(),
+      title: isDateTitle(setlist.title) ? titleForDate(value) : setlist.title,
+    });
+  };
+
+  // equipo: sacar o sumar integrantes (líderes y músicos activos; los admins no se asignan)
+  const removeMember = (userId: string) => {
+    const { [userId]: _removed, ...instruments } = setlist.teamInstruments;
+    persist({
+      ...setlist,
+      teamIds: setlist.teamIds.filter((id) => id !== userId),
+      teamInstruments: instruments,
+    });
+  };
+  const addMember = (userId: string) => {
+    const only = users.find((u) => u.id === userId)?.instruments ?? [];
+    persist({
+      ...setlist,
+      teamIds: [...setlist.teamIds, userId],
+      // si toca un solo instrumento, se marca solo
+      teamInstruments:
+        only.length === 1
+          ? { ...setlist.teamInstruments, [userId]: only }
+          : setlist.teamInstruments,
+    });
+  };
+  const addable = users.filter((u) => isAssignable(u) && !setlist.teamIds.includes(u.id));
+
+  const handleDelete = async () => {
+    if (!window.confirm(`¿Eliminar la lista "${setlist.title}"? No se puede deshacer.`)) return;
+    setDeleting(true);
+    try {
+      await onDelete();
+    } catch {
+      setSaveError("No se pudo eliminar la lista.");
+      setDeleting(false);
+    }
+  };
+
   // "Copiar lista" y "Copiar equipo": texto para pegar en WhatsApp
   const [copied, setCopied] = useState<"lista" | "equipo" | null>(null);
   const copy = async (what: "lista" | "equipo") => {
@@ -146,6 +209,18 @@ export function SetlistDetail({
               {copied === "lista" ? "¡Copiado!" : "Copiar lista"}
             </span>
           </button>
+          {canDelete ? (
+            <button
+              type="button"
+              onClick={() => void handleDelete()}
+              disabled={deleting}
+              aria-label="Eliminar la lista"
+              title="Eliminar la lista"
+              className="flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-destructive/60 hover:text-destructive disabled:opacity-50"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          ) : null}
           <button
             onClick={() => exportSetlistPdf(setlist, songs)}
             className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
@@ -172,6 +247,32 @@ export function SetlistDetail({
       ) : null}
 
       {/* minmax(0,1fr): sin eso, una canción con nombre largo ensanchaba la columna y la página en celular */}
+      {locked ? (
+        <p className="mb-4 flex items-center gap-2 rounded-xl border border-border bg-secondary/40 px-4 py-2.5 text-sm text-muted-foreground">
+          <Lock className="h-4 w-4 shrink-0" /> Esta lista ya se tocó: no se puede modificar ni
+          eliminar.
+        </p>
+      ) : null}
+
+      {canEdit ? (
+        <div className="surface-card mb-6 flex flex-wrap items-center gap-3 p-4">
+          <label
+            htmlFor="fecha-lista"
+            className="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
+          >
+            Fecha y hora
+          </label>
+          <input
+            id="fecha-lista"
+            type="datetime-local"
+            value={toLocalInput(setlist.date)}
+            min={`${localDay(new Date())}T00:00`}
+            onChange={(e) => changeDate(e.target.value)}
+            className="rounded-xl border border-border bg-secondary px-3 py-2 text-sm outline-none focus:border-primary/60"
+          />
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="surface-card min-w-0 divide-y divide-border/60">
           <div className="flex items-center justify-between gap-3 border-b border-border/60 p-3">
@@ -341,10 +442,37 @@ export function SetlistDetail({
                       )}
                     </button>
                   ) : null}
+                  {canEdit ? (
+                    <button
+                      type="button"
+                      onClick={() => removeMember(id)}
+                      aria-label={`Sacar a ${u.name} del equipo`}
+                      title="Sacar del equipo"
+                      className="shrink-0 self-start rounded-full p-1.5 text-muted-foreground transition-colors hover:text-destructive"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  ) : null}
                 </li>
               );
             })}
           </ul>
+
+          {canEdit && addable.length ? (
+            <select
+              value=""
+              onChange={(e) => e.target.value && addMember(e.target.value)}
+              aria-label="Agregar un integrante al equipo"
+              className="mt-3 w-full rounded-xl border border-dashed border-primary/40 bg-transparent px-3 py-2 text-sm text-primary outline-none focus:border-primary"
+            >
+              <option value="">+ Agregar integrante…</option>
+              {addable.map((u) => (
+                <option key={u.id} value={u.id} className="bg-card text-foreground">
+                  {u.name}
+                </option>
+              ))}
+            </select>
+          ) : null}
 
           {/* notas para el equipo y "Copiar equipo" (el mensaje que el líder pega en el grupo) */}
           <div className="mt-5 border-t border-border/60 pt-4">

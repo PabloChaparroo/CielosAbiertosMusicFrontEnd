@@ -195,20 +195,6 @@ export function SetlistDetail({
       })}
       actions={
         <>
-          <button
-            onClick={() => void copy("lista")}
-            title="Copiar la lista de canciones para WhatsApp"
-            className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold transition-colors hover:border-primary/60"
-          >
-            {copied === "lista" ? (
-              <Check className="h-4 w-4 text-primary" />
-            ) : (
-              <Copy className="h-4 w-4" />
-            )}
-            <span className="hidden sm:inline">
-              {copied === "lista" ? "¡Copiado!" : "Copiar lista"}
-            </span>
-          </button>
           {canDelete ? (
             <button
               type="button"
@@ -502,14 +488,27 @@ export function SetlistDetail({
                 Sin notas.
               </p>
             )}
-            <button
-              type="button"
-              onClick={() => void copy("equipo")}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/20"
-            >
-              {copied === "equipo" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              {copied === "equipo" ? "¡Copiado!" : "Copiar equipo"}
-            </button>
+            {/* los dos mensajes para WhatsApp, juntos: las canciones y el equipo */}
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => void copy("lista")}
+                title="Copiar la lista de canciones para WhatsApp"
+                className="flex flex-1 items-center justify-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-semibold whitespace-nowrap text-primary transition-colors hover:bg-primary/20"
+              >
+                {copied === "lista" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copied === "lista" ? "¡Copiado!" : "Copiar canciones"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void copy("equipo")}
+                title="Copiar el equipo y las notas para WhatsApp"
+                className="flex flex-1 items-center justify-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-semibold whitespace-nowrap text-primary transition-colors hover:bg-primary/20"
+              >
+                {copied === "equipo" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copied === "equipo" ? "¡Copiado!" : "Copiar equipo"}
+              </button>
+            </div>
           </div>
         </aside>
       </div>

@@ -494,12 +494,14 @@ export function SetlistDetail({
               </p>
             )}
             {/* los dos mensajes para WhatsApp, juntos: las canciones y el equipo */}
-            <div className="mt-3 flex gap-2">
+            {/* flex-wrap + min-w-fit: si los dos botones no entran en el ancho de la tarjeta (celular
+                chico), el segundo baja a otra fila en vez de sobresalir */}
+            <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => void copy("lista")}
                 title="Copiar la lista de canciones para WhatsApp"
-                className="flex flex-1 items-center justify-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-semibold whitespace-nowrap text-primary transition-colors hover:bg-primary/20"
+                className="flex min-w-fit flex-1 items-center justify-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-semibold whitespace-nowrap text-primary transition-colors hover:bg-primary/20"
               >
                 {copied === "lista" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 {copied === "lista" ? "¡Copiado!" : "Copiar canciones"}
@@ -508,7 +510,7 @@ export function SetlistDetail({
                 type="button"
                 onClick={() => void copy("equipo")}
                 title="Copiar el equipo y las notas para WhatsApp"
-                className="flex flex-1 items-center justify-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-semibold whitespace-nowrap text-primary transition-colors hover:bg-primary/20"
+                className="flex min-w-fit flex-1 items-center justify-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-semibold whitespace-nowrap text-primary transition-colors hover:bg-primary/20"
               >
                 {copied === "equipo" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 {copied === "equipo" ? "¡Copiado!" : "Copiar equipo"}

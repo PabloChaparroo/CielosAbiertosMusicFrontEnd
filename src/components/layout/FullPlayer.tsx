@@ -285,7 +285,7 @@ export function FullPlayer({
             className="surface-card flex min-h-0 flex-col rounded-3xl lg:order-1 lg:max-h-full lg:min-h-[45rem] lg:self-start"
           >
             {/* encabezado del tema, con los círculos decorativos del mockup */}
-            <div className="relative overflow-hidden rounded-t-3xl px-5 pt-6 pb-5 md:px-8 md:pt-8">
+            <div className="relative shrink-0 overflow-hidden rounded-t-3xl px-5 pt-6 pb-5 md:px-8 md:pt-8">
               {/* brillo dorado desde arriba y partículas que flotan, como la portada de Inicio */}
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_80%_at_15%_-20%,color-mix(in_oklch,var(--primary)_22%,transparent),transparent_70%)]" />
               <div aria-hidden className="pointer-events-none absolute inset-0">
@@ -457,10 +457,11 @@ export function FullPlayer({
               })}
             </ol>
 
-            {/* controles: fijos abajo mientras se recorre la lista */}
+            {/* controles: fijos abajo mientras se recorre la lista. shrink-0 (como el encabezado): con
+                overflow-hidden el navegador los dejaría achicarse y se cortaban en pantallas bajas */}
             <div // controles en vidrio: translúcido con desenfoque fuerte, borde claro arriba y un brillo
               // dorado tenue desde abajo; la lista se ve pasar por detrás
-              className="sticky bottom-0 overflow-hidden rounded-b-3xl border-t border-white/10 bg-card/55 bg-[radial-gradient(ellipse_70%_100%_at_50%_130%,color-mix(in_oklch,var(--primary)_16%,transparent),transparent_70%)] px-4 pt-3 pb-4 shadow-[0_-12px_30px_-18px_rgba(0,0,0,.8)] backdrop-blur-2xl backdrop-saturate-150 md:px-8"
+              className="sticky bottom-0 shrink-0 overflow-hidden rounded-b-3xl border-t border-white/10 bg-card/55 bg-[radial-gradient(ellipse_70%_100%_at_50%_130%,color-mix(in_oklch,var(--primary)_16%,transparent),transparent_70%)] px-4 pt-3 pb-4 shadow-[0_-12px_30px_-18px_rgba(0,0,0,.8)] backdrop-blur-2xl backdrop-saturate-150 md:px-8"
             >
               <div className="flex items-center justify-between gap-2">
                 {/* en celular el volumen no está: este hueco iguala al de aleatorio para que

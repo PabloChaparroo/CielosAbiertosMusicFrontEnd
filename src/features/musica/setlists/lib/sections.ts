@@ -46,6 +46,18 @@ export function groupBySection<T extends SetlistItem>(
 }
 
 /**
+ * Lo que se toca durante la reunión (pedido de Pablo): primero las alabanzas y las adoraciones; la
+ * ofrenda se toca al terminar, por eso no suma a la duración de la lista. Evento Especial no tiene
+ * secciones: cuenta todo. En listas anteriores a las secciones, la última canción es la ofrenda
+ * (igual que en "Copiar").
+ */
+export function beforeOffering<T extends SetlistItem>(items: T[], type: EventType): T[] {
+  if (!usesSections(type)) return items;
+  if (items.some((item) => item.section)) return items.filter((item) => item.section !== "ofrenda");
+  return items.length > 1 ? items.slice(0, -1) : items;
+}
+
+/**
  * Ítems listos para guardar: con secciones, ordenados por sección (así `position` sigue el orden
  * que se ve) y cada uno con su sección; sin secciones (Evento Especial), en su orden y sin sección.
  */

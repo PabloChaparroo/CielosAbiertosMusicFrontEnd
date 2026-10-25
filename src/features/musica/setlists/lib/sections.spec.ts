@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { defaultSection, groupBySection, itemsForType, usesSections } from "./sections";
+import {
+  beforeOffering,
+  defaultSection,
+  groupBySection,
+  itemsForType,
+  usesSections,
+} from "./sections";
 
 const songs = [
   { id: "muros", tipo: "Alabanza" },
@@ -68,5 +74,30 @@ describe("secciones del orden del servicio", () => {
       { songId: "alaba", key: "A" },
       { songId: "muros", key: "G" },
     ]);
+  });
+});
+
+describe("beforeOffering — la ofrenda no suma a la duración", () => {
+  const items = [
+    { songId: "a", key: "D", section: "alabanza" as const },
+    { songId: "b", key: "D", section: "adoracion" as const },
+    { songId: "c", key: "D", section: "ofrenda" as const },
+  ];
+  it("con secciones guardadas, saca la ofrenda", () => {
+    expect(beforeOffering(items, "Culto Miércoles").map((i) => i.songId)).toEqual(["a", "b"]);
+  });
+  it("Evento Especial cuenta todo", () => {
+    expect(beforeOffering(items, "Evento Especial")).toHaveLength(3);
+  });
+  it("lista anterior sin secciones: la última es la ofrenda", () => {
+    const legacy = [
+      { songId: "a", key: "D" },
+      { songId: "b", key: "D" },
+      { songId: "c", key: "D" },
+    ];
+    expect(beforeOffering(legacy, "Ensayo").map((i) => i.songId)).toEqual(["a", "b"]);
+  });
+  it("una lista de una sola canción no la deja vacía", () => {
+    expect(beforeOffering([{ songId: "a", key: "D" }], "Ensayo")).toHaveLength(1);
   });
 });

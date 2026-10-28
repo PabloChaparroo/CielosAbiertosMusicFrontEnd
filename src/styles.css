@@ -288,3 +288,16 @@
     opacity: 0.4;
   }
 }
+
+/*
+ * iPhone: Safari hace zoom solo al tocar un campo de texto con letra menor a 16 px, y el zoom no
+ * se va hasta hacer pinch (la pantalla "queda agrandada"). En pantallas táctiles y chicas, todos
+ * los campos van a 16 px. Sin esto había 12 campos de 12–14 px (buscadores, selects, fechas…).
+ */
+@media (pointer: coarse), (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}

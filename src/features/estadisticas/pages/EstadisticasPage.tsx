@@ -75,7 +75,7 @@ function TopCard({
 }) {
   const max = rows[0]?.plays ?? 1;
   return (
-    <div className="surface-card p-5">
+    <div className="surface-card min-w-0 p-5">
       <h3 className="font-display text-lg font-semibold">{title}</h3>
       <p className="mb-4 text-xs text-muted-foreground first-letter:uppercase">{subtitle}</p>
       {rows.length ? (
@@ -232,7 +232,8 @@ export function EstadisticasPage() {
         </div>
       }
     >
-      <div className="grid gap-5 xl:grid-cols-2">
+      {/* minmax(0,1fr): sin eso, los títulos largos de las canciones ensanchaban la página en celular */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-2">
         {/* más tocadas: la del período elegido y, al lado, la de los últimos 3 meses */}
         <TopCard title="Más tocadas" subtitle={periodLabel} rows={top} />
         <TopCard
@@ -291,10 +292,10 @@ export function EstadisticasPage() {
           </ResponsiveContainer>
         </Panel>
 
-        <div className="surface-card p-5 xl:col-span-2">
+        <div className="surface-card min-w-0 p-5 xl:col-span-2">
           <h3 className="mb-4 font-display text-lg font-semibold">Más tocadas de siempre</h3>
           {ranking.length ? (
-            <ol className="grid gap-2 sm:grid-cols-2">
+            <ol className="grid grid-cols-[minmax(0,1fr)] gap-2 sm:grid-cols-2">
               {ranking.map((r, i) => (
                 <li
                   key={r.song.id}

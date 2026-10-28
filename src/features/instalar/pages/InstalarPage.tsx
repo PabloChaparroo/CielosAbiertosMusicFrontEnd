@@ -163,13 +163,14 @@ export function InstalarPage() {
               key={tab.id}
               onClick={() => setPlatform(tab.id)}
               aria-pressed={platform === tab.id}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold transition-colors ${
+              className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full px-2 py-2 text-xs font-semibold whitespace-nowrap transition-colors sm:px-3 sm:text-sm ${
                 platform === tab.id
                   ? "bg-primary/15 text-primary"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <tab.icon className="h-4 w-4" /> {tab.label}
+              {/* el ícono se oculta en pantallas muy angostas (iPhone SE) para que entren los tres */}
+              <tab.icon className="hidden h-4 w-4 min-[400px]:block" /> {tab.label}
             </button>
           ))}
         </div>

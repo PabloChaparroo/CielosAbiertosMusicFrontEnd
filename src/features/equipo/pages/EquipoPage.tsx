@@ -229,12 +229,13 @@ export function EquipoPage() {
           description="No hay integrantes con ese rol."
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        // minmax(0,1fr): una tarjeta con nombre largo no tiene que ensanchar la página en celular
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {list.map((u) => (
             <button
               key={u.id}
               onClick={() => setSelected(u.id)}
-              className={`surface-card flex items-center gap-4 p-5 text-left hover:-translate-y-1 hover:border-primary/40 ${
+              className={`surface-card flex min-w-0 items-center gap-4 p-5 text-left hover:-translate-y-1 hover:border-primary/40 ${
                 u.fechaHoraBaja ? "opacity-50" : ""
               }`}
             >

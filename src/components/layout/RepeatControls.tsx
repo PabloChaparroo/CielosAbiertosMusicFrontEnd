@@ -17,6 +17,8 @@ export function RepeatControls({
   loop,
   onLoopChange,
   compact = false,
+  align = "center",
+  hideRange = false,
 }: {
   seconds: number;
   duration: number;
@@ -25,6 +27,10 @@ export function RepeatControls({
   loop: LoopRange | null;
   onLoopChange: (loop: LoopRange | null) => void;
   compact?: boolean;
+  /** Dónde se abre el panel del tramo: centrado, o pegado al borde izquierdo (si los botones están a la izquierda) */
+  align?: "center" | "start";
+  /** No muestra "0:36–1:10" al lado del botón cuando hay un tramo (queda en el aria-label) */
+  hideRange?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [from, setFrom] = useState("");
@@ -98,9 +104,11 @@ export function RepeatControls({
       >
         <Repeat className="h-4 w-4" />
         {loop ? (
-          <span className="tabular-nums">
-            {formatTime(loop.start)}–{formatTime(loop.end)}
-          </span>
+          hideRange ? null : (
+            <span className="tabular-nums">
+              {formatTime(loop.start)}–{formatTime(loop.end)}
+            </span>
+          )
         ) : compact ? null : (
           <span>Repetir tramo</span>
         )}
@@ -118,7 +126,11 @@ export function RepeatControls({
       ) : null}
 
       {open ? (
-        <div className="absolute bottom-full left-1/2 z-50 mb-2 w-72 -translate-x-1/2 rounded-2xl border border-border bg-card p-4 text-left shadow-2xl">
+        <div
+          className={`absolute bottom-full z-50 mb-2 w-72 max-w-[calc(100vw-3.5rem)] rounded-2xl border border-border bg-card p-4 text-left shadow-2xl ${
+            align === "start" ? "left-0" : "left-1/2 -translate-x-1/2"
+          }`}
+        >
           <p className="mb-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
             Repetir un tramo
           </p>

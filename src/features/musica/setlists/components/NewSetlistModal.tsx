@@ -579,7 +579,12 @@ export function NewSetlistModal({
                 Orden del servicio
               </p>
               <span className="flex items-center gap-3 text-xs text-muted-foreground">
-                <ListDuration songs={pickedSongs} />
+                {/* sin la ofrenda: se toca al terminar la reunión */}
+                <ListDuration
+                  songs={pickedSongs.filter(
+                    (song) => !(sectioned && sectionFor(song.id) === "ofrenda"),
+                  )}
+                />
                 {pickedSongs.length} canciones
               </span>
             </div>

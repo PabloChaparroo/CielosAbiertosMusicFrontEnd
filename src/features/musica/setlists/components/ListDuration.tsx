@@ -5,7 +5,8 @@ import type { Song } from "@/types";
 /**
  * "≈ 24 min": cuánto dura tocar la lista entera. De cada canción, la duración del primer track; si
  * no tiene, la del audio principal; si tampoco, la del video de YouTube (ver `sequenceDuration`).
- * Si de alguna canción no se pudo saber, lo aclara.
+ * Si de alguna canción no se pudo saber, lo aclara. Quien lo usa le pasa las canciones de la
+ * reunión, sin la ofrenda (se toca al terminar).
  */
 export function ListDuration({ songs, className = "" }: { songs: Song[]; className?: string }) {
   const { seconds, missing, loading } = useListDuration(songs);
@@ -18,7 +19,7 @@ export function ListDuration({ songs, className = "" }: { songs: Song[]; classNa
       title={
         missing
           ? `Suma de las duraciones. ${missing} ${missing === 1 ? "canción no tiene" : "canciones no tienen"} audio ni video para medir.`
-          : "Suma de las duraciones: el primer track de cada canción o, si no tiene, el video de YouTube"
+          : "Suma de las duraciones (el primer track de cada canción o, si no tiene, el video de YouTube), sin la ofrenda, que se toca al terminar"
       }
     >
       <Clock className="h-3.5 w-3.5 text-primary" />

@@ -117,7 +117,7 @@ export function Annotations({ songId }: { songId: string }) {
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Escribí una indicación para el equipo…"
-            className="flex-1 rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none focus:border-primary/60"
+            className="min-w-0 flex-1 rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none focus:border-primary/60"
           />
           <button
             disabled={!text.trim()}
@@ -125,7 +125,7 @@ export function Annotations({ songId }: { songId: string }) {
               addAnnotation(songId, text.trim());
               setText("");
             }}
-            className="rounded-xl gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"
+            className="shrink-0 rounded-xl gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"
           >
             Publicar
           </button>

@@ -2,6 +2,7 @@ import { BookmarkPlus, UserCheck } from "lucide-react";
 import { Avatar } from "@/components/common/ui-bits";
 import { matchesSearch } from "@/lib/search";
 import { teamMemberOf } from "../lib/team-members";
+import { beforeOffering } from "../lib/sections";
 import { useApp } from "@/hooks/useApp";
 import type { EventType, Setlist } from "@/types";
 import { ListDuration } from "./ListDuration";
@@ -97,9 +98,11 @@ export function SetlistCard({
           <span className="font-semibold text-foreground">{s.items.length}</span>{" "}
           {s.items.length === 1 ? "canción" : "canciones"}
         </span>
-        {/* cuánto dura tocar toda la lista (suma de las secuencias) */}
+        {/* cuánto dura la reunión: la suma de las canciones, sin la ofrenda (se toca al terminar) */}
         <ListDuration
-          songs={s.items.flatMap((it) => songs.find((so) => so.id === it.songId) ?? [])}
+          songs={beforeOffering(s.items, s.type).flatMap(
+            (it) => songs.find((so) => so.id === it.songId) ?? [],
+          )}
         />
       </div>
       {/* fotos del equipo; sin equipo no se muestra la fila (ya no va "Lidera …": pedido de Pablo) */}

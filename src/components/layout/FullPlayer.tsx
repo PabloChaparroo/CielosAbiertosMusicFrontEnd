@@ -285,7 +285,7 @@ export function FullPlayer({
             className="surface-card flex min-h-0 flex-col rounded-3xl lg:order-1 lg:max-h-full lg:min-h-[45rem] lg:self-start"
           >
             {/* encabezado del tema, con los círculos decorativos del mockup */}
-            <div className="relative overflow-hidden rounded-t-3xl px-5 pt-6 pb-5 md:px-8 md:pt-8">
+            <div className="relative shrink-0 overflow-hidden rounded-t-3xl px-5 pt-6 pb-5 md:px-8 md:pt-8">
               {/* brillo dorado desde arriba y partículas que flotan, como la portada de Inicio */}
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_80%_at_15%_-20%,color-mix(in_oklch,var(--primary)_22%,transparent),transparent_70%)]" />
               <div aria-hidden className="pointer-events-none absolute inset-0">
@@ -313,9 +313,28 @@ export function FullPlayer({
                       <Music2 className="h-3 w-3" /> {current.tipo}
                     </span>
                   ) : null}
-                  <h2 className="mt-2 truncate font-display text-4xl font-bold md:text-5xl">
-                    {current.title}
-                  </h2>
+                  <div className="mt-2 flex items-center gap-2">
+                    <h2 className="min-w-0 flex-1 truncate font-display text-3xl font-bold md:text-5xl">
+                      {current.title}
+                    </h2>
+                    {/* celular: solo un ícono de play/pausa y el corazón al lado del nombre, sin ocupar
+                        una fila entera (en pantallas más grandes va el botón con texto, abajo) */}
+                    <div className="flex shrink-0 items-center gap-1 md:hidden">
+                      <button
+                        type="button"
+                        onClick={onToggle}
+                        aria-label={isPlaying ? "Pausar" : "Reproducir"}
+                        className="flex h-10 w-10 items-center justify-center rounded-full gradient-gold text-primary-foreground"
+                      >
+                        {isPlaying ? (
+                          <Pause className="h-4 w-4" />
+                        ) : (
+                          <Play className="ml-0.5 h-4 w-4" />
+                        )}
+                      </button>
+                      <FavButton songId={current.id} />
+                    </div>
+                  </div>
                   <p className="mt-1 truncate text-muted-foreground">{current.artist}</p>
                   {current.tags.length ? (
                     <div className="mt-3 flex flex-wrap gap-1.5">
@@ -325,7 +344,7 @@ export function FullPlayer({
                     </div>
                   ) : null}
                 </div>
-                <div className="flex shrink-0 items-center gap-3">
+                <div className="hidden shrink-0 items-center gap-3 md:flex">
                   <button
                     type="button"
                     onClick={onToggle}
@@ -457,15 +476,34 @@ export function FullPlayer({
               })}
             </ol>
 
-            {/* controles: fijos abajo mientras se recorre la lista */}
-            <div // controles en vidrio: translúcido con desenfoque fuerte, borde claro arriba y un brillo
-              // dorado tenue desde abajo; la lista se ve pasar por detrás
-              className="sticky bottom-0 overflow-hidden rounded-b-3xl border-t border-white/10 bg-card/55 bg-[radial-gradient(ellipse_70%_100%_at_50%_130%,color-mix(in_oklch,var(--primary)_16%,transparent),transparent_70%)] px-4 pt-3 pb-4 shadow-[0_-12px_30px_-18px_rgba(0,0,0,.8)] backdrop-blur-2xl backdrop-saturate-150 md:px-8"
+            {/* controles: fijos abajo mientras se recorre la lista. shrink-0 (como el encabezado): con
+                overflow-hidden el navegador los dejaría achicarse y se cortaban en pantallas bajas */}
+            <div // controles en vidrio: translúcido con desenfoque fuerte y un brillo dorado tenue desde
+              // abajo; la lista se ve pasar por detrás. Sin overflow-hidden: recortaba el panel de
+              // "Repetir tramo", que se abre hacia arriba (el brillo va en su propia capa recortada).
+              // En celular flota con esquinas redondeadas y es bien baja; desde md va pegada al borde.
+              className="sticky bottom-0 mx-2 mb-2 shrink-0 rounded-2xl border border-white/10 bg-card/55 px-3 pt-2 pb-2.5 shadow-[0_-12px_30px_-18px_rgba(0,0,0,.8)] backdrop-blur-2xl backdrop-saturate-150 md:mx-0 md:mb-0 md:rounded-t-none md:rounded-b-3xl md:border-x-0 md:border-b-0 md:px-8 md:pt-3 md:pb-4"
             >
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-2xl bg-[radial-gradient(ellipse_70%_100%_at_50%_130%,color-mix(in_oklch,var(--primary)_16%,transparent),transparent_70%)] md:rounded-t-none md:rounded-b-3xl"
+              />
               <div className="flex items-center justify-between gap-2">
-                {/* en celular el volumen no está: este hueco iguala al de aleatorio para que
-                    anterior / play / siguiente queden centrados */}
-                <div className="w-10 md:hidden" aria-hidden />
+                {/* celular: repetir y repetir tramo, solo íconos, a la izquierda (el panel del tramo
+                    se abre pegado a ese borde); mismo ancho que aleatorio para centrar el play */}
+                <div className="flex w-[4.5rem] md:hidden">
+                  <RepeatControls
+                    compact
+                    hideRange
+                    align="start"
+                    seconds={seconds}
+                    duration={duration}
+                    repeatOne={repeatOne}
+                    onRepeatOneChange={onRepeatOneChange}
+                    loop={loop}
+                    onLoopChange={onLoopChange}
+                  />
+                </div>
                 <div className="hidden w-40 items-center gap-2 md:flex">
                   <Volume2 className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <input
@@ -478,35 +516,39 @@ export function FullPlayer({
                     className="h-1 w-full cursor-pointer appearance-none rounded-full bg-secondary accent-primary"
                   />
                 </div>
-                <div className="flex flex-1 items-center justify-center gap-6 md:gap-8">
+                <div className="flex flex-1 items-center justify-center gap-3 md:gap-8">
                   <button
                     type="button"
                     onClick={onBack}
                     aria-label="Volver al principio (dos toques: canción anterior)"
-                    className="rounded-full p-2 text-foreground"
+                    className="rounded-full p-1.5 text-foreground md:p-2"
                   >
-                    <SkipBack className="h-7 w-7 fill-current" />
+                    <SkipBack className="h-6 w-6 fill-current md:h-7 md:w-7" />
                   </button>
                   <button
                     type="button"
                     onClick={onToggle}
                     aria-label={isPlaying ? "Pausar" : "Reproducir"}
-                    className="flex h-16 w-16 items-center justify-center rounded-full gradient-gold text-primary-foreground transition-transform hover:scale-105"
+                    className="flex h-12 w-12 items-center justify-center rounded-full gradient-gold text-primary-foreground transition-transform hover:scale-105 md:h-16 md:w-16"
                   >
-                    {isPlaying ? <Pause className="h-7 w-7" /> : <Play className="ml-1 h-7 w-7" />}
+                    {isPlaying ? (
+                      <Pause className="h-5 w-5 md:h-7 md:w-7" />
+                    ) : (
+                      <Play className="ml-0.5 h-5 w-5 md:ml-1 md:h-7 md:w-7" />
+                    )}
                   </button>
                   <button
                     type="button"
                     onClick={onNext}
                     aria-label="Siguiente canción"
-                    className="rounded-full p-2 text-foreground"
+                    className="rounded-full p-1.5 text-foreground md:p-2"
                   >
-                    <SkipForward className="h-7 w-7 fill-current" />
+                    <SkipForward className="h-6 w-6 fill-current md:h-7 md:w-7" />
                   </button>
                 </div>
-                <div className="flex w-10 justify-end md:w-40">{shuffleButton}</div>
+                <div className="flex w-[4.5rem] justify-end md:w-40">{shuffleButton}</div>
               </div>
-              <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground md:mt-3">
                 <span className="w-10 text-right">{formatDuration(seconds)}</span>
                 <input
                   type="range"
@@ -519,8 +561,9 @@ export function FullPlayer({
                 />
                 <span className="w-10">{formatDuration(duration)}</span>
               </div>
-              {/* abajo de la barra: así no descentran anterior / play / siguiente */}
-              <div className="mt-3 flex justify-center">
+              {/* pantallas más grandes: abajo de la barra, así no descentran anterior / play / siguiente.
+                  En celular están en la fila de arriba, a la izquierda */}
+              <div className="mt-3 hidden justify-center md:flex">
                 <RepeatControls
                   seconds={seconds}
                   duration={duration}

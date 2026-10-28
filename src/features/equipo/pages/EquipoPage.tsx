@@ -95,8 +95,10 @@ export function EquipoPage() {
           <ArrowLeft className="h-4 w-4" /> Volver al equipo
         </button>
 
-        <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-          <div className="surface-card p-6 text-center">
+        {/* minmax(0,1fr): sin eso, el texto largo de "Participación reciente" ensanchaba la columna y la
+            página en celular (se cortaba la foto y el nombre, y los modales quedaban corridos) */}
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+          <div className="surface-card min-w-0 p-6 text-center">
             <Avatar
               user={member}
               className="mx-auto flex h-24 w-24 items-center justify-center rounded-full text-2xl font-bold text-background"
@@ -111,8 +113,9 @@ export function EquipoPage() {
             {member.fechaHoraBaja ? (
               <p className="mt-2 text-xs font-semibold text-destructive">Dado de baja</p>
             ) : null}
-            <p className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Mail className="h-3.5 w-3.5" /> {member.email}
+            <p className="mt-4 flex min-w-0 items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Mail className="h-3.5 w-3.5 shrink-0" />{" "}
+              <span className="min-w-0 truncate">{member.email}</span>
             </p>
             {!member.fechaHoraBaja && can("editTeamMember") ? (
               <button
@@ -124,7 +127,7 @@ export function EquipoPage() {
             ) : null}
           </div>
 
-          <div className="surface-card p-6">
+          <div className="surface-card min-w-0 p-6">
             <h4 className="mb-4 font-display text-lg font-semibold">Participación reciente</h4>
             {participations.length === 0 ? (
               <p className="text-sm text-muted-foreground">Sin servicios registrados todavía.</p>
@@ -133,8 +136,8 @@ export function EquipoPage() {
                 {participations.map((s) => (
                   <li key={s.id} className="rounded-xl bg-elevated/60 p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="font-medium">{s.title}</p>
-                      <span className="text-xs text-muted-foreground">
+                      <p className="min-w-0 truncate font-medium">{s.title}</p>
+                      <span className="shrink-0 text-xs text-muted-foreground">
                         {new Date(s.date).toLocaleDateString("es-AR")}
                       </span>
                     </div>
@@ -226,12 +229,13 @@ export function EquipoPage() {
           description="No hay integrantes con ese rol."
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        // minmax(0,1fr): una tarjeta con nombre largo no tiene que ensanchar la página en celular
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {list.map((u) => (
             <button
               key={u.id}
               onClick={() => setSelected(u.id)}
-              className={`surface-card flex items-center gap-4 p-5 text-left hover:-translate-y-1 hover:border-primary/40 ${
+              className={`surface-card flex min-w-0 items-center gap-4 p-5 text-left hover:-translate-y-1 hover:border-primary/40 ${
                 u.fechaHoraBaja ? "opacity-50" : ""
               }`}
             >

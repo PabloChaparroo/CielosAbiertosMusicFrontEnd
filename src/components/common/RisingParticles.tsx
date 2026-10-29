@@ -18,11 +18,22 @@ const PARTICLES = [
  * Fondo de página como el de Inicio: partículas doradas que suben desde abajo de la pantalla, fijas
  * detrás de todo el contenido (que tiene que ir en `relative` para dibujarse encima). Con `glow`
  * suma el sombreado de la portada: resplandor dorado desde arriba y un tinte violeta al medio.
- * Con "reducir movimiento" las partículas no se muestran (ver `rising-particle` en styles.css).
+ * Con `sidebar` (por defecto) arranca después del menú lateral fijo de compu; en pantallas sin menú
+ * (ej. el login) va `sidebar={false}`. Con "reducir movimiento" las partículas no se muestran (ver
+ * `rising-particle` en styles.css).
  */
-export function RisingParticles({ glow = false }: { glow?: boolean }) {
+export function RisingParticles({
+  glow = false,
+  sidebar = true,
+}: {
+  glow?: boolean;
+  sidebar?: boolean;
+}) {
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden xl:left-[272px]">
+    <div
+      aria-hidden
+      className={`pointer-events-none fixed inset-0 overflow-hidden ${sidebar ? "xl:left-[272px]" : ""}`}
+    >
       {glow ? (
         <>
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_45%_at_50%_-5%,color-mix(in_oklch,var(--primary)_20%,transparent),transparent_70%)]" />

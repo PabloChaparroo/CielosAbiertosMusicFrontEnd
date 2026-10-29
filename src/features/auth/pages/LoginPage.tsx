@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { AlertCircle, Eye, EyeOff, LogIn, UserRound } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
 import { useAuth } from "@/core/auth/useAuth";
+import { RisingParticles } from "@/components/common/RisingParticles";
 
 export function LoginPage() {
   const { login, loginAsGuest } = useAuth();
@@ -51,6 +52,8 @@ export function LoginPage() {
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-10">
       <div className="gradient-sky pointer-events-none absolute inset-0 opacity-30" />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/40 via-background to-background" />
+      {/* partículas doradas que suben, como en Inicio */}
+      <RisingParticles sidebar={false} />
 
       <div className="relative w-full max-w-sm">
         <div className="mb-10 flex flex-col items-center gap-4 text-center">
@@ -86,7 +89,7 @@ export function LoginPage() {
               autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@cielosabiertos.org"
+              placeholder="tu@gmail.com"
               className="w-full rounded-xl border border-border bg-secondary px-3.5 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary/60"
             />
           </div>

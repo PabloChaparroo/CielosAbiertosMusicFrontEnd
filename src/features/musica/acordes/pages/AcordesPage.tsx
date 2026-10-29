@@ -36,6 +36,7 @@ import { Annotations } from "../components/Annotations";
 import { ChordSheet } from "../components/ChordSheet";
 import { useFitFontSize } from "../hooks/useFitFontSize";
 import { usePinchZoom } from "@/hooks/usePinchZoom";
+import { useScrollToPicked } from "@/hooks/useScrollToPicked";
 import { useAuth } from "@/core/auth/useAuth";
 import { ChordProEditor } from "../../components/ChordProEditor";
 import {
@@ -64,7 +65,8 @@ export function AcordesPage() {
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchPanelRef = useRef<HTMLElement | null>(null);
-  const songCardRef = useRef<HTMLDivElement | null>(null);
+  // al elegir una canción, la página baja hasta su tarjeta (ver useScrollToPicked)
+  const { ref: songCardRef, request: scrollToSongCard } = useScrollToPicked<HTMLDivElement>();
   // menú "⋯" de la tarjeta (PDF, Editar): tocar en cualquier otro lado lo cierra
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement | null>(null);
@@ -76,13 +78,9 @@ export function AcordesPage() {
     document.addEventListener("pointerdown", closeOnOutside);
     return () => document.removeEventListener("pointerdown", closeOnOutside);
   }, [moreOpen]);
-  // al elegir una canción en celular/tablet, la página baja hasta su tarjeta (el buscador queda
-  // arriba, fuera de la vista). Solo cuando la elige el usuario, no al entrar desde una lista
-  // (contador: también baja si se vuelve a elegir la misma canción)
-  const [scrollToSong, setScrollToSong] = useState(0);
   const openSong = (id: string) => {
     setSongId(id);
-    setScrollToSong((n) => n + 1);
+    scrollToSongCard();
   };
   const [live, setLive] = useState(false);
   useEffect(() => {
@@ -136,24 +134,6 @@ export function AcordesPage() {
     setDraftKey(null);
     setSaveError(null);
   }, [songId]);
-
-  useEffect(() => {
-    if (!scrollToSong) return;
-    // en compu (xl) la lista va al costado y no tapa nada
-    if (window.matchMedia("(min-width: 1280px)").matches) return;
-    // después de que la lista termina de plegarse (200 ms): si no, la tarjeta sigue moviéndose
-    const timer = window.setTimeout(() => {
-      const card = songCardRef.current;
-      if (!card) return;
-      const header = document.querySelector<HTMLElement>("main > header");
-      const top = card.getBoundingClientRect().top + window.scrollY;
-      window.scrollTo({
-        top: top - (header?.offsetHeight ?? 0) - 12,
-        behavior: "smooth",
-      });
-    }, 220);
-    return () => window.clearTimeout(timer);
-  }, [scrollToSong]);
 
   // va después del reset de arriba: en el mismo render, este setEditing(true) es el que queda
   useEffect(() => {

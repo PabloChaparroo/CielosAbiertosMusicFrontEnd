@@ -62,6 +62,15 @@ export function AcordesPage() {
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchPanelRef = useRef<HTMLElement | null>(null);
+  const songCardRef = useRef<HTMLDivElement | null>(null);
+  // al elegir una canción en celular/tablet, la página baja hasta su tarjeta (el buscador queda
+  // arriba, fuera de la vista). Solo cuando la elige el usuario, no al entrar desde una lista
+  // (contador: también baja si se vuelve a elegir la misma canción)
+  const [scrollToSong, setScrollToSong] = useState(0);
+  const openSong = (id: string) => {
+    setSongId(id);
+    setScrollToSong((n) => n + 1);
+  };
   const [live, setLive] = useState(false);
   useEffect(() => {
     const syncLiveMode = () => {
@@ -114,6 +123,24 @@ export function AcordesPage() {
     setDraftKey(null);
     setSaveError(null);
   }, [songId]);
+
+  useEffect(() => {
+    if (!scrollToSong) return;
+    // en compu (xl) la lista va al costado y no tapa nada
+    if (window.matchMedia("(min-width: 1280px)").matches) return;
+    // después de que la lista termina de plegarse (200 ms): si no, la tarjeta sigue moviéndose
+    const timer = window.setTimeout(() => {
+      const card = songCardRef.current;
+      if (!card) return;
+      const header = document.querySelector<HTMLElement>("main > header");
+      const top = card.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({
+        top: top - (header?.offsetHeight ?? 0) - 12,
+        behavior: "smooth",
+      });
+    }, 220);
+    return () => window.clearTimeout(timer);
+  }, [scrollToSong]);
 
   // va después del reset de arriba: en el mismo render, este setEditing(true) es el que queda
   useEffect(() => {
@@ -377,7 +404,7 @@ export function AcordesPage() {
                   <div
                     key={s.id}
                     onClick={() => {
-                      setSongId(s.id);
+                      openSong(s.id);
                       setSearchOpen(false);
                       play(s);
                     }}
@@ -391,7 +418,7 @@ export function AcordesPage() {
                       type="button"
                       onClick={(event) => {
                         event.stopPropagation();
-                        setSongId(s.id);
+                        openSong(s.id);
                         setSearchOpen(false);
                       }}
                       className="flex min-w-0 flex-1 items-center gap-3 text-left"
@@ -452,7 +479,7 @@ export function AcordesPage() {
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => setSongId(item.id)}
+                    onClick={() => openSong(item.id)}
                     className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-elevated/70"
                   >
                     <Cover song={item} size="sm" />
@@ -472,7 +499,7 @@ export function AcordesPage() {
               {/* Tarjeta de la canción en tres bloques: la canción (y escucharla), cómo se ve la hoja
                   (tono, tamaño, modo) y las acciones (En vivo, PDF, Editar). Todos los controles con
                   el mismo alto (h-10) y borde, para que se vean parejos */}
-              <div className="surface-card divide-y divide-border/60">
+              <div ref={songCardRef} className="surface-card divide-y divide-border/60">
                 <div className="flex items-center gap-3 p-4">
                   <div className="min-w-0 flex-1">
                     <h2 className="truncate font-display text-2xl font-semibold">{song.title}</h2>

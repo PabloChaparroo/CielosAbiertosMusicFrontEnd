@@ -3,10 +3,12 @@ import {
   ArrowRightLeft,
   Check,
   FileDown,
+  Guitar,
   Heart,
   ListMusic,
   Maximize2,
   Minus,
+  MoreHorizontal,
   Pause,
   Pencil,
   Play,
@@ -62,6 +64,26 @@ export function AcordesPage() {
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchPanelRef = useRef<HTMLElement | null>(null);
+  const songCardRef = useRef<HTMLDivElement | null>(null);
+  // menú "⋯" de la tarjeta (PDF, Editar): tocar en cualquier otro lado lo cierra
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!moreOpen) return;
+    const closeOnOutside = (event: PointerEvent) => {
+      if (!moreRef.current?.contains(event.target as Node)) setMoreOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutside);
+    return () => document.removeEventListener("pointerdown", closeOnOutside);
+  }, [moreOpen]);
+  // al elegir una canción en celular/tablet, la página baja hasta su tarjeta (el buscador queda
+  // arriba, fuera de la vista). Solo cuando la elige el usuario, no al entrar desde una lista
+  // (contador: también baja si se vuelve a elegir la misma canción)
+  const [scrollToSong, setScrollToSong] = useState(0);
+  const openSong = (id: string) => {
+    setSongId(id);
+    setScrollToSong((n) => n + 1);
+  };
   const [live, setLive] = useState(false);
   useEffect(() => {
     const syncLiveMode = () => {
@@ -114,6 +136,24 @@ export function AcordesPage() {
     setDraftKey(null);
     setSaveError(null);
   }, [songId]);
+
+  useEffect(() => {
+    if (!scrollToSong) return;
+    // en compu (xl) la lista va al costado y no tapa nada
+    if (window.matchMedia("(min-width: 1280px)").matches) return;
+    // después de que la lista termina de plegarse (200 ms): si no, la tarjeta sigue moviéndose
+    const timer = window.setTimeout(() => {
+      const card = songCardRef.current;
+      if (!card) return;
+      const header = document.querySelector<HTMLElement>("main > header");
+      const top = card.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({
+        top: top - (header?.offsetHeight ?? 0) - 12,
+        behavior: "smooth",
+      });
+    }, 220);
+    return () => window.clearTimeout(timer);
+  }, [scrollToSong]);
 
   // va después del reset de arriba: en el mismo render, este setEditing(true) es el que queda
   useEffect(() => {
@@ -377,7 +417,7 @@ export function AcordesPage() {
                   <div
                     key={s.id}
                     onClick={() => {
-                      setSongId(s.id);
+                      openSong(s.id);
                       setSearchOpen(false);
                       play(s);
                     }}
@@ -391,7 +431,7 @@ export function AcordesPage() {
                       type="button"
                       onClick={(event) => {
                         event.stopPropagation();
-                        setSongId(s.id);
+                        openSong(s.id);
                         setSearchOpen(false);
                       }}
                       className="flex min-w-0 flex-1 items-center gap-3 text-left"
@@ -452,7 +492,7 @@ export function AcordesPage() {
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => setSongId(item.id)}
+                    onClick={() => openSong(item.id)}
                     className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-elevated/70"
                   >
                     <Cover song={item} size="sm" />
@@ -469,10 +509,10 @@ export function AcordesPage() {
             </div>
           ) : (
             <>
-              {/* Tarjeta de la canción en tres bloques: la canción (y escucharla), cómo se ve la hoja
-                  (tono, tamaño, modo) y las acciones (En vivo, PDF, Editar). Todos los controles con
-                  el mismo alto (h-10) y borde, para que se vean parejos */}
-              <div className="surface-card divide-y divide-border/60">
+              {/* Tarjeta de la canción: la canción (y escucharla) y una barra compacta con cómo se ve la
+                  hoja y las acciones. Todos los controles con el mismo alto (h-10) y borde, para que
+                  se vean parejos */}
+              <div ref={songCardRef} className="surface-card divide-y divide-border/60">
                 <div className="flex items-center gap-3 p-4">
                   <div className="min-w-0 flex-1">
                     <h2 className="truncate font-display text-2xl font-semibold">{song.title}</h2>
@@ -519,81 +559,72 @@ export function AcordesPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-3 p-4">
-                  {/* tono y letra siempre en la misma fila; en pantallas chicas la etiqueta va arriba */}
-                  <div className="flex items-end gap-3 sm:items-center sm:gap-4">
-                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-                      <span className="pl-1 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase sm:pl-0">
-                        Tono
-                      </span>
-                      <div className="flex h-10 items-center gap-1 rounded-full border border-border px-1">
-                        <IconBtn onClick={() => setSemitones((s) => s - 1)} label="Bajar semitono">
-                          <Minus className="h-4 w-4" />
-                        </IconBtn>
-                        <select
-                          value={targetKey}
-                          onChange={(e) => {
-                            const idxFrom = KEYS.indexOf(targetKey);
-                            const target = e.target.value;
-                            const semis = (((KEYS.indexOf(target) - idxFrom) % 12) + 12) % 12;
-                            setSemitones((s) => s + semis);
-                          }}
-                          aria-label="Tono"
-                          className="w-10 appearance-none bg-transparent text-center text-sm font-semibold text-primary outline-none sm:w-12"
-                        >
-                          {KEYS.map((k) => (
-                            <option key={k} value={k} className="bg-card text-foreground">
-                              {k}
-                            </option>
-                          ))}
-                        </select>
-                        <IconBtn onClick={() => setSemitones((s) => s + 1)} label="Subir semitono">
-                          <Plus className="h-4 w-4" />
-                        </IconBtn>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-                      <span className="pl-1 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase sm:pl-0">
-                        Letra
-                      </span>
-                      <div className="flex h-10 items-center gap-1 rounded-full border border-border px-1">
-                        <IconBtn onClick={() => changeFontSize(-2, 40)} label="Achicar letra">
-                          <Minus className="h-4 w-4" />
-                        </IconBtn>
-                        <span className="w-11 text-center text-sm text-muted-foreground sm:w-12">
-                          {fontSize}px
-                        </span>
-                        <IconBtn onClick={() => changeFontSize(2, 40)} label="Agrandar letra">
-                          <Plus className="h-4 w-4" />
-                        </IconBtn>
-                      </div>
-                    </div>
+                {/* Una sola barra: tono, tamaño de letra, solo acordes, En vivo y "⋯" (PDF, Editar).
+                    En celular el espacio vale mucho: sin etiquetas arriba, cada control dice lo suyo
+                    en su aria-label y title */}
+                <div className="flex flex-wrap items-center justify-between gap-1 px-2.5 py-3 sm:justify-start sm:gap-2 sm:p-4">
+                  <div
+                    className="flex h-10 items-center rounded-full border border-border px-0.5 [&>button]:p-1 sm:[&>button]:p-1.5"
+                    title="Tono"
+                  >
+                    <IconBtn onClick={() => setSemitones((s) => s - 1)} label="Bajar semitono">
+                      <Minus className="h-4 w-4" />
+                    </IconBtn>
+                    <select
+                      value={targetKey}
+                      onChange={(e) => {
+                        const idxFrom = KEYS.indexOf(targetKey);
+                        const target = e.target.value;
+                        const semis = (((KEYS.indexOf(target) - idxFrom) % 12) + 12) % 12;
+                        setSemitones((s) => s + semis);
+                      }}
+                      aria-label="Tono"
+                      className="w-8 appearance-none bg-transparent text-center text-sm font-semibold text-primary outline-none sm:w-9"
+                    >
+                      {KEYS.map((k) => (
+                        <option key={k} value={k} className="bg-card text-foreground">
+                          {k}
+                        </option>
+                      ))}
+                    </select>
+                    <IconBtn onClick={() => setSemitones((s) => s + 1)} label="Subir semitono">
+                      <Plus className="h-4 w-4" />
+                    </IconBtn>
                   </div>
 
-                  <div className="flex h-10 w-full rounded-full border border-border p-1 sm:w-auto">
-                    {(
-                      [
-                        ["both", "Letra + acordes"],
-                        ["chords", "Solo acordes"],
-                      ] as const
-                    ).map(([v, label]) => (
-                      <button
-                        key={v}
-                        onClick={() => setMode(v)}
-                        className={`flex-1 rounded-full px-4 text-sm font-medium transition-colors sm:flex-none ${
-                          mode === v
-                            ? "gradient-gold text-primary-foreground"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
+                  <div
+                    className="flex h-10 items-center rounded-full border border-border px-0.5 [&>button]:p-1 sm:[&>button]:p-1.5"
+                    title={`Tamaño de letra: ${fontSize}px`}
+                  >
+                    <IconBtn onClick={() => changeFontSize(-2, 40)} label="Achicar letra">
+                      <Minus className="h-4 w-4" />
+                    </IconBtn>
+                    <span
+                      aria-label={`Letra de ${fontSize}px`}
+                      className="w-6 text-center text-sm font-semibold text-muted-foreground sm:w-7"
+                    >
+                      Aa
+                    </span>
+                    <IconBtn onClick={() => changeFontSize(2, 40)} label="Agrandar letra">
+                      <Plus className="h-4 w-4" />
+                    </IconBtn>
                   </div>
-                </div>
 
-                <div className="flex flex-wrap items-center gap-2 p-4">
+                  <button
+                    type="button"
+                    onClick={() => setMode(mode === "chords" ? "both" : "chords")}
+                    aria-pressed={mode === "chords"}
+                    aria-label="Solo acordes"
+                    title={mode === "chords" ? "Mostrando solo acordes" : "Mostrar solo acordes"}
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-colors ${
+                      mode === "chords"
+                        ? "border-transparent gradient-gold text-primary-foreground"
+                        : "border-border text-muted-foreground hover:border-primary/50 hover:text-primary"
+                    }`}
+                  >
+                    <Guitar className="h-4 w-4" />
+                  </button>
+
                   {!editing ? (
                     <>
                       <button
@@ -602,70 +633,102 @@ export function AcordesPage() {
                           void enterBrowserFullscreen();
                           setLive(true);
                         }}
-                        className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full whitespace-nowrap gradient-gold px-4 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105 sm:flex-none"
+                        aria-label="En vivo"
+                        title="En vivo"
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full gradient-gold text-primary-foreground transition-transform hover:scale-105"
                       >
-                        <Maximize2 className="h-4 w-4" /> En vivo
+                        <Maximize2 className="h-4 w-4" />
                       </button>
-                      <button
-                        type="button"
-                        // el PDF no depende del ancho de la pantalla: tamaño de siempre, salvo que se haya elegido a mano
-                        onClick={() =>
-                          exportChordsPdf(song, {
-                            semitones,
-                            targetKey,
-                            mode,
-                            fontSize: manualFontSize ?? 25,
-                          })
-                        }
-                        className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full whitespace-nowrap border border-border px-4 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary sm:flex-none"
-                      >
-                        <FileDown className="h-4 w-4" /> PDF
-                      </button>
-                      {can("editSongs") ? (
+                      <div ref={moreRef} className="relative">
                         <button
                           type="button"
-                          onClick={handleStartEditing}
-                          className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full whitespace-nowrap border border-border px-4 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary sm:flex-none"
+                          onClick={() => setMoreOpen((open) => !open)}
+                          aria-label="Más opciones"
+                          aria-expanded={moreOpen}
+                          title="Más opciones"
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
                         >
-                          <Pencil className="h-4 w-4" /> Editar
+                          <MoreHorizontal className="h-4 w-4" />
                         </button>
-                      ) : null}
-                    </>
-                  ) : null}
-                  {/* Guardar/Cancelar arriba, a mano sin importar lo larga que sea la canción */}
-                  {editing ? (
-                    <>
-                      {/* el selector de tono solo cambia la vista: esto reescribe el texto para guardarlo así */}
-                      {((semitones % 12) + 12) % 12 ? (
-                        <button
-                          type="button"
-                          onClick={handleTransposeDraft}
-                          disabled={saving}
-                          title="Reescribe los acordes del texto en este tono; al guardar, la canción queda en este tono"
-                          className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105 disabled:opacity-50"
-                        >
-                          <ArrowRightLeft className="h-4 w-4" /> Pasar el texto a {targetKey}
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        onClick={handleCancelEditing}
-                        disabled={saving}
-                        className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
-                      >
-                        <X className="h-4 w-4" /> Cancelar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleSaveChords()}
-                        disabled={saving}
-                        className="flex items-center gap-2 rounded-full border border-primary/50 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
-                      >
-                        <Check className="h-4 w-4" /> {saving ? "Guardando…" : "Guardar"}
-                      </button>
+                        {moreOpen ? (
+                          <div
+                            role="menu"
+                            className="absolute top-12 right-0 z-20 min-w-40 animate-in overflow-hidden rounded-2xl border border-white/10 bg-card/95 p-1 shadow-2xl backdrop-blur fade-in-0 zoom-in-95 duration-150"
+                          >
+                            <button
+                              type="button"
+                              role="menuitem"
+                              // el PDF no depende del ancho de la pantalla: tamaño de siempre, salvo que se haya elegido a mano
+                              onClick={() => {
+                                setMoreOpen(false);
+                                exportChordsPdf(song, {
+                                  semitones,
+                                  targetKey,
+                                  mode,
+                                  fontSize: manualFontSize ?? 25,
+                                });
+                              }}
+                              className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm hover:bg-elevated/70 hover:text-primary"
+                            >
+                              <FileDown className="h-4 w-4" /> Descargar PDF
+                            </button>
+                            {can("editSongs") ? (
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => {
+                                  setMoreOpen(false);
+                                  handleStartEditing();
+                                }}
+                                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm hover:bg-elevated/70 hover:text-primary"
+                              >
+                                <Pencil className="h-4 w-4" /> Editar acordes
+                              </button>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
                     </>
                   ) : null}
                 </div>
+
+                {editing ? (
+                  <div className="flex flex-wrap items-center gap-2 p-3 sm:p-4">
+                    {/* Guardar/Cancelar arriba, a mano sin importar lo larga que sea la canción */}
+                    {editing ? (
+                      <>
+                        {/* el selector de tono solo cambia la vista: esto reescribe el texto para guardarlo así */}
+                        {((semitones % 12) + 12) % 12 ? (
+                          <button
+                            type="button"
+                            onClick={handleTransposeDraft}
+                            disabled={saving}
+                            title="Reescribe los acordes del texto en este tono; al guardar, la canción queda en este tono"
+                            className="flex items-center gap-2 rounded-full gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105 disabled:opacity-50"
+                          >
+                            <ArrowRightLeft className="h-4 w-4" /> Pasar el texto a {targetKey}
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={handleCancelEditing}
+                          disabled={saving}
+                          className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                        >
+                          <X className="h-4 w-4" /> Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleSaveChords()}
+                          disabled={saving}
+                          className="flex items-center gap-2 rounded-full border border-primary/50 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+                        >
+                          <Check className="h-4 w-4" /> {saving ? "Guardando…" : "Guardar"}
+                        </button>
+                      </>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
 
               {editing ? (

@@ -7,6 +7,7 @@ import { useAuth } from "@/core/auth/useAuth";
 import { currentMonthKey } from "@/lib/month";
 import { ProximasSection } from "../components/ProximasSection";
 import { TagList } from "@/components/common/TagList";
+import { RisingParticles } from "@/components/common/RisingParticles";
 
 /** Partículas doradas de la portada: posición (%), tamaño (px) y ritmo fijos, así no saltan */
 const HERO_PARTICLES = [
@@ -20,22 +21,6 @@ const HERO_PARTICLES = [
   { x: 91, y: 70, size: 3, delay: 2.8, duration: 10 },
   { x: 50, y: 6, size: 2, delay: 3.6, duration: 9 },
   { x: 44, y: 78, size: 2, delay: 5, duration: 8 },
-];
-
-/** Partículas que suben desde abajo por toda la página: columna (%), tamaño (px) y ritmo fijos */
-const RISING_PARTICLES = [
-  { x: 4, size: 3, delay: 0, duration: 16 },
-  { x: 12, size: 2, delay: 6, duration: 20 },
-  { x: 21, size: 3, delay: 11, duration: 18 },
-  { x: 30, size: 2, delay: 3, duration: 22 },
-  { x: 39, size: 3, delay: 9, duration: 17 },
-  { x: 48, size: 2, delay: 14, duration: 21 },
-  { x: 57, size: 3, delay: 1.5, duration: 19 },
-  { x: 66, size: 2, delay: 7.5, duration: 23 },
-  { x: 75, size: 3, delay: 12.5, duration: 16 },
-  { x: 84, size: 2, delay: 4.5, duration: 20 },
-  { x: 92, size: 3, delay: 10, duration: 18 },
-  { x: 97, size: 2, delay: 16, duration: 22 },
 ];
 
 /** "hoy", "mañana" o "en N días" hasta la fecha de la lista */
@@ -123,24 +108,7 @@ export function InicioPage() {
     <AppLayout title="Inicio" subtitle={subtitle} bleed>
       {/* partículas doradas que suben desde abajo de la pantalla, por detrás de todo el contenido
           (la portada y las tarjetas van en "relative", así se dibujan encima) */}
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 overflow-hidden xl:left-[272px]"
-      >
-        {RISING_PARTICLES.map((p, i) => (
-          <span
-            key={i}
-            className="rising-particle absolute -bottom-2 rounded-full bg-primary"
-            style={{
-              left: `${p.x}%`,
-              width: p.size,
-              height: p.size,
-              animationDelay: `${p.delay}s`,
-              animationDuration: `${p.duration}s`,
-            }}
-          />
-        ))}
-      </div>
+      <RisingParticles />
       {/* Portada: cielo oscuro con un resplandor dorado desde arriba ("cielos abiertos"),
           partículas doradas que flotan, el logo centrado con un halo que respira, y la próxima
           lista en una tarjeta de vidrio. Las animaciones se apagan con "reducir movimiento". */}

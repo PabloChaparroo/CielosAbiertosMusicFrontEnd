@@ -52,9 +52,11 @@ export function FloatingVideoFrame({
       }
     >
       {/* la zona de arrastre (grip + título) va separada de los botones: con touch-action: none
-          sobre los botones, el celular a veces no convertía el toque en click */}
+          sobre los botones, el celular a veces no convertía el toque en click.
+          w-0 + min-w-full: la barra toma el ancho del video y no al revés; si no, un título largo
+          ensanchaba la ventanita y quedaba una franja negra a la derecha del video */}
       <div
-        className={`${pinnedRect ? "hidden" : "flex"} items-center gap-1 bg-neutral-900 py-1 pr-1 text-white`}
+        className={`${pinnedRect ? "hidden" : "flex"} w-0 min-w-full items-center gap-1 bg-neutral-900 py-1 pr-1 text-white`}
       >
         <div
           {...handleProps}

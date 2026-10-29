@@ -35,6 +35,7 @@ import { GoldParticles } from "@/components/common/GoldParticles";
 import { ListNav, listNeighbors } from "@/components/common/ListNav";
 import { canRotateScreen } from "@/lib/screen-orientation";
 import { matchesSearch } from "@/lib/search";
+import { useScrollToPicked } from "@/hooks/useScrollToPicked";
 
 export function LetrasPage() {
   const { songs, can, updateSong, current, isPlaying, play, toggle, favorites } = useApp();
@@ -43,6 +44,12 @@ export function LetrasPage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const searchPanelRef = useRef<HTMLElement | null>(null);
+  // al elegir una canción, la página baja hasta su letra (ver useScrollToPicked)
+  const { ref: detailRef, request: scrollToDetail } = useScrollToPicked<HTMLDivElement>();
+  const openSong = (id: string) => {
+    setSelected(id);
+    scrollToDetail();
+  };
   useEffect(() => {
     const closeOnOutsideTap = (event: PointerEvent) => {
       if (searchPanelRef.current && !searchPanelRef.current.contains(event.target as Node)) {
@@ -131,7 +138,7 @@ export function LetrasPage() {
                   <div
                     key={item.id}
                     onClick={() => {
-                      setSelected(item.id);
+                      openSong(item.id);
                       setSearchOpen(false);
                       play(item);
                     }}
@@ -143,7 +150,7 @@ export function LetrasPage() {
                       type="button"
                       onClick={(event) => {
                         event.stopPropagation();
-                        setSelected(item.id);
+                        openSong(item.id);
                         setSearchOpen(false);
                       }}
                       className="flex min-w-0 flex-1 items-center gap-3 text-left"
@@ -191,7 +198,7 @@ export function LetrasPage() {
           </div>
         </aside>
 
-        <div className="order-2 min-w-0 xl:order-2">
+        <div ref={detailRef} className="order-2 min-w-0 xl:order-2">
           {song ? (
             <SongLyricsDetail
               song={song}
@@ -216,7 +223,7 @@ export function LetrasPage() {
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => setSelected(item.id)}
+                      onClick={() => openSong(item.id)}
                       className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-elevated/70"
                     >
                       <Cover song={item} size="sm" />

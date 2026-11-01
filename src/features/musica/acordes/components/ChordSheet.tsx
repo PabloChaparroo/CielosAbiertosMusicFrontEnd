@@ -2,6 +2,7 @@ import {
   chartBars,
   isChartMarker,
   isSimpleChartLine,
+  lyricText,
   packChartRows,
   type ChordPair,
   type ParsedLine,
@@ -189,7 +190,7 @@ function NoteMark({ note, fontSize }: { note: string; fontSize: number }) {
 }
 
 /** Texto de letra tal como se muestra en "Letra + acordes" */
-const displayText = (text: string) => text.replace(/\s-\s/g, " ").replace(/\s:\]/g, "");
+const displayText = lyricText;
 
 /** Ancho (en caracteres de la fuente de acordes) que ocupa una nota dibujada a NOTE_SCALE, más margen */
 const noteWidthCh = (note: string) => Math.ceil((note.length + 2) * NOTE_SCALE) + 2;

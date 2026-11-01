@@ -1,9 +1,12 @@
 import { jsPDF } from "jspdf";
 import { displayLyricsLines, lyricText, parseChordPro, type ParsedLine } from "./chords";
+import { splitChordRow } from "./pdf-layout";
 import type { Setlist, Song } from "@/types";
 import { groupBySection, usesSections } from "@/features/musica/setlists/lib/sections";
 
 const CHURCH = "Cielos Abiertos";
+/** Borde derecho del texto en la hoja A4 (mm), el mismo de la línea del encabezado */
+const PAGE_RIGHT = 196;
 /** Títulos de sección (VERSO, CORO…): más oscuros que los acordes y en negrita, que impresos se lean bien */
 const SECTION_COLOR = [150, 95, 10] as const;
 
@@ -208,20 +211,38 @@ export function exportChordsPdf(
       .filter((i) => i.kind === "chord")
       .reduce((acc, i) => acc.padEnd(i.col, " ") + i.text, "");
     const notes = items.filter((i) => i.kind === "note");
-    doc.setTextColor(190, 130, 30);
-    doc.text(chordLine, 14, y);
-    notes.forEach((n) =>
-      drawNoteAt(doc, n.text, 14 + doc.getTextWidth(" ".repeat(n.col)), y, size),
-    );
-    // interlineado: el acorde pegado a su letra, y un poco más de aire hasta el renglón siguiente
-    y += opts.mode === "both" ? size * 0.42 : size * 0.55;
-    y = ensure(doc, y);
-    if (opts.mode === "both") {
-      doc.setFont("courier", "normal");
-      doc.setTextColor(20, 20, 20);
-      doc.text(lyricLine, 14, y);
-      y += size * 0.55;
-    }
+    // una línea más ancha que la hoja sigue abajo (antes se cortaba en el borde)
+    const maxCols = Math.floor((PAGE_RIGHT - 14) / doc.getTextWidth(" "));
+    const chordCols = items
+      .filter((i) => i.kind === "chord")
+      .map((i) => ({ col: i.col, length: i.text.length }));
+    splitChordRow(chordLine, lyricLine, chordCols, maxCols).forEach(({ start, end, shift }) => {
+      const from = start + shift;
+      y = ensure(doc, y);
+      doc.setFont("courier", "bold");
+      doc.setTextColor(190, 130, 30);
+      doc.text(chordLine.slice(from, end).trimEnd(), 14, y);
+      notes
+        .filter((n) => n.col >= start && n.col < end)
+        .forEach((n) =>
+          drawNoteAt(
+            doc,
+            n.text,
+            14 + doc.getTextWidth(" ".repeat(Math.max(0, n.col - from))),
+            y,
+            size,
+          ),
+        );
+      // interlineado: el acorde pegado a su letra, y un poco más de aire hasta el renglón siguiente
+      y += opts.mode === "both" ? size * 0.42 : size * 0.55;
+      y = ensure(doc, y);
+      if (opts.mode === "both") {
+        doc.setFont("courier", "normal");
+        doc.setTextColor(20, 20, 20);
+        doc.text(lyricLine.slice(from, end), 14, y);
+        y += size * 0.55;
+      }
+    });
   });
 
   doc.save(`${song.title} - ${opts.targetKey}.pdf`);

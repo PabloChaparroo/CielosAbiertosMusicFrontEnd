@@ -1,9 +1,11 @@
 import { jsPDF } from "jspdf";
-import { displayLyricsLines, parseChordPro, type ParsedLine } from "./chords";
+import { displayLyricsLines, lyricText, parseChordPro, type ParsedLine } from "./chords";
 import type { Setlist, Song } from "@/types";
 import { groupBySection, usesSections } from "@/features/musica/setlists/lib/sections";
 
 const CHURCH = "Cielos Abiertos";
+/** Títulos de sección (VERSO, CORO…): más oscuros que los acordes y en negrita, que impresos se lean bien */
+const SECTION_COLOR = [150, 95, 10] as const;
 
 function header(doc: jsPDF, title: string, subtitle: string) {
   // sin fondo negro (gasta mucha tinta al imprimir): texto y una línea fina
@@ -85,7 +87,7 @@ export function exportLyricsPdf(song: Song) {
     if (block.title) {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(13);
-      doc.setTextColor(190, 130, 30);
+      doc.setTextColor(...SECTION_COLOR);
       doc.text(block.title, x, y);
       doc.setTextColor(20, 20, 20);
       y += 7;
@@ -151,8 +153,9 @@ export function exportChordsPdf(
       return;
     }
     if (line.kind === "section") {
-      doc.setFontSize(size);
-      doc.setTextColor(190, 130, 30);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(size + 1);
+      doc.setTextColor(...SECTION_COLOR);
       doc.text(line.label, 14, y);
       drawNotes(doc, line.notes, 14 + doc.getTextWidth(line.label), y, size);
       doc.setTextColor(20, 20, 20);
@@ -174,7 +177,9 @@ export function exportChordsPdf(
         });
         return;
       }
-      const { text, chord } = p;
+      // sin los "-" que unen acordes ni los ":]", igual que en pantalla
+      const text = lyricText(p.text);
+      const { chord } = p;
       const col = Math.max(chordEnd, lyricLine.length);
       if (chord) items.push({ kind: "chord", col, text: chord });
       chordEnd = col + chord.length;

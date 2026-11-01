@@ -189,6 +189,17 @@ export function displayLyricsLines(
   });
 }
 
+/**
+ * Letra de un tramo tal como se muestra en "Letra + acordes" (pantalla y PDF): sin los "-" sueltos
+ * que unen acordes ("pues - invocarán", "a aquel -") ni los ":]" de repetición. Un guion dentro de
+ * una palabra ("medio-día") se deja.
+ */
+export function lyricText(text: string): string {
+  return text
+    .replace(/(^|\s)-(?=\s|$)\s?/g, (_match, before: string) => before)
+    .replace(/\s:\]/g, "");
+}
+
 const CHORD_PATTERN = String.raw`[A-G](?:#|b)?(?:m|min|maj|sus|add|dim|aug)?\d*(?:\/[A-G](?:#|b)?)?`;
 // comillas rectas y las tipográficas que pone el teclado del celular
 const QUOTES = "['\"‘’“”´`]+";

@@ -3,6 +3,7 @@ import {
   chartBars,
   chordsOnly,
   diatonicChords,
+  lyricText,
   packChartRows,
   parseChordPro,
   semitonesBetween,
@@ -330,5 +331,19 @@ describe("transposeChordPro", () => {
 
   it("sin cambio de tono (0 o 12 semitonos) devuelve el texto tal cual", () => {
     expect(transposeChordPro("[Db] [C#]", 12, "C")).toBe("[Db] [C#]");
+  });
+});
+
+describe("lyricText — letra de Letra + acordes (pantalla y PDF)", () => {
+  it("saca los guiones sueltos que unen acordes, en el medio, al final y al principio", () => {
+    expect(lyricText("¿Como pues - ")).toBe("¿Como pues ");
+    expect(lyricText("invocaran, a aquel -")).toBe("invocaran, a aquel ");
+    expect(lyricText("- de quien")).toBe("de quien");
+    expect(lyricText("y como - creeran - en aquel")).toBe("y como creeran en aquel");
+  });
+
+  it("deja los guiones dentro de una palabra y saca los :] de repetición", () => {
+    expect(lyricText("medio-día")).toBe("medio-día");
+    expect(lyricText("te alabaré :]")).toBe("te alabaré");
   });
 });

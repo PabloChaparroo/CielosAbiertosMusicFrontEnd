@@ -196,9 +196,28 @@ export function EscucharPage() {
     </div>
   );
 
+  // celular y tablet: al tocar el buscador, el encabezado se va y el buscador queda primero en la
+  // pantalla (con el teclado abierto queda poco lugar para los resultados)
+  const [searchFocused, setSearchFocused] = useState(false);
+  const searchRowRef = useRef<HTMLDivElement | null>(null);
+  const focusSearch = () => {
+    if (window.matchMedia("(min-width: 1280px)").matches) return;
+    setSearchFocused(true);
+    // después de que el encabezado deja de estar fijo y el teclado terminó de abrirse
+    window.setTimeout(() => {
+      const row = searchRowRef.current;
+      if (!row) return;
+      window.scrollTo({
+        top: row.getBoundingClientRect().top + window.scrollY - 12,
+        behavior: "smooth",
+      });
+    }, 250);
+  };
+
   return (
     <AppLayout
       title="Canciones"
+      hideHeader={searchFocused}
       subtitle={`${songs.length} canciones en el repertorio`}
       actions={
         can("editSongs") ? (
@@ -219,13 +238,15 @@ export function EscucharPage() {
         {/* buscador, vista y "Filtros" (abre un panel) en una fila; abajo, los filtros activos
           como pastillas doradas que se quitan con ✕ */}
         <div className="mb-6 space-y-3">
-          <div className="flex items-center gap-2">
+          <div ref={searchRowRef} className="flex items-center gap-2">
             <div className="relative min-w-0 flex-1 sm:max-w-md">
               {/* z-10: el input con backdrop-blur se pinta encima y tapaba la lupa */}
               <Search className="pointer-events-none absolute top-1/2 left-3.5 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                onFocus={focusSearch}
+                onBlur={() => setSearchFocused(false)}
                 placeholder="Buscar canción o artista…"
                 className="h-10 w-full rounded-full border border-white/10 bg-white/[0.04] pr-4 pl-10 text-sm backdrop-blur-xl outline-none transition-colors focus:border-primary/50 focus:bg-white/[0.06]"
               />

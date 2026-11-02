@@ -10,12 +10,16 @@ export function AppLayout({
   actions,
   children,
   bleed,
+  hideHeader = false,
 }: {
   title: string;
   subtitle?: string;
   actions?: ReactNode;
   children: ReactNode;
   bleed?: boolean;
+  /** el encabezado deja de quedar fijo arriba y se va al bajar (ej. mientras se usa un buscador
+   *  en celular, para que el buscador quede primero en la pantalla) */
+  hideHeader?: boolean;
 }) {
   // si se llegó tocando un módulo del menú, arranca abierto y se cierra con animación
   const [open, setOpen] = useState(() => mobileNav.closeOnMount);
@@ -43,7 +47,9 @@ export function AppLayout({
       />
 
       <main className="xl:pl-[272px]">
-        <header className="sticky top-0 z-30 overflow-hidden border-b border-border/70 bg-background/80 backdrop-blur-xl">
+        <header
+          className={`${hideHeader ? "relative" : "sticky top-0"} z-30 overflow-hidden border-b border-border/70 bg-background/80 backdrop-blur-xl`}
+        >
           {/* brillo dorado tenue arriba a la izquierda, el mismo del menú lateral */}
           <div
             aria-hidden
@@ -76,6 +82,9 @@ export function AppLayout({
           className={
             "animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out " +
             (bleed ? "" : "px-4 pt-6 sm:px-8 sm:pt-8 ") +
+            // con el encabezado oculto, alto suficiente para poder bajarlo de la vista aunque el
+            // buscador deje pocos resultados
+            (hideHeader ? "min-h-[calc(100dvh+2rem)] " : "") +
             // lugar para el reproductor de abajo (antes "sm:py-8" lo pisaba desde sm y tapaba el final)
             (current ? "pb-32" : "pb-16")
           }

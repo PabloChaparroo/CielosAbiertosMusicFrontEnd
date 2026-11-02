@@ -7,6 +7,7 @@ import { useAuth } from "@/core/auth/useAuth";
 import { currentMonthKey } from "@/lib/month";
 import { ProximasSection } from "../components/ProximasSection";
 import { TagList } from "@/components/common/TagList";
+import { isPlayed } from "@/features/musica/setlists/lib/setlist-status";
 import { RisingParticles } from "@/components/common/RisingParticles";
 
 /** Partículas doradas de la portada: posición (%), tamaño (px) y ritmo fijos, así no saltan */
@@ -56,9 +57,10 @@ export function InicioPage() {
   const sortedLists = [...setlists].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
   );
-  const upcoming =
-    sortedLists.find((s) => new Date(s.date).getTime() >= Date.now() - 86400000) ??
-    sortedLists[sortedLists.length - 1];
+  // la misma regla que la pantalla de listas: la del domingo es "próxima" todo el domingo y pasa
+  // al historial el lunes. Si no hay ninguna por venir, no se muestra (antes caía en la última,
+  // aunque ya se hubiera tocado)
+  const upcoming = sortedLists.find((s) => !isPlayed(s.date));
   // antes fijo en "2026-09": desde octubre mostraba datos viejos o vacíos
   const month = currentMonthKey();
   const top = [...songs]
@@ -163,9 +165,7 @@ export function InicioPage() {
             “Adorando en espíritu y en verdad”
           </p>
 
-          {canSeeSetlists &&
-          upcoming &&
-          new Date(upcoming.date).getTime() >= Date.now() - 86400000 ? (
+          {canSeeSetlists && upcoming ? (
             <Link
               to="/setlists"
               className="group mt-9 flex w-full max-w-md items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.05] p-4 text-left shadow-2xl backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-primary/40"

@@ -21,6 +21,7 @@ import { isAssignable } from "../lib/assignable";
 import { matchesSearch } from "@/lib/search";
 import { hasSequence } from "@/features/canciones/lib/sequence";
 import { ListDuration } from "./ListDuration";
+import { SectionSelect } from "./SectionSelect";
 
 const inputCls =
   "w-full rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary/60";
@@ -507,9 +508,11 @@ export function NewSetlistModal({
               return (
                 <button
                   key={s.id}
-                  onClick={() =>
-                    setPicked((p) => (on ? p.filter((x) => x !== s.id) : [...p, s.id]))
-                  }
+                  onClick={() => {
+                    setPicked((p) => (on ? p.filter((x) => x !== s.id) : [...p, s.id]));
+                    // elegida una canción, el buscador queda vacío para buscar la siguiente
+                    if (!on) setQuery("");
+                  }}
                   className={`flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-elevated/70 ${
                     on ? "bg-primary/10" : ""
                   }`}
@@ -656,23 +659,13 @@ export function NewSetlistModal({
                               </div>
                               {sectioned ? (
                                 // pasar a otra sección (más fácil que arrastrar en el celular)
-                                <select
+                                <SectionSelect
                                   value={sectionFor(song.id)}
-                                  onChange={(event) =>
-                                    setSections((prev) => ({
-                                      ...prev,
-                                      [song.id]: event.target.value as SetlistSection,
-                                    }))
+                                  onChange={(section) =>
+                                    setSections((prev) => ({ ...prev, [song.id]: section }))
                                   }
-                                  aria-label={`Sección de ${song.title}`}
-                                  className="shrink-0 rounded-lg border border-border bg-secondary px-1.5 py-1 text-xs outline-none focus:border-primary/60"
-                                >
-                                  {SECTIONS.map((option) => (
-                                    <option key={option.id} value={option.id}>
-                                      {option.label}
-                                    </option>
-                                  ))}
-                                </select>
+                                  songTitle={song.title}
+                                />
                               ) : null}
                               <button
                                 type="button"

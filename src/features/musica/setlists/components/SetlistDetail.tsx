@@ -25,6 +25,7 @@ import type { Setlist, SetlistItem, SetlistSection } from "@/types";
 import { SECTIONS, defaultSection, itemsForType, sectionOf, usesSections } from "../lib/sections";
 import { matchesSearch } from "@/lib/search";
 import { LockedHint } from "./LockedHint";
+import { SectionSelect } from "./SectionSelect";
 import { setlistToWhatsapp } from "../lib/whatsapp";
 import { teamToWhatsapp } from "../lib/team-whatsapp";
 import { isAssignable } from "../lib/assignable";
@@ -355,18 +356,11 @@ export function SetlistDetail({
                   </span>
                 </button>
                 {sectioned && canEdit ? (
-                  <select
+                  <SectionSelect
                     value={sectionOf(item, song)}
-                    onChange={(e) => changeSection(i, e.target.value as SetlistSection)}
-                    aria-label={`Sección de ${song.title}`}
-                    className="shrink-0 rounded-lg border border-border bg-secondary px-1.5 py-1 text-xs"
-                  >
-                    {SECTIONS.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(section) => changeSection(i, section)}
+                    songTitle={song.title}
+                  />
                 ) : null}
                 {canEdit ? (
                   <button
@@ -416,7 +410,11 @@ export function SetlistDetail({
                         <button
                           key={song.id}
                           type="button"
-                          onClick={() => addSong(song.id)}
+                          onClick={() => {
+                            addSong(song.id);
+                            // el buscador queda vacío para buscar la siguiente
+                            setAddQuery("");
+                          }}
                           aria-label={`Agregar ${song.title}`}
                           className="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-elevated/70"
                         >

@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest";
-import { mapSong, type RawSong } from "./songs.service";
+import { describe, expect, it, vi } from "vitest";
+import { apiRequest } from "@/lib/api-client";
+import { mapSong, SongsService, type RawSong } from "./songs.service";
+
+vi.mock("@/lib/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api-client")>()),
+  apiRequest: vi.fn(),
+}));
 
 /** Una canción tal como la devuelve GET /canciones del backend */
 const raw: RawSong = {
@@ -100,5 +106,40 @@ describe("mapSong — canción del backend → canción de la UI", () => {
 
   it("si falta el compás (canción anterior a ese campo), usa 4/4", () => {
     expect(mapSong({ ...raw, compas: undefined as unknown as string }).compas).toBe("4/4");
+  });
+});
+
+describe("SongsService.listAll — todas las canciones, aunque sean más de 100", () => {
+  const songs = (from: number, count: number) =>
+    Array.from({ length: count }, (_, i) => ({ ...raw, id: `s${from + i}` }));
+
+  it("pide la primera tanda y las que faltan a la vez, y devuelve todas sin repetir", async () => {
+    const request = vi.mocked(apiRequest);
+    request.mockReset();
+    request.mockImplementation(async (path: string) => {
+      const page = Number(new URL(path, "http://x").searchParams.get("page"));
+      // 230 canciones: 100 + 100 + 30 (la tercera repite una, como si se hubiera corrido)
+      const data = page === 1 ? songs(0, 100) : page === 2 ? songs(100, 100) : songs(199, 31);
+      return { data, total: 230, page, limit: 100 };
+    });
+
+    const all = await SongsService.listAll();
+
+    expect(request.mock.calls.map(([path]) => path)).toEqual([
+      "/canciones?limit=100&page=1",
+      "/canciones?limit=100&page=2",
+      "/canciones?limit=100&page=3",
+    ]);
+    expect(all).toHaveLength(230);
+    expect(new Set(all.map((song) => song.id)).size).toBe(230);
+  });
+
+  it("con 100 o menos hace un solo pedido", async () => {
+    const request = vi.mocked(apiRequest);
+    request.mockReset();
+    request.mockResolvedValue({ data: songs(0, 40), total: 40, page: 1, limit: 100 });
+
+    expect(await SongsService.listAll()).toHaveLength(40);
+    expect(request).toHaveBeenCalledTimes(1);
   });
 });

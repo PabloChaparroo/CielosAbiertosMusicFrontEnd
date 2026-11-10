@@ -45,6 +45,9 @@ export interface RawSong {
   fechaHoraAlta: string;
 }
 
+/** Máximo de canciones por pedido que acepta el backend (PaginationQueryDto) */
+const PAGE_SIZE = 100;
+
 interface PaginatedResult<T> {
   data: T[];
   total: number;
@@ -144,10 +147,27 @@ export const SongsService = {
     return apiRequest<TipoCancion[]>("/tipos-cancion");
   },
 
-  /** Trae todas las canciones reales en una sola página (hoy son 21, muy por debajo del límite de 100 del backend). */
+  /**
+   * Trae TODAS las canciones. El backend devuelve hasta 100 por pedido: se pide la primera tanda
+   * (que dice el total) y las que faltan van todas a la vez, en paralelo, así tarda casi lo mismo
+   * que un solo pedido. Antes se pedía una sola tanda y desde la canción 101 no aparecían.
+   */
   async listAll(): Promise<Song[]> {
-    const result = await apiRequest<PaginatedResult<RawSong>>("/canciones?limit=100");
-    return result.data.map(mapSong);
+    const first = await apiRequest<PaginatedResult<RawSong>>(
+      `/canciones?limit=${PAGE_SIZE}&page=1`,
+    );
+    const pages = Math.ceil(first.total / PAGE_SIZE);
+    const rest = await Promise.all(
+      Array.from({ length: Math.max(0, pages - 1) }, (_, i) =>
+        apiRequest<PaginatedResult<RawSong>>(`/canciones?limit=${PAGE_SIZE}&page=${i + 2}`),
+      ),
+    );
+    // por las dudas, sin repetidas si entre un pedido y otro se agregó una canción
+    const seen = new Set<string>();
+    return [first, ...rest]
+      .flatMap((page) => page.data)
+      .filter((raw) => !seen.has(raw.id) && Boolean(seen.add(raw.id)))
+      .map(mapSong);
   },
 
   async createSong(dto: CreateSongInput): Promise<Song> {

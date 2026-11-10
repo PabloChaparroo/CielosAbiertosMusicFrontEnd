@@ -8,6 +8,8 @@ import {
   GripVertical,
   Lock,
   Pencil,
+  Plus,
+  Search,
   Trash2,
   X,
 } from "lucide-react";
@@ -20,7 +22,8 @@ import { useApp } from "@/hooks/useApp";
 import { roleNames } from "@/lib/user-roles";
 import { exportSetlistPdf } from "@/lib/pdf";
 import type { Setlist, SetlistItem, SetlistSection } from "@/types";
-import { SECTIONS, itemsForType, sectionOf, usesSections } from "../lib/sections";
+import { SECTIONS, defaultSection, itemsForType, sectionOf, usesSections } from "../lib/sections";
+import { matchesSearch } from "@/lib/search";
 import { LockedHint } from "./LockedHint";
 import { setlistToWhatsapp } from "../lib/whatsapp";
 import { teamToWhatsapp } from "../lib/team-whatsapp";
@@ -86,6 +89,24 @@ export function SetlistDetail({
     if (sectioned) it.section = sectionOf(target, songOf(target));
     items.splice(to, 0, it);
     save(items);
+  };
+
+  // agregar canciones a una lista ya creada: buscador con las que todavía no están en la lista
+  const [adding, setAdding] = useState(false);
+  const [addQuery, setAddQuery] = useState("");
+  const addResults = adding
+    ? songs
+        .filter((s) => !setlist.items.some((item) => item.songId === s.id))
+        .filter((s) => matchesSearch(addQuery, s.title) || matchesSearch(addQuery, s.artist))
+        .slice(0, 8)
+    : [];
+  const addSong = (songId: string) => {
+    const song = songs.find((s) => s.id === songId);
+    if (!song) return;
+    save([
+      ...setlist.items,
+      { songId, key: song.key, ...(sectioned ? { section: defaultSection(song) } : {}) },
+    ]);
   };
 
   const changeSection = (index: number, section: SetlistSection) =>
@@ -360,9 +381,71 @@ export function SetlistDetail({
             ];
           })}
           {canEdit ? (
-            <p className="p-3 text-xs text-muted-foreground">
-              Arrastrá las canciones para reordenar el servicio.
-            </p>
+            <div className="space-y-3 p-3">
+              {adding ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="relative min-w-0 flex-1">
+                      <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        autoFocus
+                        value={addQuery}
+                        onChange={(e) => setAddQuery(e.target.value)}
+                        placeholder="Buscar canción para agregar…"
+                        className="h-10 w-full rounded-full border border-border bg-secondary pr-3 pl-9 text-sm outline-none focus:border-primary/60"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdding(false);
+                        setAddQuery("");
+                      }}
+                      className="h-10 shrink-0 rounded-full border border-border px-4 text-sm text-muted-foreground hover:text-foreground"
+                    >
+                      Listo
+                    </button>
+                  </div>
+                  {addResults.length === 0 ? (
+                    <p className="px-1 py-2 text-sm text-muted-foreground">
+                      {addQuery ? "Sin resultados" : "Ya están todas las canciones en la lista"}
+                    </p>
+                  ) : (
+                    <div className="divide-y divide-border/60 rounded-xl border border-border">
+                      {addResults.map((song) => (
+                        <button
+                          key={song.id}
+                          type="button"
+                          onClick={() => addSong(song.id)}
+                          aria-label={`Agregar ${song.title}`}
+                          className="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-elevated/70"
+                        >
+                          <Cover song={song} size="sm" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium">{song.title}</span>
+                            <span className="block truncate text-xs text-muted-foreground">
+                              {song.artist} · {song.key}
+                            </span>
+                          </span>
+                          <Plus className="h-4 w-4 shrink-0 text-primary" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAdding(true)}
+                  className="flex h-10 w-full items-center justify-center gap-2 rounded-full border border-dashed border-primary/50 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+                >
+                  <Plus className="h-4 w-4" /> Agregar canción
+                </button>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Arrastrá las canciones para reordenar el servicio; con el tachito se quitan.
+              </p>
+            </div>
           ) : (
             <div className="p-3">
               <LockedHint>Solo líderes pueden modificar esta lista</LockedHint>
